@@ -1,3 +1,0 @@
-{{- include "oc.basicServiceTemplates" (dict "scope" . "appName" "appNameStoragePubliclink" "appNameSuffix" "") -}}
-{{- $_ := set . "autoscaling" (default (default (dict) .Values.autoscaling) .Values.services.storagepubliclink.autoscaling) -}}
-{{ include "oc.hpa" . }}

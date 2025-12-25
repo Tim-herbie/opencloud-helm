@@ -1,4 +1,0 @@
-{{- if .Values.features.emailNotifications.enabled }}
-{{- include "oc.basicServiceTemplates" (dict "scope" . "appName" "appNameNotifications" "appNameSuffix" "") -}}
-{{ include "oc.pdb" . }}
-{{- end }}

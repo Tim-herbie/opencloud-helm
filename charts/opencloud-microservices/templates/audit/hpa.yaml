@@ -1,3 +1,0 @@
-{{- include "oc.basicServiceTemplates" (dict "scope" . "appName" "appNameAudit" "appNameSuffix" "") -}}
-{{- $_ := set . "autoscaling" (default (default (dict) .Values.autoscaling) .Values.services.audit.autoscaling) -}}
-{{ include "oc.hpa" . }}

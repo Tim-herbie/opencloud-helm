@@ -1,5 +1,0 @@
-{{- if not .Values.configRefs.graphConfigRef }}
-{{- $params := (dict)}}
-{{- $_ := set $params "application-id" (uuidv4) }}
-{{- include "oc.configMap" (dict "scope" . "name" "graph" "params" $params)}}
-{{- end }}

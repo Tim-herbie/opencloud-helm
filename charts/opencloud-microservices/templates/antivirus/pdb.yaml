@@ -1,4 +1,0 @@
-{{ if .Values.features.virusscan.enabled }}
-{{- include "oc.basicServiceTemplates" (dict "scope" . "appName" "appNameAntivirus" "appNameSuffix" "") -}}
-{{ include "oc.pdb" . }}
-{{ end }}

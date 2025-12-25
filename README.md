@@ -1,14 +1,6 @@
-> [!CAUTION]
-> ## This repository has been archived
-> Due to the high amount of AI generated contributions and poor maintenance, this repository has been archived.
->  
-> For **production-ready Helm charts** designed for **mission-critical** workloads, please use the enterprise offering, available with a [business subscription](https://opencloud.eu/en/product/service-and-support).  
->  
-> To access **production-ready helm charts** get in touch with us via [contact form](https://opencloud.eu/en/contact-us) or Email [sales@opencloud.eu](mailto:sales@opencloud.eu).
+# Community Opencloud Helm Chart
 
-# Community Helm Charts
-
-Welcome to the **OpenCloud Helm Charts** repository! This repository is intended as a community-driven space for developing and maintaining Helm charts for deploying OpenCloud on Kubernetes.
+Welcome to the **Opencloud Helm Chart** repository! This repository is intended as a community-driven space for developing and maintaining Helm charts for deploying OpenCloud on Kubernetes.
 **Community Maintained** This repository is **community-maintained** and **not officially supported by OpenCloud GmbH**. Use at your own risk, and feel free to contribute to improve the project!
 
 ## 📑 Table of Contents
@@ -56,10 +48,10 @@ The current maintainers and reviewers are listed in [MAINTAINERS.md](./MAINTAINE
 
 ## Prerequisites
 
-- Kubernetes 1.19+
-- Helm 3.2.0+
+- Kubernetes 1.33+
+- Helm 3.18.0+
 - PV provisioner support in the underlying infrastructure (if persistence is enabled)
-- External ingress controller (e.g., Cilium Gateway API) for routing traffic to the services
+- External ingress controller (e.g., Traefik) for routing traffic to the services
 
 ## ⚠️ Version Stability Notice
 
@@ -83,38 +75,9 @@ The complete OpenCloud deployment with all components for production use:
 - Keycloak for authentication
 - MinIO for object storage
 - Document editing with Collabora and/or OnlyOffice
-- Full Gateway API integration
 
 [View Production Chart Documentation](./charts/opencloud/README.md)
-
-### Microservices Chart (`charts/opencloud-microservices`)
-
-**Architecture**: Pod-per-service
-- Every single service in its own pod
-- Full Gateway API integration
-- NATS service discovery required
-- Keycloak for authentication
-- MinIO for object storage
-- Integrated OpenLDAP 
-- Integrated ClamAV
-- Posix support
-- Helm and Timoni Chart for FluxCD
-- Document editing with Collabora and/or OnlyOffice
-- Slightly higher resource usage due to microservices pod overhead
-- See [architectural warnings](./charts/opencloud-microservices/README.md#architectural-considerations)
-
-### Development Chart (`charts/opencloud-dev`)
-
-A lightweight single-container deployment for development and testing:
-
-- Simplified deployment (single Docker container)
-- Minimal resource requirements
-- Quick setup for testing
-
-[View Development Chart Documentation](./charts/opencloud-dev/README.md)
 
 ## 📜 License
 
 This project is licensed under the **AGPLv3** license. See the [LICENSE](LICENSE) file for more details.
-
-

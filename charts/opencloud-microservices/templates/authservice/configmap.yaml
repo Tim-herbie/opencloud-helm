@@ -1,5 +1,0 @@
-{{- if not .Values.configRefs.authServiceConfigRef }}
-{{- $params := (dict)}}
-{{- $_ := set $params "service-account-id" (uuidv4) }}
-{{- include "oc.configMap" (dict "scope" . "name" "auth-service" "params" $params)}}
-{{- end }}

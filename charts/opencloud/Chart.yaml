@@ -6,15 +6,12 @@ keywords:
   - owncloud
   - ocis
 maintainers:
-  - name: OpenCloud EU
-    email: info@opencloud.eu
-    url: https://opencloud.eu
+  - name: Tim Herbert
+    url: https://timherbert.de
 type: application
-version: 0.2.3
+version: 0.2.4
 # renovate: datasource=docker depName=opencloudeu/opencloud-rolling
 appVersion: latest
 kubeVersion: ""
 sources:
-  - https://github.com/opencloud-eu/opencloud
-  - https://github.com/owncloud/ocis
-  - https://github.com/cs3org/reva
+  - https://github.com/Tim-herbie/opencloud-helm
