@@ -6,16 +6,13 @@ Welcome to the **Opencloud Helm Chart** repository! This repository is intended 
 ## 📑 Table of Contents
 
 - [About](#-about)
-- [Community](#-community)
+- [Version table](#-version-table)
 - [Contributing](#-contributing)
 - [Prerequisites](#prerequisites)
 - [Version Stability Notice](#⚠️-version-stability-notice)
 - [Available Charts](#-available-charts)
   - [Production Chart](#production-chart-chartsopencloud)
-  - [Microservices Chart](#microservices-chart-chartsopencloud-microservices)
-  - [Development Chart](#development-chart-chartsopencloud-dev)
 - [License](#-license)
-- [Community Maintained](#community-maintained)
 
 ## 🚀 About
 
@@ -23,15 +20,11 @@ This repository is created to **welcome contributions from the community**. It d
 
 OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, MinIO for object storage, and multiple options for document editing including Collabora and OnlyOffice.
 
-## 💬 Community
+## 🚀 Version table
 
-Join our Matrix chat for discussions about OpenCloud Helm Charts:
-- [OpenCloud Helm on Matrix](https://matrix.to/#/%23opencloud-helm:matrix.org)
-
-For general OpenCloud discussions:
-- [OpenCloud on Matrix](https://matrix.to/#/%23opencloud:matrix.org)
-- [OpenCloud on Mastodon](https://social.opencloud.eu/@OpenCloud)
-- [GitHub Discussions](https://github.com/orgs/opencloud-eu/discussions)
+| OpenCloud Version | Helm Chart Version |
+|-------------------|--------|
+| 4.1.0            | 0.2.4 |
 
 ## 💡 Contributing
 
@@ -42,9 +35,6 @@ For detailed contribution guidelines, please see our [CONTRIBUTING.md](./CONTRIB
 This includes:
 - How to submit contributions
 - Our community governance model
-- How to become a reviewer or maintainer
-
-The current maintainers and reviewers are listed in [MAINTAINERS.md](./MAINTAINERS.md).
 
 ## Prerequisites
 
