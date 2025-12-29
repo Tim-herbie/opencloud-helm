@@ -311,7 +311,7 @@ onlyoffice:
     # OnlyOffice image repository
     repository: onlyoffice/documentserver
     # OnlyOffice image tag
-    tag: 8.2.2
+    tag: 8.3.3
     # Image pull policy
     pullPolicy: IfNotPresent
   # WOPI settings
