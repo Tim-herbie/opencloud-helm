@@ -69,39 +69,3 @@ jobs:
           # Verify the pushed chart
           echo "Verifying the pushed chart..."
           helm pull oci://ghcr.io/${{ github.repository_owner }}/helm-charts/opencloud --version $(helm show chart charts/opencloud | grep version | awk '{print $2}')
-
-      - name: Package and push OpenCloud Dev chart
-        run: |
-          # Update Chart.yaml version if we have a tag
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            echo "Updating chart version to ${{ env.CHARTS_VERSION }}"
-            sed -i "s/^version:.*/version: ${{ env.CHARTS_VERSION }}/" charts/opencloud-dev/Chart.yaml
-          fi
-          
-          # Package Helm chart
-          helm package charts/opencloud-dev
-          
-          # Push to GHCR
-          helm push opencloud-dev-*.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts/
-          
-          # Verify the pushed chart
-          echo "Verifying the pushed chart..."
-          helm pull oci://ghcr.io/${{ github.repository_owner }}/helm-charts/opencloud-dev --version $(helm show chart charts/opencloud-dev | grep version | awk '{print $2}')
-      
-      - name: Package and push OpenCloud Microservice chart
-        run: |
-          # Update Chart.yaml version if we have a tag
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            echo "Updating chart version to ${{ env.CHARTS_VERSION }}"
-            sed -i "s/^version:.*/version: ${{ env.CHARTS_VERSION }}/" charts/opencloud-microservices/Chart.yaml
-          fi
-          
-          # Package Helm chart
-          helm package charts/opencloud-microservices
-          
-          # Push to GHCR
-          helm push opencloud-microservices-*.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts/
-          
-          # Verify the pushed chart
-          echo "Verifying the pushed chart..."
-          helm pull oci://ghcr.io/${{ github.repository_owner }}/helm-charts/opencloud-microservices --version $(helm show chart charts/opencloud-microservices | grep version | awk '{print $2}')          
