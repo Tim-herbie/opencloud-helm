@@ -84,7 +84,7 @@ busybox:
     # Busybox image repository
     repository: library/busybox
     # Busybox image tag
-    tag: "1.36"
+    tag: "1.37"
     # Image pull policy
     pullPolicy: IfNotPresent
 
