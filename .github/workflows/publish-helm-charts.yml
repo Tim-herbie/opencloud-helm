@@ -1,13 +1,7 @@
 name: Publish Helm charts to OCI Registry
 
 on:
-  push:
-    branches:
-      - main
-    # Publish when a new tag is pushed
-    tags:
-      - 'v*'
-  # Allow manual trigger
+  # Allow manual trigger only
   workflow_dispatch:
 
 jobs:

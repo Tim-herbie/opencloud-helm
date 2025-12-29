@@ -23,34 +23,10 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2.6.1
-
-      - name: List changed charts
-        id: list-changed
+      - name: Lint Helm chart
         run: |
-          changed=$(ct list-changed --target-branch ${{ github.event.repository.default_branch }})
-          if [[ -n "$changed" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "charts<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$changed" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Lint all charts with helm lint
-        run: |
-          for chart in charts/opencloud/; do
-            if [ -d "$chart" ]; then
-              echo "Linting $chart..."
-              helm lint "$chart"
-            fi
-          done
-
-      - name: Lint changed charts with chart-testing
-        if: steps.list-changed.outputs.changed == 'true'
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }}
+          echo "Linting charts/opencloud..."
+          helm lint charts/opencloud
 
       - name: Generate prerelease version
         id: version
