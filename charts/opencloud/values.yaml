@@ -212,7 +212,7 @@ tika:
     # Tika image repository
     repository: apache/tika
     # Tika image tag
-    tag: "2.9.2.1-full"
+    tag: "3.2.3.0-full"
     # Image pull policy
     pullPolicy: IfNotPresent
   # Resources allocation
