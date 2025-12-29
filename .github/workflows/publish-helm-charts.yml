@@ -64,8 +64,8 @@ jobs:
           helm package charts/opencloud
           
           # Push to GHCR
-          helm push opencloud-*.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts/
+          helm push opencloud-*.tgz oci://ghcr.io/tim-herbie/opencloud-helm
           
           # Verify the pushed chart
           echo "Verifying the pushed chart..."
-          helm pull oci://ghcr.io/${{ github.repository_owner }}/helm-charts/opencloud --version $(helm show chart charts/opencloud | grep version | awk '{print $2}')
+          helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version $(helm show chart charts/opencloud | grep version | awk '{print $2}')
