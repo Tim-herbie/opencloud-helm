@@ -1,0 +1,81 @@
+name: Lint Helm Chart and Create Prerelease
+
+on:
+  pull_request:
+    paths:
+      - 'charts/opencloud'
+  workflow_dispatch:
+
+jobs:
+  lint-and-prerelease:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.6.1
+
+      - name: List changed charts
+        id: list-changed
+        run: |
+          changed=$(ct list-changed --target-branch ${{ github.event.repository.default_branch }})
+          if [[ -n "$changed" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "charts<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$changed" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Lint all charts with helm lint
+        run: |
+          for chart in charts/opencloud/; do
+            if [ -d "$chart" ]; then
+              echo "Linting $chart..."
+              helm lint "$chart"
+            fi
+          done
+
+      - name: Lint changed charts with chart-testing
+        if: steps.list-changed.outputs.changed == 'true'
+        run: ct lint --target-branch ${{ github.event.repository.default_branch }}
+
+      - name: Generate prerelease version
+        id: version
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          CURRENT_VERSION=$(grep '^version:' charts/opencloud/Chart.yaml | awk '{print $2}')
+          PRERELEASE_VERSION="${CURRENT_VERSION}-${TIMESTAMP}"
+          echo "prerelease_version=${PRERELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Chart.yaml with prerelease version
+        run: |
+          sed -i "s/^version:.*/version: ${{ steps.version.outputs.prerelease_version }}/" charts/opencloud/Chart.yaml
+
+      - name: Package Helm chart
+        run: |
+          helm package charts/opencloud --destination ./packaged-charts
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push chart to GitHub Container Registry
+        run: |
+          helm push ./packaged-charts/opencloud-${{ steps.version.outputs.prerelease_version }}.tgz oci://ghcr.io/${{ github.repository_owner }}
