@@ -1,7 +1,7 @@
 {{- if and .Values.onlyoffice.enabled .Values.collabora.enabled }}
   {{- fail "Only one of OnlyOffice or Collabora can be enabled at the same time!" }}
 {{- end }}
-{{- if or .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled}}
+{{- if or .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -150,7 +150,7 @@ spec:
             periodSeconds: 5
             failureThreshold: 1
           resources:
-            {{- toYaml .Values.onlyoffice.collaboration.resources | nindent 12 }}
+            {{- toYaml .Values.collaboration.resources | nindent 12 }}
       volumes:
         - name: etc-opencloud
           {{- if .Values.opencloud.persistence.config.enabled }}

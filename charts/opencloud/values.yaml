@@ -395,19 +395,24 @@ onlyoffice:
             zip:
               uncompressed: "1GB"
               template: "*.xml"
-  # Collaboration service settings
-  collaboration:
-    # Enable collaboration service
-    enabled: true
-    # Resources allocation
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 5000m
-        memory: 10Gi
 
+# =====================================================================
+# Collaboration
+# =====================================================================
+
+# Top-level configuration for the standalone collaboration (WOPI) service.
+# Note: no 'enabled' flag here — the collaboration service is required when
+# onlyoffice, collabora or collabora.external are used.
+collaboration:
+  # Resource requests/limits for the collaboration service (WOPI)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 5000m
+      memory: 10Gi
+  
 # =====================================================================
 # OPENCLOUD CORE
 # =====================================================================
