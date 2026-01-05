@@ -10,7 +10,7 @@ metadata:
     {{- include "opencloud.labels" . | nindent 4 }}
     app.kubernetes.io/component: collaboration
 spec:
-  replicas: 1
+  replicas: {{ .Values.collaboration.replicas }}
   selector:
     matchLabels:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}

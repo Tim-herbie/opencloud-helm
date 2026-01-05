@@ -404,6 +404,9 @@ onlyoffice:
 # Note: no 'enabled' flag here — the collaboration service is required when
 # onlyoffice, collabora or collabora.external are used.
 collaboration:
+  # Number of replicas (Note: When using multiple replicas, persistence should be disabled
+  # or use a storage class that supports ReadWriteMany access mode)
+  replicas: 1
   # Resource requests/limits for the collaboration service (WOPI)
   resources:
     requests:
