@@ -278,11 +278,9 @@ collabora:
     enabled: true
     verification: true
 
-  # Use existing secret for collabora credentials (Note: secretKeyName must be username and password)
   existingSecret: ""
 
   admin:
-    # ignored if collabora.existingSecret is set
     username: admin
 
     # ignored if collabora.existingSecret is set
@@ -295,6 +293,18 @@ collabora:
     limits:
       cpu: 1
       memory: 1Gi
+
+  # External Collabora service configuration
+  # Use these settings when Collabora runs outside this chart (can be another k8s service
+  # or an external host). Protocol is used for readiness checks (http/https).
+  external:
+    enabled: false
+    # Hostname or IP of the external Collabora endpoint (cluster-local service name or external host)
+    host: collabora-collabora-online
+    # Port number of the external Collabora endpoint
+    port: 9980
+    # Protocol to use for readiness checks (http or https)
+    protocol: http
 
 # =====================================================================
 # COLLABORATION (ONLYOFFICE)
