@@ -1,4 +1,4 @@
-{{- if and .Values.httpRoute.enabled (or .Values.collaboration.external.enabled .Values.onlyoffice.enabled .Values.collabora.enabled) }}
+{{- if and .Values.httpRoute.enabled .Values.collaboration.enabled }}
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
