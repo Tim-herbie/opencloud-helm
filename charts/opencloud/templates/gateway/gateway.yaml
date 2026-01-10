@@ -150,7 +150,7 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
     {{- end }}
-    {{- if and .Values.onlyoffice.collaboration.enabled .Values.onlyoffice.enabled }}
+    {{- if and .Values.collaboration.enabled .Values.onlyoffice.enabled }}
     {{- if .Values.global.tls.enabled }}
     - name: collaboration-https
     {{- else }}

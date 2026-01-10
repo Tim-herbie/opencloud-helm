@@ -45,7 +45,7 @@ The following services have been deployed:
    - Password: {{ .Values.opencloud.storage.s3.internal.rootPassword }}
 {{- end }}
 
-{{- if and .Values.onlyoffice.collaboration.enabled .Values.onlyoffice.enabled }}
+{{- if and .Values.collaboration.enabled .Values.onlyoffice.enabled }}
 4. OnlyOffice Collaboration Service:
    - Service: {{ include "opencloud.fullname" . }}-collaboration
    - HTTP Port: 9300
@@ -66,7 +66,7 @@ Make sure the Gateway exists and is properly configured to accept traffic for th
 {{- if .Values.opencloud.storage.s3.internal.enabled }}
 - MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
 {{- end }}
-{{- if and .Values.onlyoffice.collaboration.enabled .Values.onlyoffice.enabled }}
+{{- if and .Values.collaboration.enabled .Values.onlyoffice.enabled }}
 - OnlyOffice Collaboration: {{ .Values.global.domain.wopi }} (Service: {{ include "opencloud.fullname" . }}-collaboration, Port: 9300)
 {{- end }}
 
@@ -82,7 +82,7 @@ Example domains for your ingress configuration:
 {{- if .Values.opencloud.storage.s3.internal.enabled }}
 - MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
 {{- end }}
-{{- if and .Values.onlyoffice.collaboration.enabled .Values.onlyoffice.enabled }}
+{{- if and .Values.collaboration.enabled .Values.onlyoffice.enabled }}
 - OnlyOffice Collaboration: {{ .Values.global.domain.wopi }} (Service: {{ include "opencloud.fullname" . }}-collaboration, Port: 9300)
 {{- end }}
 {{- end }}
