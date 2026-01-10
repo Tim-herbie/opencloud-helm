@@ -417,6 +417,9 @@ collaboration:
     limits:
       cpu: 5000m
       memory: 10Gi
+
+  # Additional environment variables for the collaboration service
+  env: []
   
 # =====================================================================
 # OPENCLOUD CORE
