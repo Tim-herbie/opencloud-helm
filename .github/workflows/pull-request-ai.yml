@@ -1,7 +1,7 @@
 name: PR Agent
 on:
-  # pull_request:
-  #   types: [opened, synchronize]
+  pull_request:
+    types: [opened, synchronize]
   workflow_dispatch:
 jobs:
   pr_agent_job:
