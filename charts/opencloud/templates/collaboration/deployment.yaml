@@ -1,5 +1,5 @@
-{{- if and .Values.onlyoffice.enabled .Values.collabora.enabled }}
-  {{- fail "Only one of OnlyOffice or Collabora can be enabled at the same time!" }}
+{{- if gt (list .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled | compact | len) 1 }}
+  {{- fail "Only one of OnlyOffice, Collabora (internal or external) can be enabled at the same time!" }}
 {{- end }}
 {{- if or .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled }}
 apiVersion: apps/v1
