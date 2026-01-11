@@ -45,8 +45,8 @@ The following services have been deployed:
    - Password: {{ .Values.opencloud.storage.s3.internal.rootPassword }}
 {{- end }}
 
-{{- if and .Values.collaboration.enabled .Values.onlyoffice.enabled }}
-4. OnlyOffice Collaboration Service:
+{{- if or .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled}}
+4. OnlyOffice/Collabora Collaboration Service:
    - Service: {{ include "opencloud.fullname" . }}-collaboration
    - HTTP Port: 9300
    - gRPC Port: 9301
