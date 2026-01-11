@@ -1,7 +1,7 @@
-{{- if and .Values.onlyoffice.enabled .Values.collabora.enabled }}
-  {{- fail "Only one of OnlyOffice or Collabora can be enabled at the same time!" }}
+{{- if gt (list .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled | compact | len) 1 }}
+  {{- fail "Only one of OnlyOffice, Collabora (internal or external) can be enabled at the same time!" }}
 {{- end }}
-{{- if or .Values.onlyoffice.enabled .Values.collabora.enabled }}
+{{- if or .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -10,7 +10,7 @@ metadata:
     {{- include "opencloud.labels" . | nindent 4 }}
     app.kubernetes.io/component: collaboration
 spec:
-  replicas: 1
+  replicas: {{ .Values.collaboration.replicas }}
   selector:
     matchLabels:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}
@@ -55,6 +55,13 @@ spec:
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
           command: ['sh', '-c', 'until wget -q -O- http://{{ include "opencloud.fullname" . }}-collabora:9980/hosting/discovery; do echo waiting for collabora; sleep 2; done;']
         {{- end }}
+        {{- if .Values.collabora.external.enabled }}
+        # Wait for External Collabora to be ready
+        - name: wait-for-external-collabora
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
+          command: ['sh', '-c', 'until wget -q -O- {{ .Values.collabora.external.protocol }}://{{ .Values.collabora.external.host }}:{{ .Values.collabora.external.port }}/hosting/discovery; do echo waiting for collabora; sleep 2; done;']
+        {{- end }}
       containers:
         - name: collaboration
           image: {{ include "opencloud.image" (dict "imageValues" .Values.image "global" .Values.global) | quote }}
@@ -90,7 +97,7 @@ spec:
             - name: COLLABORATION_APP_ICON
               value: "https://{{ include "opencloud.onlyoffice.domain" . }}/web-apps/apps/documenteditor/main/resources/img/favicon.ico"
             {{- end }}
-            {{- if .Values.collabora.enabled }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             - name: COLLABORATION_WOPI_SRC
               # we can directly connect without going through the gateway
               value: "http://{{ include "opencloud.fullname" . }}-collaboration:9300"
@@ -113,6 +120,9 @@ spec:
               value: "{{ .Values.opencloud.logLevel }}"
             - name: OC_URL
               value: "https://{{ include "opencloud.domain" . }}"
+            {{- with .Values.collaboration.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 9300
@@ -131,7 +141,7 @@ spec:
               - -c
               - curl --silent --fail http://{{ include "opencloud.fullname" . }}-opencloud:9200/app/list | grep '"product_name":"OnlyOffice"'
             {{- end }}
-            {{- if .Values.collabora.enabled }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             exec:
               command:
               - /bin/sh
@@ -143,7 +153,7 @@ spec:
             periodSeconds: 5
             failureThreshold: 1
           resources:
-            {{- toYaml .Values.onlyoffice.collaboration.resources | nindent 12 }}
+            {{- toYaml .Values.collaboration.resources | nindent 12 }}
       volumes:
         - name: etc-opencloud
           {{- if .Values.opencloud.persistence.config.enabled }}

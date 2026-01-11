@@ -278,11 +278,9 @@ collabora:
     enabled: true
     verification: true
 
-  # Use existing secret for collabora credentials (Note: secretKeyName must be username and password)
   existingSecret: ""
 
   admin:
-    # ignored if collabora.existingSecret is set
     username: admin
 
     # ignored if collabora.existingSecret is set
@@ -295,6 +293,18 @@ collabora:
     limits:
       cpu: 1
       memory: 1Gi
+
+  # External Collabora service configuration
+  # Use these settings when Collabora runs outside this chart (can be another k8s service
+  # or an external host). Protocol is used for readiness checks (http/https).
+  external:
+    enabled: false
+    # Hostname or IP of the external Collabora endpoint (cluster-local service name or external host)
+    host: collabora-collabora-online
+    # Port number of the external Collabora endpoint
+    port: 9980
+    # Protocol to use for readiness checks (http or https)
+    protocol: http
 
 # =====================================================================
 # COLLABORATION (ONLYOFFICE)
@@ -385,19 +395,32 @@ onlyoffice:
             zip:
               uncompressed: "1GB"
               template: "*.xml"
-  # Collaboration service settings
-  collaboration:
-    # Enable collaboration service
-    enabled: true
-    # Resources allocation
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 5000m
-        memory: 10Gi
 
+# =====================================================================
+# Collaboration
+# =====================================================================
+
+# Top-level configuration for the standalone collaboration (WOPI) service.
+# Note: no 'enabled' flag here — the collaboration service is required when
+# onlyoffice, collabora or collabora.external are used.
+collaboration:
+  # Enable Collaboration
+  enabled: true
+  # Number of replicas (Note: When using multiple replicas, persistence should be disabled
+  # or use a storage class that supports ReadWriteMany access mode)
+  replicas: 1
+  # Resource requests/limits for the collaboration service (WOPI)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 5000m
+      memory: 10Gi
+
+  # Additional environment variables for the collaboration service
+  env: []
+  
 # =====================================================================
 # OPENCLOUD CORE
 # =====================================================================
