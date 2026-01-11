@@ -24,7 +24,7 @@ OpenCloud is a cloud collaboration platform that provides file sync and share, d
 
 | OpenCloud Version | Helm Chart Version |
 |-------------------|--------|
-| 4.1.0            | 0.2.4 |
+| 4.1.0            | 0.2.4, 0.3.0 |
 
 ## 💡 Contributing
 
