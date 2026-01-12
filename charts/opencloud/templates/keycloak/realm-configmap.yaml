@@ -7,6 +7,6 @@ metadata:
     {{- include "opencloud.labels" . | nindent 4 }}
     app.kubernetes.io/component: keycloak
 data:
-  opencloud-realm.json: |-
-{{ tpl (.Files.Get "files/keycloak/opencloud-realm.json.gotmpl") .  | indent 4 }}
+  openCloud-realm.json: |-
+{{ tpl (.Files.Get "files/keycloak/openCloud-realm.json.gotmpl") .  | indent 4 }}
 {{- end }}

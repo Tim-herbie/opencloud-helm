@@ -118,8 +118,8 @@ spec:
               mountPath: /opt/keycloak/bin/docker-entrypoint-override.sh
               subPath: docker-entrypoint-override.sh
             - name: realm-config
-              mountPath: /opt/keycloak/data/import-dist/opencloud-realm.json
-              subPath: opencloud-realm.json
+              mountPath: /opt/keycloak/data/import-dist/openCloud-realm.json
+              subPath: openCloud-realm.json
           resources:
             {{- toYaml .Values.keycloak.internal.resources | nindent 12 }}
       volumes:
