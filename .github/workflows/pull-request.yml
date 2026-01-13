@@ -2,8 +2,6 @@ name: Lint Helm Chart and Create Prerelease
 
 on:
   pull_request:
-    paths:
-      - 'charts/opencloud'
   workflow_dispatch:
 
 jobs:
