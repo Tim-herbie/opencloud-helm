@@ -10,8 +10,6 @@ This repository follows a community-driven approach with a simple role model:
 - **Reviewers**: Experienced contributors who can review and approve PRs
 - **Maintainers**: Active reviewers who can additionally merge PRs and manage releases
 
-You can find the current list of maintainers and reviewers in the [MAINTAINERS.md](./MAINTAINERS.md) file.
-
 ## Contribution Workflow
 
 ### 1. Fork and Clone
