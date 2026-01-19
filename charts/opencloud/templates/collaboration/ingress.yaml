@@ -13,7 +13,9 @@ spec:
   tls:
     - hosts:
         - {{ .Values.global.domain.wopi | quote }}
-      secretName: {{ .Values.global.tls.secretName }}
+      {{- if not (empty .Values.global.tls.secretName)}}
+      secretName: {{ .Values.global.tls.secretName }}-collaboration
+      {{- end }}
   {{- end }}
   rules:
     - host: {{ .Values.global.domain.wopi | quote }}

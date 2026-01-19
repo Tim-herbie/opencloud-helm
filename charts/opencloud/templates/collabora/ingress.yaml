@@ -13,7 +13,9 @@ spec:
   tls:
     - hosts:
         - {{ .Values.global.domain.collabora | quote }}
-      secretName: {{ .Values.global.tls.secretName }}
+      {{- if not (empty .Values.global.tls.secretName)}}
+      secretName: {{ .Values.global.tls.secretName }}-collabora
+      {{- end }}
   {{- end }}
   rules:
     - host: {{ .Values.global.domain.collabora | quote }}
