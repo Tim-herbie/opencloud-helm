@@ -13,9 +13,7 @@ spec:
   tls:
     - hosts:
         - {{ .Values.global.domain.opencloud | quote }}
-      {{- if not (empty .Values.global.tls.secretName)}}
-      secretName: {{ .Values.global.tls.secretName }}-opencloud
-      {{- end }}
+      secretName: {{ .Values.global.tls.secretName }}
   {{- end }}
   rules:
     - host: {{ .Values.global.domain.opencloud | quote }}

@@ -13,9 +13,7 @@ spec:
   tls:
     - hosts:
         - {{ .Values.global.domain.keycloak | quote }}
-      {{- if not (empty .Values.global.tls.secretName)}}
-      secretName: {{ .Values.global.tls.secretName }}-keycloak
-      {{- end }}
+      secretName: {{ .Values.global.tls.secretName }}
   {{- end }}
   rules:
     - host: {{ .Values.global.domain.keycloak | quote }}
