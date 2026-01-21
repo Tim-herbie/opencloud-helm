@@ -1,7 +1,7 @@
-{{- if gt (list .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled | compact | len) 1 }}
-  {{- fail "Only one of OnlyOffice, Collabora (internal or external) can be enabled at the same time!" }}
+{{- if gt (list .Values.collabora.enabled .Values.collabora.external.enabled | compact | len) 1 }}
+  {{- fail "Only Collabora internal or external can be enabled at the same time!" }}
 {{- end }}
-{{- if or .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled }}
+{{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -41,13 +41,6 @@ spec:
               mountPath: /etc/opencloud
         {{- end }}
 
-        {{- if .Values.onlyoffice.enabled }}
-        # Wait for OnlyOffice to be ready
-        - name: wait-for-onlyoffice
-          image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
-          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
-          command: ['sh', '-c', 'until wget -q -O- http://{{ include "opencloud.fullname" . }}-onlyoffice:80/hosting/discovery; do echo waiting for onlyoffice; sleep 2; done;']
-        {{- end }}
         {{- if .Values.collabora.enabled }}
         # Wait for Collabora to be ready
         - name: wait-for-collabora
@@ -83,19 +76,6 @@ spec:
             {{- else }}
             - name: MICRO_REGISTRY_ADDRESS
               value: "{{ include "opencloud.opencloud.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:9233"
-            {{- end }}
-            {{- if .Values.onlyoffice.enabled }}
-            - name: COLLABORATION_WOPI_SRC
-              # onlyoffice has to connect to the wopi server from the web
-              value: "https://{{ include "opencloud.wopi.domain" . }}"
-            - name: COLLABORATION_APP_NAME
-              value: "OnlyOffice"
-            - name: COLLABORATION_APP_PRODUCT
-              value: "OnlyOffice"
-            - name: COLLABORATION_APP_ADDR
-              value: "https://{{ include "opencloud.onlyoffice.domain" . }}"
-            - name: COLLABORATION_APP_ICON
-              value: "https://{{ include "opencloud.onlyoffice.domain" . }}/web-apps/apps/documenteditor/main/resources/img/favicon.ico"
             {{- end }}
             {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             - name: COLLABORATION_WOPI_SRC
@@ -134,13 +114,6 @@ spec:
             - name: etc-opencloud
               mountPath: /etc/opencloud
           livenessProbe:
-            {{- if .Values.onlyoffice.enabled }}
-            exec:
-              command:
-              - /bin/sh
-              - -c
-              - curl --silent --fail http://{{ include "opencloud.fullname" . }}-opencloud:9200/app/list | grep '"product_name":"OnlyOffice"'
-            {{- end }}
             {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             exec:
               command:
