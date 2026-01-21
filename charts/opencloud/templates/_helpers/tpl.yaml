@@ -110,14 +110,6 @@ Return the MinIO domain
 {{- .Values.global.domain.minio }}
 {{- end }}
 
-
-{{/*
-Return the OnlyOffice domain
-*/}}
-{{- define "opencloud.onlyoffice.domain" -}}
-{{- .Values.global.domain.onlyoffice }}
-{{- end }}
-
 {{/*
 Return the Collabora domain
 */}}
