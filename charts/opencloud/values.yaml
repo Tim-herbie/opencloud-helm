@@ -13,7 +13,6 @@
 # 2. OpenCloud Admin: adminPassword: admin
 # 3. PostgreSQL: user: keycloak, password: keycloak
 # 4. MinIO: rootUser: opencloud, rootPassword: opencloud-secret-key
-# 5. RabbitMQ: url: amqp://guest:guest@localhost
 
 
 # =====================================================================
@@ -34,8 +33,6 @@ global:
     wopi: wopiserver.opencloud.test
     # Domain for Collabora CODE
     collabora: collabora.opencloud.test
-    # Domain for OnlyOffice
-    onlyoffice: onlyoffice.opencloud.test
     # Domain for Companion
     companion: companion.opencloud.test
 
@@ -307,102 +304,12 @@ collabora:
     protocol: http
 
 # =====================================================================
-# COLLABORATION (ONLYOFFICE)
-# =====================================================================
-
-# OnlyOffice settings for document collaboration
-onlyoffice:
-  # Enable OnlyOffice
-  enabled: true
-  # OnlyOffice image settings
-  image:
-    # OnlyOffice image registry
-    registry: docker.io
-    # OnlyOffice image repository
-    repository: onlyoffice/documentserver
-    # OnlyOffice image tag
-    tag: 8.3.3
-    # Image pull policy
-    pullPolicy: IfNotPresent
-  # WOPI settings
-  wopi:
-    # Enable WOPI
-    enabled: true
-  # Use unauthorized storage (for self-signed certificates)
-  useUnauthorizedStorage: true
-  # Database configuration
-  db:
-    # Use existing secret for database password
-    existingSecret: ""
-    # Key in the existing secret that contains the password
-    secretKeyName: "password"
-  # Persistence configuration
-  persistence:
-    # Enable persistence
-    enabled: true
-    # Name of existing PVC to use (overrides all other persistence values)
-    existingClaim: ""
-    # Size of the persistent volume
-    size: 2Gi
-  # Resources allocation
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 5000m
-      memory: 10Gi
-  # Configuration for local.json
-  config:
-    # CoAuthoring service settings
-    coAuthoring:
-      # SQL database settings
-      sql:
-        type: "postgres"
-        dbHost: "localhost"
-        dbPort: "5432"
-        dbName: "onlyoffice"
-        dbUser: "onlyoffice"
-      
-      # Secret settings
-      secret:
-        # Use existing secret for onlyoffice credentials (Note: secretKeyName must be sessionSecret)
-        existingSecret: ""
-        
-        # ignored if onlyoffice.config.coAuthoring.secret.existingSecret is set
-        session:
-          string: "Dd0SXIe1k9oCfdffgrfNmA0TK1bb1B1d38OFSb"
-    # RabbitMQ settings
-    rabbitmq:
-      # Use existing secret for onlyoffice rabbitmq credentials (Note: secretKeyName must be url)
-      existingSecret: ""
-
-      # ignored if onlyoffice.config.rabbitmq.existingSecret is set
-      url: "amqp://guest:Dd0SXIe1k9osdfjkmA0TK1bb1B1d38OFSb@localhost"
-    # File converter settings
-    fileConverter:
-      converter:
-        inputLimits:
-          - type: "docx;dotx;docm;dotm"
-            zip:
-              uncompressed: "1GB"
-              template: "*.xml"
-          - type: "xlsx;xltx;xlsm;xltm"
-            zip:
-              uncompressed: "1GB"
-              template: "*.xml"
-          - type: "pptx;ppsx;potx;pptm;ppsm;potm"
-            zip:
-              uncompressed: "1GB"
-              template: "*.xml"
-
-# =====================================================================
 # Collaboration
 # =====================================================================
 
 # Top-level configuration for the standalone collaboration (WOPI) service.
 # Note: no 'enabled' flag here — the collaboration service is required when
-# onlyoffice, collabora or collabora.external are used.
+# collabora or collabora.external are used.
 collaboration:
   # Enable Collaboration
   enabled: true
@@ -711,7 +618,7 @@ httpRoute:
     className: cilium
     # Gateway namespace (defaults to Release.Namespace)
     namespace: ""
-    # Gateway section name (applies to all routes). If set to a non-empty value, this overrides the default component-specific section names (e.g., opencloud-https, onlyoffice-https) for all routes. If left empty, the defaults are used.
+    # Gateway section name (applies to all routes). If set to a non-empty value, this overrides the default component-specific section names (e.g., opencloud-https) for all routes. If left empty, the defaults are used.
     sectionName: ""
     # Gateway annotations
     annotations:
@@ -731,26 +638,6 @@ ingress:
   # The ingress class name to use (e.g., nginx, traefik). Leave empty to use the cluster default.
   # Note: This sets the Kubernetes `spec.ingressClassName` field.
   ingressClassName: ""
-
-  # Some components (e.g., OnlyOffice) require the X-Forwarded-Proto header to be set.
-  #
-  # Set 'annotationsPreset' to inject known ingress-controller-specific annotations
-  # for injecting the header. Supported values: nginx, nginx-no-snippets, traefik, haproxy, contour, istio
-  #
-  # Use 'nginx-no-snippets' for environments where NGINX configuration snippets are forbidden
-  # (e.g., Rackspace, security-restricted clusters). This preset uses built-in NGINX features
-  # instead of custom configuration snippets.
-  #
-  # If set to "traefik" and OnlyOffice is enabled, the chart will create a Middleware
-  # named 'add-x-forwarded-proto-https' for use in both Ingress and Gateway HTTPRoute.
-  #
-  # This is required because Traefik does not allow simple header injection via annotations
-  # or Gateway filters and instead expects a Middleware to be referenced.
-  #
-  # These annotations are added in addition to any defined in 'annotations'.
-  # If there's a conflict, Helm will error. To avoid this, set annotationsPreset: ""
-  # and define all annotations manually (including creating any required Middleware).
-  annotationsPreset: ""  # optional, default ""
 
   # Custom annotations applied to all ingress resources.
   # These are merged with any annotations from 'annotationsPreset' (if set).
