@@ -18,13 +18,14 @@ Welcome to the **Opencloud Helm Chart** repository! This repository is intended 
 
 This repository is created to **welcome contributions from the community**. It does not contain official charts from OpenCloud GmbH and is **not officially supported by OpenCloud GmbH**. Instead, these charts are maintained by the open-source community.
 
-OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, MinIO for object storage, and multiple options for document editing including Collabora and OnlyOffice.
+OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, MinIO for object storage and Collabora for document editing.
 
 ## 🚀 Version table
 
 | OpenCloud Version | Helm Chart Version |
 |-------------------|--------|
 | 4.1.0            | 0.2.4, 0.3.0 |
+| 5.0.0            | 0.4.0 |
 
 ## 💡 Contributing
 
@@ -64,7 +65,7 @@ The complete OpenCloud deployment with all components for production use:
 - Full microservices architecture
 - Keycloak for authentication
 - MinIO for object storage
-- Document editing with Collabora and/or OnlyOffice
+- Document editing with Collabora
 
 [View Production Chart Documentation](./charts/opencloud/README.md)
 

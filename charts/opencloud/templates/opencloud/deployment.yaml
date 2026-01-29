@@ -169,8 +169,6 @@ spec:
             - name: PROXY_ENABLE_BASIC_AUTH
               value: "false"
             # These vars are needed to the csp config file to include the web office apps and the importer
-            - name: ONLYOFFICE_DOMAIN
-              value: "{{ .Values.global.domain.onlyoffice }}"
             - name: COMPANION_DOMAIN
               value: "{{ .Values.global.domain.companion }}"
             # Sharing settings

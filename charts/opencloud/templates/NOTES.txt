@@ -13,8 +13,6 @@ IMPORTANT: This is a development deployment. For production use, you MUST change
 2. OpenCloud Admin: adminPassword: admin
 3. PostgreSQL: user: keycloak, password: keycloak
 4. MinIO: rootUser: opencloud, rootPassword: opencloud-secret-key
-5. OnlyOffice Database: sql.dbUser: onlyoffice, sql.dbPass: onlyoffice
-6. RabbitMQ: url: amqp://guest:guest@localhost
 
 Using default credentials in production environments poses significant security risks.
 
@@ -45,8 +43,8 @@ The following services have been deployed:
    - Password: {{ .Values.opencloud.storage.s3.internal.rootPassword }}
 {{- end }}
 
-{{- if or .Values.onlyoffice.enabled .Values.collabora.enabled .Values.collabora.external.enabled}}
-4. OnlyOffice/Collabora Collaboration Service:
+{{- if or .Values.collabora.enabled .Values.collabora.external.enabled}}
+4. Collabora Collaboration Service:
    - Service: {{ include "opencloud.fullname" . }}-collaboration
    - HTTP Port: 9300
    - gRPC Port: 9301
@@ -66,9 +64,7 @@ Make sure the Gateway exists and is properly configured to accept traffic for th
 {{- if .Values.opencloud.storage.s3.internal.enabled }}
 - MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
 {{- end }}
-{{- if and .Values.collaboration.enabled .Values.onlyoffice.enabled }}
-- OnlyOffice Collaboration: {{ .Values.global.domain.wopi }} (Service: {{ include "opencloud.fullname" . }}-collaboration, Port: 9300)
-{{- end }}
+
 
 {{- else }}
 IMPORTANT: The HTTPRoutes are disabled. You need to configure your own ingress controller
@@ -81,9 +77,6 @@ Example domains for your ingress configuration:
 {{- end }}
 {{- if .Values.opencloud.storage.s3.internal.enabled }}
 - MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
-{{- end }}
-{{- if and .Values.collaboration.enabled .Values.onlyoffice.enabled }}
-- OnlyOffice Collaboration: {{ .Values.global.domain.wopi }} (Service: {{ include "opencloud.fullname" . }}-collaboration, Port: 9300)
 {{- end }}
 {{- end }}
 
