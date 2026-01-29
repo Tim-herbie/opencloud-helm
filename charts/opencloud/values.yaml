@@ -265,14 +265,14 @@ webExtensions:
 # =====================================================================
 
 collabora:
-  enabled: false
+  enabled: true
   image:
     registry: docker.io
     repository: collabora/code
     pullPolicy: IfNotPresent
     tag: 25.04.8.2.1
   ssl:
-    enabled: true
+    enabled: false
     verification: true
 
   existingSecret: ""
