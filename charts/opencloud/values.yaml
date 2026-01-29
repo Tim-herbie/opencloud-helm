@@ -154,8 +154,8 @@ postgres:
     registry: docker.io
     # PostgreSQL image repository
     repository: postgres
-    # PostgreSQL image tag
-    tag: "alpine"
+    # PostgreSQL image tag - using latest stable (18) with bookworm (Debian) base for reliability
+    tag: "18-bookworm"
     # Image pull policy
     pullPolicy: IfNotPresent
 
