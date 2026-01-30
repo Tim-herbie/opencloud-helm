@@ -217,7 +217,7 @@ spec:
             - name: NOTIFICATIONS_SMTP_ENCRYPTION
               value: "{{ .Values.opencloud.smtp.encryption }}"
             {{- end }}
-            {{- if or .Values.keycloak.internal.enabled .Values.global.oidc.issuer }}
+            {{- if or .Values.oidc.enabled .Values.oidc.external.issuerUrl }}
             # IDP specific configuration
             - name: PROXY_AUTOPROVISION_ACCOUNTS
               value: "true"
@@ -227,21 +227,13 @@ spec:
             - name: PROXY_ROLE_ASSIGNMENT_DRIVER
               value: "oidc"
             - name: OC_OIDC_ISSUER
-              {{- if .Values.global.oidc.issuer }}
-              value: {{ .Values.global.oidc.issuer | quote }}
-              {{- else }}
-              value: {{ printf "https://%s/realms/%s" (include "opencloud.keycloak.domain" .) .Values.keycloak.internal.realm | quote }}
-              {{- end }}
+              value: {{ include "opencloud.oidc.issuer" . | quote }}
             - name: WEB_OPTION_ACCOUNT_EDIT_LINK_HREF
-              {{- if .Values.global.oidc.accountUrl }}
-              value: {{ .Values.global.oidc.accountUrl | quote }}
-              {{- else }}
-              value: {{ printf "https://%s/realms/%s/account" (include "opencloud.keycloak.domain" .) .Values.keycloak.internal.realm | quote }}
-              {{- end }}
+              value: {{ include "opencloud.oidc.accountUrl" . | quote }}
             - name: PROXY_OIDC_REWRITE_WELLKNOWN
               value: "true"
             - name: WEB_OIDC_CLIENT_ID
-              value: {{ .Values.global.oidc.clientId | quote}}
+              value: {{ include "opencloud.oidc.clientId" . | quote }}
             - name: PROXY_USER_OIDC_CLAIM
               value: "preferred_username"
             - name: PROXY_USER_CS3_CLAIM
@@ -257,11 +249,7 @@ spec:
             - name: PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD
               value: "jwt"
             - name: WEB_OIDC_METADATA_URL
-              {{- if .Values.global.oidc.issuer }}
-              value: {{ printf "%s/.well-known/openid-configuration" .Values.global.oidc.issuer | quote }}
-              {{- else }}
-              value: {{ printf "https://%s/realms/%s/.well-known/openid-configuration" (include "opencloud.keycloak.domain" .) .Values.keycloak.internal.realm | quote }}
-              {{- end }}
+              value: {{ printf "%s/.well-known/openid-configuration" (include "opencloud.oidc.issuer" .) | quote }}
             - name: WEB_OIDC_SCOPE
               value: "openid profile email groups roles"
             {{- end }}

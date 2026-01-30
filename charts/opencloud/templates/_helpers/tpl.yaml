@@ -100,7 +100,7 @@ Return the OpenCloud domain
 Return the Keycloak domain
 */}}
 {{- define "opencloud.keycloak.domain" -}}
-{{- .Values.global.domain.keycloak }}
+{{- .Values.global.domain.oidc }}
 {{- end }}
 
 {{/*
@@ -129,6 +129,39 @@ Return the WOPI domain
 */}}
 {{- define "opencloud.wopi.domain" -}}
 {{- .Values.global.domain.wopi }}
+{{- end }}
+
+{{/*
+Return the OIDC issuer URL
+*/}}
+{{- define "opencloud.oidc.issuer" -}}
+{{- if not .Values.oidc.enabled }}
+{{- .Values.oidc.external.issuerUrl }}
+{{- else }}
+{{- printf "https://%s/realms/%s" .Values.global.domain.oidc .Values.oidc.realm }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the OIDC client ID
+*/}}
+{{- define "opencloud.oidc.clientId" -}}
+{{- if not .Values.oidc.enabled }}
+{{- .Values.oidc.external.clientId }}
+{{- else }}
+{{- "web" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the OIDC account URL
+*/}}
+{{- define "opencloud.oidc.accountUrl" -}}
+{{- if not .Values.oidc.enabled }}
+{{- .Values.oidc.external.accountUrl }}
+{{- else }}
+{{- printf "https://%s/realms/%s/account" .Values.global.domain.oidc .Values.oidc.realm }}
+{{- end }}
 {{- end }}
 
 {{/*

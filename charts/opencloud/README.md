@@ -198,15 +198,13 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | --------- | ----------- | ------- |
 | `namespace` | Deprecated: Namespace is now controlled by Helm (.Release.Namespace) | (removed) |
 | `global.domain.opencloud` | Domain for OpenCloud | `cloud.opencloud.test` |
-| `global.domain.keycloak` | Domain for Keycloak | `keycloak.opencloud.test` |
+| `global.domain.oidc` | Domain for Keycloak/OIDC provider | `keycloak.opencloud.test` |
 | `global.domain.minio` | Domain for MinIO | `minio.opencloud.test` |
 | `global.domain.collabora` | Domain for Collabora | `collabora.opencloud.test` |
 | `global.domain.companion` | Domain for Companion | `companion.opencloud.test` |
 | `global.domain.wopi` | Domain for WOPI server | `wopiserver.opencloud.test` |
 | `global.tls.enabled` | Enable TLS (set to false when using gateway TLS termination externally) | `false` |
 | `global.tls.secretName` | secretName for TLS certificate | `""` |
-| `global.oidc.issuer` | OpenID Connect Issuer URL | `""` generated to use the internal keycloak|
-| `global.oidc.clientId` | OpenID Connect Client ID used by OpenCloud | `"web"` |
 | `global.storage.storageClass` | Storage class for persistent volumes | `""` |
 | `global.image.registry` | Global registry override for all images (e.g., `my-registry.com`) | `""` |
 | `global.image.pullPolicy` | Global pull policy override for all images (`Always`, `IfNotPresent`, `Never`) | `""` |
@@ -317,41 +315,53 @@ The following options allow setting up a POSIX-compatible filesystem (such as NF
 
 ### Keycloak Settings
 
-By default the chart deploys an internal keycloak. It can be disabled and replaced with an external IdP.
+By default the chart deploys an internal Keycloak. It can be disabled and replaced with an external OIDC provider.
 
 #### Internal Keycloak
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `keycloak.internal.enabled` | Enable internal Keycloak deployment | `true` |
-| `keycloak.internal.image.repository` | Keycloak image repository | `quay.io/keycloak/keycloak` |
-| `keycloak.internal.image.tag` | Keycloak image tag | `26.1.4` |
-| `keycloak.internal.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `keycloak.internal.replicas` | Number of replicas | `1` |
-| `keycloak.internal.existingSecret` | Name of the existing secret | `` |
-| `keycloak.internal.adminUser` | Admin user | `admin` |
-| `keycloak.internal.adminPassword` | Admin password | `admin` |
-| `keycloak.internal.realm` | Realm name | `openCloud` |
-| `keycloak.internal.resources` | CPU/Memory resource requests/limits | `{}` |
-| `keycloak.internal.cors.enabled` | Enable CORS | `true` |
-| `keycloak.internal.cors.allowAllOrigins` | Allow all origins | `true` |
+| `oidc.enabled` | Enable internal Keycloak deployment | `true` |
+| `oidc.image.registry` | Keycloak image registry | `quay.io` |
+| `oidc.image.repository` | Keycloak image repository | `keycloak/keycloak` |
+| `oidc.image.tag` | Keycloak image tag | `26.5.2` |
+| `oidc.image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `oidc.replicas` | Number of replicas | `1` |
+| `oidc.existingSecret` | Name of the existing secret | `` |
+| `oidc.adminUser` | Admin user | `admin` |
+| `oidc.adminPassword` | Admin password | `admin` |
+| `oidc.realm` | Realm name | `openCloud` |
+| `oidc.resources` | CPU/Memory resource requests/limits | `{}` |
+| `oidc.cors.enabled` | Enable CORS | `true` |
+| `oidc.cors.allowAllOrigins` | Allow all origins | `true` |
+| `oidc.cors.origins` | Allowed origins (if `allowAllOrigins` is `false`) | `[]` |
+| `oidc.cors.methods` | Allowed HTTP methods | `"GET,POST,PUT,DELETE,OPTIONS"` |
+| `oidc.cors.headers` | Allowed headers | `"Origin,Accept,Authorization,Content-Type,Cache-Control"` |
+| `oidc.cors.exposedHeaders` | Exposed headers | `"Access-Control-Allow-Origin,Access-Control-Allow-Credentials"` |
+| `oidc.cors.allowCredentials` | Allow credentials | `"true"` |
+| `oidc.cors.maxAge` | Max age in seconds | `"3600"` |
 
-> **Note**: When using internal Keycloak with multiple OpenCloud replicas (`opencloud.replicas > 1`), you must use an external shared database or LDAP. The embedded IDM does not support replication. See [issue #53](https://github.com/opencloud-eu/helm/issues/53) for details.
+> **Note**: When using internal Keycloak with multiple OpenCloud replicas (`opencloud.replicas > 1`), you must use an external shared database or LDAP. The embedded IDM does not support replication.
 
-#### Example: Using External IDP
+#### External OIDC Provider
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `oidc.enabled` | Deploy internal Keycloak (`true`) or use external OIDC (`false`) | `true` |
+| `oidc.external.issuerUrl` | OIDC Issuer URL (e.g., `https://keycloak.example.com/realms/openCloud`) | `""` |
+| `oidc.external.clientId` | OIDC Client ID | `"web"` |
+| `oidc.external.accountUrl` | Account management URL (optional) | `""` |
+
+#### Example: Using External OIDC Provider
 
 ```yaml
-global:
-  oidc:
-    issuer: "https://idp.example.com/realms/openCloud"
+oidc:
+  enabled: false
+  external:
+    issuerUrl: "https://keycloak.example.com/realms/openCloud"
     clientId: "opencloud-web"
-
-keycloak:
-  internal:
-    enabled: false
+    accountUrl: "https://keycloak.example.com/realms/openCloud/account"
 ```
-
-**Note**: If `keycloak.internal.enabled` is `true`, the `global.oidc.issuer` should be left empty to not override the generated issuer URL.
 
 ### PostgreSQL Settings
 
@@ -425,8 +435,8 @@ The following HTTPRoutes are created when `httpRoute.enabled` is set to `true`:
    - Port: 9200
    - Headers: Removes Permissions-Policy header to prevent browser console errors
 
-2. **Keycloak HTTPRoute** (when `keycloak.internal.enabled` is `true`):
-   - Hostname: `global.domain.keycloak`
+2. **Keycloak HTTPRoute** (when `oidc.enabled` is `true`):
+   - Hostname: `global.domain.oidc`
    - Service: `{{ release-name }}-keycloak`
    - Port: 8080
    - Headers: Adds Permissions-Policy header to prevent browser features like interest-based advertising

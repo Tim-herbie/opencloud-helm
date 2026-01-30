@@ -1,4 +1,4 @@
-{{- if and .Values.postgres.enabled .Values.keycloak.internal.enabled }}
+{{- if and .Values.postgres.enabled .Values.oidc.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

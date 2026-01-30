@@ -1,4 +1,4 @@
-{{- if and .Values.ingress.enabled .Values.keycloak.internal.enabled }}
+{{- if and .Values.ingress.enabled .Values.oidc.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -12,20 +12,20 @@ spec:
   {{- if .Values.global.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.global.domain.keycloak | quote }}
-      {{- if not (empty .Values.global.tls.secretName)}}
+        - {{ .Values.global.domain.oidc | quote }}
+      {{- if not (empty .Values.global.tls.secretName) }}
       secretName: {{ .Values.global.tls.secretName }}-keycloak
       {{- end }}
   {{- end }}
   rules:
-    - host: {{ .Values.global.domain.keycloak | quote }}
+    - host: {{ .Values.global.domain.oidc | quote }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ include "opencloud.fullname" . }}-keycloak
+                name: {{ include "opencloud.keycloak.fullname" . }}
                 port:
                   number: 8080
 {{- end }}

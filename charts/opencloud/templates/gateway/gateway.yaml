@@ -42,7 +42,7 @@ spec:
           selector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-    {{- if .Values.keycloak.internal.enabled }}
+    {{- if .Values.oidc.enabled }}
     {{- if .Values.global.tls.enabled }}
     - name: keycloak-https
     {{- else }}
@@ -54,7 +54,7 @@ spec:
       protocol: HTTP
       {{- end }}
       port: {{ .Values.httpRoute.gateway.port }}
-      hostname: {{ .Values.global.domain.keycloak | quote }}
+      hostname: {{ .Values.global.domain.oidc | quote }}
       {{- if .Values.global.tls.enabled }}
       tls:
         mode: Terminate

@@ -26,12 +26,16 @@ The following services have been deployed:
    - S3 Storage: {{ if .Values.opencloud.storage.s3.external.enabled }}{{ .Values.opencloud.storage.s3.external.endpoint }}{{ else if .Values.opencloud.storage.s3.internal.enabled }}MinIO ({{ include "opencloud.minio.fullname" . }}){{ else }}Not configured{{ end }}
    - S3 Bucket: {{ if .Values.opencloud.storage.s3.external.enabled }}{{ .Values.opencloud.storage.s3.external.bucket }}{{ else if .Values.opencloud.storage.s3.internal.enabled }}{{ .Values.opencloud.storage.s3.internal.bucketName }}{{ else }}Not configured{{ end }}
 
-{{- if .Values.keycloak.internal.enabled }}
+{{- if .Values.oidc.enabled }}
 2. Keycloak (Authentication):
    - Service: {{ include "opencloud.keycloak.fullname" . }}
    - Port: 8080
-   - Username: {{ .Values.keycloak.internal.adminUser }}
-   - Password: {{ .Values.keycloak.internal.adminPassword }}
+   - Username: {{ .Values.oidc.adminUser }}
+   - Password: {{ .Values.oidc.adminPassword }}
+{{- else }}
+2. External OIDC Provider:
+   - Issuer: {{ .Values.oidc.external.issuerUrl }}
+   - Client ID: {{ .Values.oidc.external.clientId }}
 {{- end }}
 
 {{- if .Values.opencloud.storage.s3.internal.enabled }}
@@ -58,7 +62,7 @@ All HTTPRoutes are configured to use the Gateway named "{{ .Values.httpRoute.gat
 
 Make sure the Gateway exists and is properly configured to accept traffic for the following domains:
 - OpenCloud: {{ include "opencloud.domain" . }} (Service: {{ include "opencloud.opencloud.fullname" . }}, Port: 9200)
-{{- if .Values.keycloak.internal.enabled }}
+{{- if .Values.oidc.enabled }}
 - Keycloak: {{ include "opencloud.keycloak.domain" . }} (Service: {{ include "opencloud.keycloak.fullname" . }}, Port: 8080)
 {{- end }}
 {{- if .Values.opencloud.storage.s3.internal.enabled }}
@@ -72,7 +76,7 @@ to expose these services externally.
 
 Example domains for your ingress configuration:
 - OpenCloud: {{ include "opencloud.domain" . }} (Service: {{ include "opencloud.opencloud.fullname" . }}, Port: 9200)
-{{- if .Values.keycloak.internal.enabled }}
+{{- if .Values.oidc.enabled }}
 - Keycloak: {{ include "opencloud.keycloak.domain" . }} (Service: {{ include "opencloud.keycloak.fullname" . }}, Port: 8080)
 {{- end }}
 {{- if .Values.opencloud.storage.s3.internal.enabled }}
