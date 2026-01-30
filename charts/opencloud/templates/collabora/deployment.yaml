@@ -27,7 +27,7 @@ spec:
             - 'coolconfig generate-proof-key && /start-collabora-online.sh'
           env:
             - name: aliasgroup1
-              value: "http://opencloud-collaboration:9300,https://{{ .Values.global.domain.wopi }}"
+              value: "http://{{ include "opencloud.fullname" . }}-collaboration:9300,https://{{ .Values.global.domain.wopi }}"
             - name: DONT_GEN_SSL_CERT
               value: "YES"
             - name: extra_params
