@@ -1,4 +1,4 @@
-{{- if and .Values.postgres.enabled .Values.keycloak.internal.enabled (and .Values.postgres.persistence.enabled (not .Values.postgres.persistence.existingClaim)) }}
+{{- if and .Values.postgres.enabled .Values.oidc.enabled .Values.postgres.persistence.enabled (not .Values.postgres.persistence.existingClaim) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

@@ -1,4 +1,4 @@
-{{- if .Values.keycloak.internal.enabled }}
+{{- if .Values.oidc.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +7,7 @@ metadata:
     {{- include "opencloud.labels" . | nindent 4 }}
     app.kubernetes.io/component: keycloak
 spec:
-  replicas: {{ .Values.keycloak.internal.replicas }}
+  replicas: {{ .Values.oidc.replicas }}
   selector:
     matchLabels:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}
@@ -24,8 +24,8 @@ spec:
         fsGroup: 1000
       containers:
         - name: keycloak
-          image: {{ include "opencloud.image" (dict "imageValues" .Values.keycloak.internal.image "global" .Values.global) | quote }}
-          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.keycloak.internal.image.pullPolicy "global" .Values.global) }}
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.oidc.image "global" .Values.global) }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.oidc.image.pullPolicy "global" .Values.global) }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -44,71 +44,79 @@ spec:
             - "--import-realm"
           env:
             - name: OC_DOMAIN
-              value: {{ include "opencloud.domain" . }}
+              value: {{ .Values.global.domain.opencloud }}
             - name: KC_HOSTNAME_URL
               value: "https://{{ include "opencloud.keycloak.domain" . }}"  # Ensure the URL includes the https:// scheme
             - name: KC_DB
               value: postgres
             - name: KC_DB_URL
-              value: jdbc:postgresql://{{ include "opencloud.postgres.fullname" . }}:5432/{{ .Values.postgres.database }}
+              value: "jdbc:postgresql://{{ include "opencloud.postgres.fullname" . }}:5432/{{ .Values.postgres.database }}"
             - name: KC_DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{- if .Values.postgres.existingSecret }}
-                          {{ .Values.postgres.existingSecret }}
-                        {{- else }}
-                          {{ include "opencloud.postgres.fullname" . }}
-                        {{- end }}
+                  {{- if .Values.postgres.existingSecret }}
+                  name: {{ .Values.postgres.existingSecret }}
+                  {{- else }}
+                  name: {{ include "opencloud.postgres.fullname" . }}
+                  {{- end }}
                   key: username
             - name: KC_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{- if .Values.postgres.existingSecret }}
-                          {{ .Values.postgres.existingSecret }}
-                        {{- else }}
-                          {{ include "opencloud.postgres.fullname" . }}
-                        {{- end }}
+                  {{- if .Values.postgres.existingSecret }}
+                  name: {{ .Values.postgres.existingSecret }}
+                  {{- else }}
+                  name: {{ include "opencloud.postgres.fullname" . }}
+                  {{- end }}
                   key: password
             - name: KC_FEATURES
               value: impersonation
             - name: KEYCLOAK_ADMIN
               valueFrom:
                 secretKeyRef:
-                  name: {{- if .Values.keycloak.internal.existingSecret }}
-                          {{ .Values.keycloak.internal.existingSecret }}
-                        {{- else }}
-                          {{ include "opencloud.keycloak.fullname" . }}
-                        {{- end }}
+                  {{- if .Values.oidc.existingSecret }}
+                  name: {{ .Values.oidc.existingSecret }}
+                  {{- else }}
+                  name: {{ include "opencloud.keycloak.fullname" . }}
+                  {{- end }}
                   key: adminUser
             - name: KEYCLOAK_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{- if .Values.keycloak.internal.existingSecret }}
-                          {{ .Values.keycloak.internal.existingSecret }}
-                        {{- else }}
-                          {{ include "opencloud.keycloak.fullname" . }}
-                        {{- end }}
+                  {{- if .Values.oidc.existingSecret }}
+                  name: {{ .Values.oidc.existingSecret }}
+                  {{- else }}
+                  name: {{ include "opencloud.keycloak.fullname" . }}
+                  {{- end }}
                   key: adminPassword
-            {{- if .Values.keycloak.internal.cors.enabled }}
+            - name: KC_HOSTNAME
+              value: {{ .Values.global.domain.oidc }}
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            {{- if .Values.oidc.cors.enabled }}
             - name: KC_SPI_CORS_ENABLED
               value: "true"
-            {{- if .Values.keycloak.internal.cors.allowAllOrigins }}
+            {{- if .Values.oidc.cors.allowAllOrigins }}
             - name: KC_SPI_CORS_ORIGINS
               value: "*"
             {{- else }}
             - name: KC_SPI_CORS_ORIGINS
-              value: {{ join "," .Values.keycloak.internal.cors.origins | quote }}
+              value: {{ join "," .Values.oidc.cors.origins | quote }}
             {{- end }}
             - name: KC_SPI_CORS_METHODS
-              value: {{ .Values.keycloak.internal.cors.methods | quote }}
+              value: {{ .Values.oidc.cors.methods | quote }}
             - name: KC_SPI_CORS_HEADERS
-              value: {{ .Values.keycloak.internal.cors.headers | quote }}
+              value: {{ .Values.oidc.cors.headers | quote }}
             - name: KC_SPI_CORS_EXPOSED_HEADERS
-              value: {{ .Values.keycloak.internal.cors.exposedHeaders | quote }}
+              value: {{ .Values.oidc.cors.exposedHeaders | quote }}
             - name: KC_SPI_CORS_ALLOW_CREDENTIALS
-              value: {{ .Values.keycloak.internal.cors.allowCredentials | quote }}
+              value: {{ .Values.oidc.cors.allowCredentials | quote }}
             - name: KC_SPI_CORS_MAX_AGE
-              value: {{ .Values.keycloak.internal.cors.maxAge | quote }}
+              value: {{ .Values.oidc.cors.maxAge | quote }}
             {{- end }}
           ports:
             - name: http
@@ -121,7 +129,7 @@ spec:
               mountPath: /opt/keycloak/data/import-dist/openCloud-realm.json
               subPath: openCloud-realm.json
           resources:
-            {{- toYaml .Values.keycloak.internal.resources | nindent 12 }}
+            {{- toYaml .Values.oidc.resources | nindent 12 }}
       volumes:
         - name: script
           configMap:

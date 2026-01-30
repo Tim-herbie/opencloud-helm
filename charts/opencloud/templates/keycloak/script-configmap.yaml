@@ -1,4 +1,4 @@
-{{- if .Values.keycloak.internal.enabled }}
+{{- if .Values.oidc.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
