@@ -38,7 +38,7 @@ jobs:
             --namespace opencloud-test \
             --create-namespace \
             --wait \
-            --timeout 3m
+            --timeout 5m
 
       # Verify pods become ready
       - name: Wait for pods to be ready
