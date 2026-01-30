@@ -167,7 +167,7 @@ oidc:
 
 # PostgreSQL settings for Keycloak (only used when oidc.enabled is true)
 postgres:
-  # Enable PostgreSQL (automatically disabled when using external OIDC)
+  # Enable PostgreSQL (set to false when using external OIDC / external OIDC provider database)
   enabled: true
   # PostgreSQL image settings
   image:
