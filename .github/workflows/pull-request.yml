@@ -1,4 +1,4 @@
-name: Lint Helm Chart and Create Prerelease
+name: Helm Chart Lint and Test
 
 on:
   pull_request:
@@ -10,6 +10,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -26,30 +27,34 @@ jobs:
           echo "Linting charts/opencloud..."
           helm lint charts/opencloud
 
-      - name: Generate prerelease version
-        id: version
-        run: |
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          CURRENT_VERSION=$(grep '^version:' charts/opencloud/Chart.yaml | awk '{print $2}')
-          PRERELEASE_VERSION="${CURRENT_VERSION}-${TIMESTAMP}"
-          echo "prerelease_version=${PRERELEASE_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
+      # Create ephemeral Kubernetes cluster
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
 
-      - name: Update Chart.yaml with prerelease version
+      # Install Helm chart in test namespace
+      - name: Install Helm chart
         run: |
-          sed -i "s/^version:.*/version: ${{ steps.version.outputs.prerelease_version }}/" charts/opencloud/Chart.yaml
+          helm install opencloud-test charts/opencloud \
+            --namespace opencloud-test \
+            --create-namespace \
+            --wait \
+            --timeout 5m
 
-      - name: Package Helm chart
+      # Verify pods become ready
+      - name: Wait for pods to be ready
         run: |
-          helm package charts/opencloud --destination ./packaged-charts
+          kubectl wait --for=condition=Ready pod \
+            --all \
+            --namespace opencloud-test \
+            --timeout=180s
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push chart to GitHub Container Registry
+      # Debug if installation fails
+      - name: Debug pods if failed
+        if: failure()
         run: |
-          helm push ./packaged-charts/opencloud-${{ steps.version.outputs.prerelease_version }}.tgz oci://ghcr.io/tim-herbie/opencloud-helm
+          echo "==== Pods ===="
+          kubectl get pods -A
+          echo "==== Describe Pods ===="
+          kubectl describe pods -A
+          echo "==== Events ===="
+          kubectl get events -A
