@@ -1,4 +1,4 @@
-{{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.internal.enabled (and .Values.opencloud.storage.s3.internal.persistence.enabled (not .Values.opencloud.storage.s3.internal.persistence.existingClaim)) }}
+{{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled (and .Values.opencloud.storage.s3.persistence.enabled (not .Values.opencloud.storage.s3.persistence.existingClaim)) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -10,15 +10,15 @@ metadata:
     app.kubernetes.io/component: minio
 spec:
   accessModes:
-    - {{ .Values.opencloud.storage.s3.internal.persistence.accessMode | quote }}
+    - {{ .Values.opencloud.storage.s3.persistence.accessMode | quote }}
   resources:
     requests:
-      storage: {{ .Values.opencloud.storage.s3.internal.persistence.size | quote }}
-  {{- if .Values.opencloud.storage.s3.internal.persistence.storageClass }}
-  {{- if (eq "-" .Values.opencloud.storage.s3.internal.persistence.storageClass) }}
+      storage: {{ .Values.opencloud.storage.s3.persistence.size | quote }}
+  {{- if .Values.opencloud.storage.s3.persistence.storageClass }}
+  {{- if (eq "-" .Values.opencloud.storage.s3.persistence.storageClass) }}
   storageClassName: ""
   {{- else }}
-  storageClassName: {{ .Values.opencloud.storage.s3.internal.persistence.storageClass | quote }}
+  storageClassName: {{ .Values.opencloud.storage.s3.persistence.storageClass | quote }}
   {{- end }}
   {{- end }}
 {{- end }}

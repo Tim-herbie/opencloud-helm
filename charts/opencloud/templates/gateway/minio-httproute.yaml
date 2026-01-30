@@ -1,4 +1,4 @@
-{{- if and .Values.httpRoute.enabled (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.internal.enabled .Values.opencloud.storage.s3.internal.httpRoute.enabled }}
+{{- if and .Values.httpRoute.enabled (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:

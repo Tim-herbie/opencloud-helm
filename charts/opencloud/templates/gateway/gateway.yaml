@@ -69,7 +69,7 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
     {{- end }}
-    {{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.internal.enabled .Values.opencloud.storage.s3.internal.httpRoute.enabled }}
+    {{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
     {{- if .Values.global.tls.enabled }}
     - name: minio-https
     {{- else }}
