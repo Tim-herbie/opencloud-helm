@@ -523,82 +523,43 @@ opencloud:
     mode: s3
     # S3 storage configuration
     s3:
-      # Internal MinIO instance
-      internal:
-        # Enable internal test MinIO instance (default: true)
+      enabled: true
+      # MinIO image settings
+      image:
+        registry: docker.io
+        repository: minio/minio
+        tag: latest
+        pullPolicy: IfNotPresent
+      # httpRoute configuration
+      httpRoute:
+        enabled: false
+      existingSecret: ""
+      rootUser: opencloud
+      rootPassword: opencloud-secret-key
+      bucketName: opencloud-bucket
+      region: "default"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+      persistence:
         enabled: true
-        # MinIO image settings
-        image:
-          # MinIO image registry
-          registry: docker.io
-          # MinIO image repository
-          repository: minio/minio
-          # MinIO image tag
-          tag: latest
-          # Image pull policy
-          pullPolicy: IfNotPresent
-        # httpRoute configuration
-        httpRoute:
-          # Enable HTTPRoute for MinIO (default: false)
-          enabled: false
-        
-        # Use existing secret for minio credentials (Note: secretKeyName must be rootUser and rootPassword)
-        existingSecret: ""
-        
-        # Minio Root user
-        # ignored if opencloud.storage.s3.internal.existingSecret is set
-        rootUser: opencloud
-
-        # Minio Root password
-        # ignored if opencloud.storage.s3.internal.existingSecret is set
-        rootPassword: opencloud-secret-key
-        
-        # Bucket name
-        bucketName: opencloud-bucket
-        # Region (optional)
-        region: "default"
-        # Resources allocation
-        resources:
-          requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
-            cpu: 1000m
-            memory: 2Gi
-        # Persistence configuration
-        persistence:
-          enabled: true
-          # Name of existing PVC to use (overrides all other persistence values)
-          existingClaim: ""
-          # Size of the persistent volume
-          size: 30Gi
-          # Storage class
-          storageClass: ""
-          # Access mode
-          accessMode: ReadWriteOnce
+        existingClaim: ""
+        size: 30Gi
+        storageClass: ""
+        accessMode: ReadWriteOnce
       # External S3 (can be S3, Ceph, or external MinIO)
       external:
-        # Enable external S3
-        enabled: false
-        # External S3 endpoint URL
+        # External S3 endpoint URL (no 'enabled' field anymore)
         endpoint: ""
-        # External S3 region
         region: "default"
-        
-        # Use existing secret for external s3 credentials (Note: secretKeyName must be accessKey and secretKey)
         existingSecret: ""
-        
-        # External S3 access key
-        # ignored if opencloud.storage.s3.external.existingSecret is set
         accessKey: ""
-
-        # External S3 secret key
-        # ignored if opencloud.storage.s3.external.existingSecret is set
         secretKey: ""
-
-        # External S3 bucket
         bucket: ""
-        # Create bucket if it doesn't exist
         createBucket: true
     posixfs:
       # The type of the cache store, supported values are: 'memory', 'redis-sentinel', 'nats-js-kv' (default), 'noop'

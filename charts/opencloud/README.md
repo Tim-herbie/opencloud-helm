@@ -255,19 +255,23 @@ The following options configure S3 for user file storage, either with the intern
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `opencloud.storage.s3.internal.enabled` | Enable internal MinIO instance | `true` |
-| `opencloud.storage.s3.internal.existingSecret` | Name of the existing secret | `` |
-| `opencloud.storage.s3.internal.rootUser` | MinIO root user | `opencloud` |
-| `opencloud.storage.s3.internal.rootPassword` | MinIO root password | `opencloud-secret-key` |
-| `opencloud.storage.s3.internal.bucketName` | MinIO bucket name | `opencloud-bucket` |
-| `opencloud.storage.s3.internal.region` | MinIO region | `default` |
-| `opencloud.storage.s3.internal.resources` | CPU/Memory resource requests/limits | See values.yaml |
-| `opencloud.storage.s3.internal.persistence.enabled` | Enable MinIO persistence | `true` |
-| `opencloud.storage.s3.internal.persistence.existingClaim` | Name of existing PVC instead of the settings below | `` |
-| `opencloud.storage.s3.internal.persistence.size` | Size of the MinIO persistent volume | `30Gi` |
-| `opencloud.storage.s3.internal.persistence.storageClass` | MinIO storage class | `""` |
-| `opencloud.storage.s3.internal.persistence.accessMode` | MinIO access mode | `ReadWriteOnce` |
-| `opencloud.storage.s3.external.enabled` | Enable external S3 | `false` |
+| `opencloud.storage.s3.enabled` | Enable internal MinIO instance | `true` |
+| `opencloud.storage.s3.image.registry` | MinIO image registry | `docker.io` |
+| `opencloud.storage.s3.image.repository` | MinIO image repository | `minio/minio` |
+| `opencloud.storage.s3.image.tag` | MinIO image tag | `latest` |
+| `opencloud.storage.s3.image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `opencloud.storage.s3.httpRoute.enabled` | Enable HTTPRoute for MinIO | `false` |
+| `opencloud.storage.s3.existingSecret` | Name of the existing secret | `` |
+| `opencloud.storage.s3.rootUser` | MinIO root user | `opencloud` |
+| `opencloud.storage.s3.rootPassword` | MinIO root password | `opencloud-secret-key` |
+| `opencloud.storage.s3.bucketName` | MinIO bucket name | `opencloud-bucket` |
+| `opencloud.storage.s3.region` | MinIO region | `default` |
+| `opencloud.storage.s3.resources` | CPU/Memory resource requests/limits | See values.yaml |
+| `opencloud.storage.s3.persistence.enabled` | Enable MinIO persistence | `true` |
+| `opencloud.storage.s3.persistence.existingClaim` | Name of existing PVC instead of the settings below | `` |
+| `opencloud.storage.s3.persistence.size` | Size of the MinIO persistent volume | `30Gi` |
+| `opencloud.storage.s3.persistence.storageClass` | MinIO storage class | `""` |
+| `opencloud.storage.s3.persistence.accessMode` | MinIO access mode | `ReadWriteOnce` |
 | `opencloud.storage.s3.external.endpoint` | External S3 endpoint URL | `""` |
 | `opencloud.storage.s3.external.region` | External S3 region | `default` |
 | `opencloud.storage.s3.external.existingSecret` | Name of the existing secret | `` |
@@ -275,6 +279,10 @@ The following options configure S3 for user file storage, either with the intern
 | `opencloud.storage.s3.external.secretKey` | External S3 secret key | `""` |
 | `opencloud.storage.s3.external.bucket` | External S3 bucket | `""` |
 | `opencloud.storage.s3.external.createBucket` | Create bucket if it doesn't exist | `true` |
+
+**Note:**  
+- The `internal` key under `storage.s3` has been removed. All MinIO/internal S3 settings are now directly under `storage.s3`.
+- The `enabled` field under `storage.s3.external` has been removed. To use external S3, set the `endpoint` and other required fields.
 
 ### OpenCloud PosixFS Storage Settings
 
@@ -441,7 +449,7 @@ The following HTTPRoutes are created when `httpRoute.enabled` is set to `true`:
    - Port: 8080
    - Headers: Adds Permissions-Policy header to prevent browser features like interest-based advertising
 
-3. **MinIO HTTPRoute** (when `opencloud.storage.mode` is `s3` and `opencloud.storage.s3.internal.enabled` is `true`):
+3. **MinIO HTTPRoute** (when `opencloud.storage.mode` is `s3` and `opencloud.storage.s3.enabled` is `true`):
    - Hostname: `global.domain.minio`
    - Service: `{{ release-name }}-minio`
    - Port: 9001

@@ -1,4 +1,4 @@
-{{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.internal.enabled }}
+{{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,14 +32,14 @@ spec:
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
-          command: ['sh', '-c', 'mkdir -p /data/{{ .Values.opencloud.storage.s3.internal.bucketName }}']
+          command: ['sh', '-c', 'mkdir -p /data/{{ .Values.opencloud.storage.s3.bucketName }}']
           volumeMounts:
             - name: data
               mountPath: /data
       containers:
         - name: minio
-          image: {{ include "opencloud.image" (dict "imageValues" .Values.opencloud.storage.s3.internal.image "global" .Values.global) | quote }}
-          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.opencloud.storage.s3.internal.image.pullPolicy "global" .Values.global) }}
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.opencloud.storage.s3.image "global" .Values.global) | quote }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.opencloud.storage.s3.image.pullPolicy "global" .Values.global) }}
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -51,8 +51,8 @@ spec:
             - name: MINIO_ROOT_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{- if .Values.opencloud.storage.s3.internal.existingSecret }}
-                          {{ .Values.opencloud.storage.s3.internal.existingSecret }}
+                  name: {{- if .Values.opencloud.storage.s3.existingSecret }}
+                          {{ .Values.opencloud.storage.s3.existingSecret }}
                         {{- else }}
                           {{ include "opencloud.minio.fullname" . }}
                         {{- end }}
@@ -60,8 +60,8 @@ spec:
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{- if .Values.opencloud.storage.s3.internal.existingSecret }}
-                          {{ .Values.opencloud.storage.s3.internal.existingSecret }}
+                  name: {{- if .Values.opencloud.storage.s3.existingSecret }}
+                          {{ .Values.opencloud.storage.s3.existingSecret }}
                         {{- else }}
                           {{ include "opencloud.minio.fullname" . }}
                         {{- end }}
@@ -102,13 +102,13 @@ spec:
             # Increased failure threshold to be more tolerant
             failureThreshold: 5
           resources:
-            {{- toYaml .Values.opencloud.storage.s3.internal.resources | nindent 12 }}
+            {{- toYaml .Values.opencloud.storage.s3.resources | nindent 12 }}
       volumes:
         - name: data
-          {{- if .Values.opencloud.storage.s3.internal.persistence.enabled }}
+          {{- if .Values.opencloud.storage.s3.persistence.enabled }}
           persistentVolumeClaim:
-            {{- if .Values.opencloud.storage.s3.internal.persistence.existingClaim }}
-            claimName: {{ .Values.opencloud.storage.s3.internal.persistence.existingClaim | quote }}
+            {{- if .Values.opencloud.storage.s3.persistence.existingClaim }}
+            claimName: {{ .Values.opencloud.storage.s3.persistence.existingClaim | quote }}
             {{- else }}
             claimName: {{ include "opencloud.minio.fullname" . }}-data
             {{- end }}

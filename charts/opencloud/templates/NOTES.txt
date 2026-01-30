@@ -23,8 +23,8 @@ The following services have been deployed:
    - Port: 9200
    - Storage Driver: decomposeds3
    - System Storage Driver: decomposed
-   - S3 Storage: {{ if .Values.opencloud.storage.s3.external.enabled }}{{ .Values.opencloud.storage.s3.external.endpoint }}{{ else if .Values.opencloud.storage.s3.internal.enabled }}MinIO ({{ include "opencloud.minio.fullname" . }}){{ else }}Not configured{{ end }}
-   - S3 Bucket: {{ if .Values.opencloud.storage.s3.external.enabled }}{{ .Values.opencloud.storage.s3.external.bucket }}{{ else if .Values.opencloud.storage.s3.internal.enabled }}{{ .Values.opencloud.storage.s3.internal.bucketName }}{{ else }}Not configured{{ end }}
+   - S3 Storage: {{- if .Values.opencloud.storage.s3.external.endpoint }}{{ .Values.opencloud.storage.s3.external.endpoint }}{{- else if .Values.opencloud.storage.s3.enabled }}MinIO ({{ include "opencloud.minio.fullname" . }}){{- else }}Not configured{{- end }}
+   - S3 Bucket: {{- if .Values.opencloud.storage.s3.external.endpoint }}{{ .Values.opencloud.storage.s3.external.bucket }}{{- else if .Values.opencloud.storage.s3.enabled }}{{ .Values.opencloud.storage.s3.bucketName }}{{- else }}Not configured{{- end }}
 
 {{- if .Values.oidc.enabled }}
 2. Keycloak (Authentication):
@@ -38,13 +38,13 @@ The following services have been deployed:
    - Client ID: {{ .Values.oidc.external.clientId }}
 {{- end }}
 
-{{- if .Values.opencloud.storage.s3.internal.enabled }}
+{{- if .Values.opencloud.storage.s3.enabled }}
 3. MinIO (Object Storage):
    - Service: {{ include "opencloud.minio.fullname" . }}
    - API Port: 9000
    - Console Port: 9001
-   - Username: {{ .Values.opencloud.storage.s3.internal.rootUser }}
-   - Password: {{ .Values.opencloud.storage.s3.internal.rootPassword }}
+   - Username: {{ .Values.opencloud.storage.s3.rootUser }}
+   - Password: {{ .Values.opencloud.storage.s3.rootPassword }}
 {{- end }}
 
 {{- if or .Values.collabora.enabled .Values.collabora.external.enabled}}
@@ -53,7 +53,6 @@ The following services have been deployed:
    - HTTP Port: 9300
    - gRPC Port: 9301
 {{- end }}
-
 
 {{- if .Values.httpRoute.enabled }}
 IMPORTANT: This chart includes HTTPRoute resources that route traffic to the OpenCloud, Keycloak, and MinIO services.
@@ -65,10 +64,9 @@ Make sure the Gateway exists and is properly configured to accept traffic for th
 {{- if .Values.oidc.enabled }}
 - Keycloak: {{ include "opencloud.keycloak.domain" . }} (Service: {{ include "opencloud.keycloak.fullname" . }}, Port: 8080)
 {{- end }}
-{{- if .Values.opencloud.storage.s3.internal.enabled }}
+{{- if .Values.opencloud.storage.s3.enabled }}
 - MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
 {{- end }}
-
 
 {{- else }}
 IMPORTANT: The HTTPRoutes are disabled. You need to configure your own ingress controller
@@ -79,7 +77,7 @@ Example domains for your ingress configuration:
 {{- if .Values.oidc.enabled }}
 - Keycloak: {{ include "opencloud.keycloak.domain" . }} (Service: {{ include "opencloud.keycloak.fullname" . }}, Port: 8080)
 {{- end }}
-{{- if .Values.opencloud.storage.s3.internal.enabled }}
+{{- if .Values.opencloud.storage.s3.enabled }}
 - MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
 {{- end }}
 {{- end }}

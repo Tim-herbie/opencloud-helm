@@ -1,4 +1,4 @@
-{{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.internal.enabled }}
+{{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
