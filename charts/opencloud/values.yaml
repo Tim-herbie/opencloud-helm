@@ -432,7 +432,7 @@ image:
   # OpenCloud image repository
   repository: opencloudeu/opencloud-rolling
   # OpenCloud image tag
-  tag: "5.0.0"
+  tag: "5.0.2"
   # Image pull policy
   pullPolicy: IfNotPresent
   # Image pull secrets
