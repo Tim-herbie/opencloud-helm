@@ -216,7 +216,7 @@ Return the S3 user storage endpoint.
 {{- define "opencloud.s3.user.endpoint" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.internal.enabled) -}}
+{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
 {{- .Values.opencloud.storage.s3.external.endpoint | quote -}}
 {{- else -}}
 {{- printf "http://%s:9000" (include "opencloud.minio.fullname" .) | quote -}}
@@ -229,7 +229,7 @@ Return the S3 user storage region.
 {{- define "opencloud.s3.user.region" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.internal.enabled) -}}
+{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
 {{- .Values.opencloud.storage.s3.external.region | quote -}}
 {{- else -}}
 {{- .Values.opencloud.storage.s3.region | default "default" | quote -}}
@@ -242,7 +242,7 @@ Return the S3 user storage bucket.
 {{- define "opencloud.s3.user.bucket" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.internal.enabled) -}}
+{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
 {{- .Values.opencloud.storage.s3.external.bucket | quote -}}
 {{- else -}}
 {{- .Values.opencloud.storage.s3.bucketName | quote -}}
@@ -255,7 +255,7 @@ Return the S3 user storage createBucket flag.
 {{- define "opencloud.s3.user.createBucket" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.internal.enabled) -}}
+{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
 {{- .Values.opencloud.storage.s3.external.createBucket | default true | quote -}}
 {{- else -}}
 "true"
@@ -268,7 +268,7 @@ Return the S3 user storage accessKey secret name.
 {{- define "opencloud.s3.user.accessKeySecretName" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.internal.enabled) -}}
+{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
 {{- .Values.opencloud.storage.s3.external.existingSecret | default (printf "%s-s3" (include "opencloud.opencloud.fullname" .)) -}}
 {{- else -}}
 {{- .Values.opencloud.storage.s3.existingSecret | default (include "opencloud.minio.fullname" .) -}}
@@ -281,7 +281,7 @@ Return the S3 user storage accessKey secret key.
 {{- define "opencloud.s3.user.accessKeySecretKey" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.internal.enabled) -}}
+{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
 accessKey
 {{- else -}}
 rootUser
@@ -294,7 +294,7 @@ Return the S3 user storage secretKey secret name.
 {{- define "opencloud.s3.user.secretKeySecretName" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.internal.enabled) -}}
+{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
 {{- .Values.opencloud.storage.s3.external.existingSecret | default (printf "%s-s3" (include "opencloud.opencloud.fullname" .)) -}}
 {{- else -}}
 {{- .Values.opencloud.storage.s3.existingSecret | default (include "opencloud.minio.fullname" .) -}}
@@ -307,7 +307,7 @@ Return the S3 user storage secretKey secret key.
 {{- define "opencloud.s3.user.secretKeySecretKey" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.internal.enabled) -}}
+{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
 secretKey
 {{- else -}}
 rootPassword
