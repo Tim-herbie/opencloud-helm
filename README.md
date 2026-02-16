@@ -71,13 +71,7 @@ This project is licensed under the **AGPLv3** license. See the [LICENSE](LICENSE
 
 Follow these steps to quickly deploy OpenCloud using the Helm chart:
 
-1. **Add the Helm repository:**
-  ```sh
-  helm repo add opencloud-helm https://ghcr.io/tim-herbie/opencloud-helm
-  helm repo update
-  ```
-
-2. **Install the OpenCloud Helm chart:**
+1. **Install the OpenCloud Helm chart:**
   ```sh
   helm install opencloud \
     oci://ghcr.io/tim-herbie/opencloud-helm/opencloud \
