@@ -9,10 +9,10 @@ Welcome to the **Opencloud Helm Chart** repository! This repository is intended 
 - [Version table](#-version-table)
 - [Contributing](#-contributing)
 - [Prerequisites](#prerequisites)
-- [Version Stability Notice](#⚠️-version-stability-notice)
 - [Available Charts](#-available-charts)
   - [Production Chart](#production-chart-chartsopencloud)
 - [License](#-license)
+- [Quick Start](#-quick-start)
 
 ## 🚀 About
 
@@ -48,16 +48,6 @@ This includes:
 - PV provisioner support in the underlying infrastructure (if persistence is enabled)
 - External ingress controller (e.g., Traefik) for routing traffic to the services
 
-## ⚠️ Version Stability Notice
-
-**Important**: These Helm charts are currently at version `0.x.x`, which according to [Semantic Versioning 2.0](https://semver.org/spec/v2.0.0.html#spec-item-4) means:
-- The charts are still under heavy development
-- Breaking changes may occur at any time
-- The public API should not be considered stable
-- Use with caution in production environments
-
-We recommend pinning to specific chart versions and thoroughly testing updates before applying them.
-
 ## 📦 Available Charts
 
 This repository contains the following charts:
@@ -76,3 +66,24 @@ The complete OpenCloud deployment with all components for production use:
 ## 📜 License
 
 This project is licensed under the **AGPLv3** license. See the [LICENSE](LICENSE) file for more details.
+
+## ⚡ Quick Start
+
+Follow these steps to quickly deploy OpenCloud using the Helm chart:
+
+1. **Add the Helm repository:**
+  ```sh
+  helm repo add opencloud-helm https://ghcr.io/tim-herbie/opencloud-helm
+  helm repo update
+  ```
+
+2. **Install the OpenCloud Helm chart:**
+  ```sh
+  helm install opencloud \
+    oci://ghcr.io/tim-herbie/opencloud-helm/opencloud \
+    --version 2.0.0 \
+    --namespace opencloud \
+    --create-namespace
+  ```
+
+For more configuration options, see the [Production Chart Documentation](./charts/opencloud/README.md).
