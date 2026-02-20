@@ -95,7 +95,7 @@ oidc:
     # Keycloak image repository
     repository: keycloak/keycloak
     # Keycloak image tag
-    tag: "26.5.3"
+    tag: "26.5.4"
     # Image pull policy
     pullPolicy: IfNotPresent
   
