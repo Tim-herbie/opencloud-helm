@@ -263,6 +263,34 @@ spec:
                           {{ include "opencloud.opencloud.fullname" . }}
                         {{- end }}
                   key: adminPassword
+            {{- /* Runtime secrets — override values from the generated config.
+                   These ENV vars take precedence at runtime, ensuring all services
+                   use consistent secrets regardless of what opencloud init wrote.
+                   Note: IDM service passwords (idm, reva, idp) are NOT injected
+                   because they only affect LDAP bind credentials at runtime but
+                   NOT what opencloud init writes to the LDAP database. Config
+                   persistence is required to keep IDM passwords stable. */ -}}
+            {{- $initSecretName := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) }}
+            - name: OC_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: jwtSecret
+            - name: OC_MACHINE_AUTH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: machineAuthApiKey
+            - name: OC_TRANSFER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: transferSecret
+            - name: OC_SERVICE_ACCOUNT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: serviceAccountSecret
             # Demo users
             - name: IDM_CREATE_DEMO_USERS
               value: {{ .Values.opencloud.createDemoUsers | quote }}

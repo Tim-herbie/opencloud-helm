@@ -398,6 +398,22 @@ opencloud:
   # Admin password
   # ignored if opencloud.existingSecret is set
   adminPassword: admin
+
+  # Init secrets for internal service authentication
+  # OpenCloud generates random secrets on startup for internal LDAP (IDM),
+  # JWT signing, service accounts, and file transfer signing. These must
+  # remain consistent across pod restarts; otherwise, services fail with
+  # LDAP credential mismatches and broken authentication.
+  #
+  # When existingSecret is set, all secrets are loaded from the referenced
+  # Kubernetes Secret. When empty, the chart auto-generates stable secrets
+  # that persist across helm upgrade cycles.
+  #
+  # Required keys in the secret:
+  #   jwtSecret, machineAuthApiKey, transferSecret, serviceAccountSecret,
+  #   idmServicePassword, idmRevaServicePassword, idmIdpServicePassword
+  initSecrets:
+    existingSecret: ""
   
   # Create demo users
   createDemoUsers: false
