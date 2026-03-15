@@ -385,6 +385,22 @@ oidc:
 | `postgres.persistence.size` | Size of the persistent volume | `1Gi` |
 | `postgres.persistence.storageClass` | Storage class | `""` |
 | `postgres.persistence.accessMode` | Access mode | `ReadWriteOnce` |
+| `postgres.external.host` | External PostgreSQL hostname (used when `postgres.enabled` is `false`) | `""` |
+| `postgres.external.port` | External PostgreSQL port | `5432` |
+
+#### Example: Using External PostgreSQL with Internal Keycloak
+
+When you already run a PostgreSQL operator (e.g., CloudNativePG) and want to reuse it instead of deploying another PostgreSQL instance:
+
+```yaml
+postgres:
+  enabled: false
+  database: keycloak
+  existingSecret: "my-pg-credentials"   # keys: username, password
+  external:
+    host: "my-cluster-pooler-rw.cnpg.svc.cluster.local"
+    port: 5432
+```
 
 ### Collabora Settings
 
