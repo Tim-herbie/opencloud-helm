@@ -214,6 +214,16 @@ postgres:
     # Access mode
     accessMode: ReadWriteOnce
 
+  # External PostgreSQL configuration
+  # Used when postgres.enabled is false but oidc.enabled is true.
+  # Allows Keycloak to connect to an external PostgreSQL database
+  # (e.g., managed by an operator like CloudNativePG).
+  external:
+    # Hostname or service name of the external PostgreSQL instance
+    host: ""
+    # Port of the external PostgreSQL instance
+    port: 5432
+
 
 # =====================================================================
 # EXTENSIONS

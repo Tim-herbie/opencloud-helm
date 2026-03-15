@@ -50,7 +50,11 @@ spec:
             - name: KC_DB
               value: postgres
             - name: KC_DB_URL
+              {{- if .Values.postgres.enabled }}
               value: "jdbc:postgresql://{{ include "opencloud.postgres.fullname" . }}:5432/{{ .Values.postgres.database }}"
+              {{- else }}
+              value: "jdbc:postgresql://{{ .Values.postgres.external.host }}:{{ .Values.postgres.external.port }}/{{ .Values.postgres.database }}"
+              {{- end }}
             - name: KC_DB_USERNAME
               valueFrom:
                 secretKeyRef:
