@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint-and-prerelease:
+  lint-and-test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
