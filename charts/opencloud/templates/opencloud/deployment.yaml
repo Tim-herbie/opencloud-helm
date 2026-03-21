@@ -124,7 +124,7 @@ spec:
               type: RuntimeDefault
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.image.pullPolicy "global" .Values.global) }}
           command: ["/bin/sh"]
-          args: ["-c", "opencloud init || true; opencloud server"]
+          args: ["-c", "mkdir -p /var/lib/opencloud/.opencloud/config && touch /var/lib/opencloud/.opencloud/config/banned-password-list.txt; opencloud server"]
           {{- with .Values.opencloud.envFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
@@ -263,6 +263,129 @@ spec:
                           {{ include "opencloud.opencloud.fullname" . }}
                         {{- end }}
                   key: adminPassword
+            {{- /* Runtime secrets — injected directly, no opencloud init needed */ -}}
+            {{- $initSecretName := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) }}
+            - name: OC_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: jwtSecret
+            - name: OC_MACHINE_AUTH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: machineAuthApiKey
+            - name: OC_TRANSFER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: transferSecret
+            - name: OC_SERVICE_ACCOUNT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: serviceAccountSecret
+            - name: OC_SERVICE_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: serviceAccountID
+            - name: IDM_SVC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmServicePassword
+            - name: IDM_REVASVC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmRevaServicePassword
+            - name: IDM_IDPSVC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmIdpServicePassword
+            - name: COLLABORATION_WOPI_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: collaborationWopiSecret
+            - name: OC_SYSTEM_USER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: systemUserApiKey
+            - name: OC_URL_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: urlSigningSecret
+            - name: THUMBNAILS_TRANSFER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: thumbnailsTransferSecret
+            - name: OC_SYSTEM_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: systemUserID
+            - name: OC_ADMIN_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: adminUserID
+            - name: GRAPH_APPLICATION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: graphApplicationID
+            - name: STORAGE_USERS_MOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: storageUsersMountID
+            - name: GATEWAY_STORAGE_USERS_MOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: storageUsersMountID
+            - name: SETTINGS_SERVICE_ACCOUNT_IDS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: serviceAccountID
+            # Per-service LDAP bind passwords
+            - name: USERS_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmRevaServicePassword
+            - name: GROUPS_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmRevaServicePassword
+            - name: AUTH_BASIC_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmRevaServicePassword
+            - name: IDP_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmIdpServicePassword
+            - name: GRAPH_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmServicePassword
+            - name: IDM_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.opencloud.existingSecret | default (include "opencloud.opencloud.fullname" .) }}
+                  key: adminPassword
             # Demo users
             - name: IDM_CREATE_DEMO_USERS
               value: {{ .Values.opencloud.createDemoUsers | quote }}
@@ -345,22 +468,19 @@ spec:
             - name: nats
               containerPort: 9233
           startupProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: 9200
             periodSeconds: 2
             timeoutSeconds: 5
             failureThreshold: 60
           livenessProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: 9200
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: 9200
             periodSeconds: 5
             timeoutSeconds: 5
