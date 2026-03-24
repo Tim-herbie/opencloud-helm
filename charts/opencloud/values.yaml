@@ -378,6 +378,57 @@ image:
 
 # OpenCloud core settings
 opencloud:
+  # Comma-separated list of available roles for the graph service
+  graphAvailableRoles: "b1e2218d-eef8-4d4c-b82d-0f1a1b48f3b5,a8d5fe5e-96e3-418d-825b-534dbdf22b99,fb6c3e19-e378-47e5-b277-9732f9de6e21,58c63c02-1d89-4572-916a-870abc5a1b7d,2d00ce52-1fc2-4dbc-8b95-a73b73395f5a,1c996275-f1c9-4e71-abdf-a42f6495e960,312c0871-5ef7-4b3a-85b6-0e4074c64049,aa97fe03-7980-45ac-9e50-b325749fd7e6"
+  # Use TLS between proxy and OpenCloud (default: false)
+  proxyTls: false
+  # gRPC address for the REVA gateway (default: 0.0.0.0:9142)
+  gatewayGrpcAddr: "0.0.0.0:9142"
+  # Enable basic auth for proxy (default: false)
+  proxyEnableBasicAuth: false
+  # Require password for public shares (default: false)
+  sharingPublicShareMustHavePassword: false
+  # File name for banned password list (default: banned-password-list.txt)
+  passwordPolicyBannedPasswordsList: "banned-password-list.txt"
+  # Search extractor type (default: tika)
+  searchExtractorType: "tika"
+  # Max gRPC received message size (default: 102400000)
+  grpcMaxReceivedMessageSize: "102400000"
+  # Autoprovision accounts via proxy (default: true)
+  proxyAutoprovisionAccounts: true
+  # Readonly user attributes in frontend (default: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.accountEnabled,user.appRoleAssignments)
+  frontendReadonlyUserAttributes: "user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.accountEnabled,user.appRoleAssignments"
+  # Role assignment driver for proxy (default: oidc)
+  proxyRoleAssignmentDriver: "oidc"
+  # Rewrite OIDC .well-known endpoint (default: true)
+  proxyOidcRewriteWellknown: true
+  # OIDC claim for user (default: preferred_username)
+  proxyUserOidcClaim: "preferred_username"
+  # CS3 claim for user (default: username)
+  proxyUserCs3Claim: "username"
+  # Admin user id (default: empty string)
+  adminUserId: ""
+  # Assign default user role in graph (default: false)
+  graphAssignDefaultUserRole: false
+  # Username match strategy for graph (default: none)
+  graphUsernameMatch: "none"
+  # OIDC claim for role assignment (default: roles)
+  proxyRoleAssignmentOidcClaim: "roles"
+  # OIDC access token verify method (default: jwt)
+  proxyOidcAccessTokenVerifyMethod: "jwt"
+  # OIDC scope for web (default: openid profile email groups roles)
+  oidc:
+    scope: "openid profile email groups roles"
+  # Internal NATS endpoint (default: 127.0.0.1:9233)
+  nats:
+    internalEndpoint: "127.0.0.1:9233"
+    host: "0.0.0.0"
+    port: "9233"
+  # CSP config file location (default: /etc/opencloud/csp.yaml)
+  cspConfigFileLocation: "/etc/opencloud/csp.yaml"
+  # Storage system driver (default: decomposed)
+  storage:
+    systemDriver: "decomposed"
   # Enable OpenCloud
   enabled: true
   # Number of replicas (Note: When using multiple replicas, persistence should be disabled

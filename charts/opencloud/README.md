@@ -224,6 +224,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `opencloud.enabled` | Enable OpenCloud | `true` |
+| `opencloud.graphAvailableRoles` | Comma-separated list of available roles for the graph service | `b1e2218d-eef8-4d4c-b82d-0f1a1b48f3b5,a8d5fe5e-96e3-418d-825b-534dbdf22b99,fb6c3e19-e378-47e5-b277-9732f9de6e21,58c63c02-1d89-4572-916a-870abc5a1b7d,2d00ce52-1fc2-4dbc-8b95-a73b73395f5a,1c996275-f1c9-4e71-abdf-a42f6495e960,312c0871-5ef7-4b3a-85b6-0e4074c64049,aa97fe03-7980-45ac-9e50-b325749fd7e6` |
 | `opencloud.replicas` | Number of replicas (Note: When using multiple replicas, persistence should be disabled or use a storage class that supports ReadWriteMany access mode) | `1` |
 | `opencloud.logLevel` | Log level | `info` |
 | `opencloud.logColor` | Enable log color | `false` |
@@ -248,6 +249,30 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.smtp.authentication` | SMTP authentication | `plain` |
 | `opencloud.smtp.encryption` | SMTP encryption | `starttls` |
 | `opencloud.storage.mode` | Choice between s3 and posixfs for user files | `s3` |
+| `opencloud.proxyTls` | Use TLS between proxy and OpenCloud | `false` |
+| `opencloud.gatewayGrpcAddr` | gRPC address for the REVA gateway | `0.0.0.0:9142` |
+| `opencloud.proxyEnableBasicAuth` | Enable basic auth for proxy | `false` |
+| `opencloud.sharingPublicShareMustHavePassword` | Require password for public shares | `false` |
+| `opencloud.passwordPolicyBannedPasswordsList` | File name for banned password list | `banned-password-list.txt` |
+| `opencloud.searchExtractorType` | Search extractor type | `tika` |
+| `opencloud.grpcMaxReceivedMessageSize` | Max gRPC received message size | `102400000` |
+| `opencloud.proxyAutoprovisionAccounts` | Autoprovision accounts via proxy | `true` |
+| `opencloud.frontendReadonlyUserAttributes` | Readonly user attributes in frontend | `user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.accountEnabled,user.appRoleAssignments` |
+| `opencloud.proxyRoleAssignmentDriver` | Role assignment driver for proxy | `oidc` |
+| `opencloud.proxyOidcRewriteWellknown` | Rewrite OIDC .well-known endpoint | `true` |
+| `opencloud.proxyUserOidcClaim` | OIDC claim for user | `preferred_username` |
+| `opencloud.proxyUserCs3Claim` | CS3 claim for user | `username` |
+| `opencloud.adminUserId` | Admin user id | `""` |
+| `opencloud.graphAssignDefaultUserRole` | Assign default user role in graph | `false` |
+| `opencloud.graphUsernameMatch` | Username match strategy for graph | `none` |
+| `opencloud.proxyRoleAssignmentOidcClaim` | OIDC claim for role assignment | `roles` |
+| `opencloud.proxyOidcAccessTokenVerifyMethod` | OIDC access token verify method | `jwt` |
+| `opencloud.oidc.scope` | OIDC scope for web | `openid profile email groups roles` |
+| `opencloud.nats.internalEndpoint` | Internal NATS endpoint | `127.0.0.1:9233` |
+| `opencloud.nats.host` | NATS host | `0.0.0.0` |
+| `opencloud.nats.port` | NATS port | `9233` |
+| `opencloud.cspConfigFileLocation` | CSP config file location | `/etc/opencloud/csp.yaml` |
+| `opencloud.storage.systemDriver` | Storage system driver | `decomposed` |
 
 ### OpenCloud S3 Storage Settings
 
