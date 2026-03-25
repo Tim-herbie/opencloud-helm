@@ -156,7 +156,7 @@ spec:
             - name: OC_EXCLUDE_RUN_SERVICES
               value: {{ join "," $exclude | quote }}
             {{- end }}
-            # Do not use SSL between proxy and OpenCloud
+            # Configure TLS usage between proxy and OpenCloud (enabled/disabled via PROXY_TLS)
             - name: PROXY_TLS
               value: {{ .Values.opencloud.proxyTls | quote }}
             # Make the REVA gateway accessible to the app drivers
@@ -294,6 +294,8 @@ spec:
             # Make the registry available to the app provider containers
             - name: NATS_NATS_HOST
               value: {{ .Values.opencloud.nats.host | quote }}
+            # NOTE: For the internal NATS deployment, the NATS service/container port is fixed (e.g. 9233).
+            # Changing .Values.opencloud.nats.port in this mode is unsupported and may lead to port mismatches.
             - name: NATS_NATS_PORT
               value: {{ .Values.opencloud.nats.port | quote }}
             {{- end }}
