@@ -419,11 +419,6 @@ opencloud:
   # OIDC scope for web (default: openid profile email groups roles)
   oidc:
     scope: "openid profile email groups roles"
-  # Internal NATS endpoint (default: 127.0.0.1:9233)
-  nats:
-    internalEndpoint: "127.0.0.1:9233"
-    host: "0.0.0.0"
-    port: "9233"
   # CSP config file location (default: /etc/opencloud/csp.yaml)
   cspConfigFileLocation: "/etc/opencloud/csp.yaml"
   # Storage system driver (default: decomposed)
@@ -509,7 +504,11 @@ opencloud:
     # For very long lists override the file 'files/opencloud/banned-password-list.txt'
     bannedPasswordList: |-
 
+  # Internal NATS endpoint (default: 127.0.0.1:9233)
   nats:
+    internalEndpoint: "127.0.0.1:9233"
+    host: "0.0.0.0"
+    port: "9233"
     external:
       # -- Use an external NATS messaging system instead of the internal one.
       # Recommended for all production instances.
