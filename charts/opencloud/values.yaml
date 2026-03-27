@@ -421,9 +421,6 @@ opencloud:
     scope: "openid profile email groups roles"
   # CSP config file location (default: /etc/opencloud/csp.yaml)
   cspConfigFileLocation: "/etc/opencloud/csp.yaml"
-  # Storage system driver (default: decomposed)
-  storage:
-    systemDriver: "decomposed"
   # Enable OpenCloud
   enabled: true
   # Number of replicas (Note: When using multiple replicas, persistence should be disabled
@@ -579,6 +576,7 @@ opencloud:
   
   # Storage configuration
   storage:
+    systemDriver: "decomposed"
     # Storage mode for user files, can be "s3" (default) or "posixfs"
     mode: s3
     # S3 storage configuration
