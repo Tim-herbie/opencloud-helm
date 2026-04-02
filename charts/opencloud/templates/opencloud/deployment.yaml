@@ -386,6 +386,9 @@ spec:
               mountPath: /etc/opencloud/csp.yaml
               subPath: csp.yaml
             - name: config-files
+              mountPath: /etc/opencloud/proxy.yaml
+              subPath: proxy.yaml
+            - name: config-files
               mountPath: /etc/opencloud/banned-password-list.txt
               subPath: banned-password-list.txt
             {{- if and (.Values.opencloud.nats.external.enabled) (not .Values.opencloud.nats.external.tls.certTrusted) }}
@@ -433,9 +436,6 @@ spec:
         - name: config-files
           configMap:
             name: {{ include "opencloud.opencloud.fullname" . }}-config
-        - name: proxy-config
-          configMap:
-            name: {{ include "opencloud.opencloud.fullname" . }}-proxy-config
         {{ if and (.Values.opencloud.nats.external.enabled) (not .Values.opencloud.nats.external.tls.certTrusted) }}
         - name: nats-ca
           secret:

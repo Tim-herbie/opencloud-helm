@@ -489,6 +489,25 @@ opencloud:
     appRegistry: {}
     # CSP configuration
     csp: {}
+    # Proxy configuration
+    # ==== Example ====
+    # role_quotas: # Sets default Quota's for roles (in bytes)
+    #   'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 15000000000 # User
+    #   '2aadd357-682c-406b-8874-293091995fdd': 15000000000 # SpaceAdmin
+    #   '71881883-1768-46bd-a24d-a356a2afdf7f': 15000000000 # Admin
+    # 
+    # role_assignment:
+    #   driver: oidc
+    #   oidc_role_mapper:
+    #     role_claim: groups
+    #     role_mapping:
+    #       - role_name: admin                # OpenCloud Role
+    #         claim_value: "authentik Admins" # Authentik Group
+    #       - role_name: spaceadmin
+    #         claim_value: "opencloud-spaces"
+    #       - role_name: user
+    #         claim_value: "opencloud"
+    proxy: {}
     # Banned password list configuration
     # Format: Multi-line string (not YAML array)
     # Use the |- syntax to preserve line breaks
