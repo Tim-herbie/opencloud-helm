@@ -654,6 +654,7 @@ opencloud:
         storageClass: ""
         # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
         accessMode: ReadWriteMany
+  # affinity: {}
 
 # =====================================================================
 # GATEWAY-API HTTPRoute
