@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   prepare-release-pr:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, 'chore(release): v'))
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, 'chore(release): v')) }}
     runs-on: ubuntu-latest
 
     steps:
