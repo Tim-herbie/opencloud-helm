@@ -1,24 +1,362 @@
+name: Release Bot
+
 on:
   push:
     branches:
       - main
       - feature/*
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
-  issues: write
   pull-requests: write
 
-name: release-bot
-
 jobs:
-  release-please:
+  prepare-release-pr:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, 'chore(release): v'))
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: googleapis/release-please-action@v3
+      - name: Checkout main
+        uses: actions/checkout@v6
         with:
-          token: ${{ secrets.PAT }}
-          release-type: helm
-          path: charts/opencloud
+          fetch-depth: 0
+          token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Build release artifacts
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LAST_TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)"
+          if [[ -n "$LAST_TAG" ]]; then
+            RANGE="${LAST_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+
+          mapfile -t RAW_COMMITS < <(git log "$RANGE" --pretty=format:'%H%x1f%s%x1f%b%x1e')
+          if [[ ${#RAW_COMMITS[@]} -eq 0 ]]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BREAKING=()
+          FEATURES=()
+          FIXES=()
+          MAINTENANCE=()
+          DOCS_CI=()
+          COMMIT_LIST=()
+
+          BUMP_LEVEL=patch
+
+          for ENTRY in "${RAW_COMMITS[@]}"; do
+            ENTRY="${ENTRY%$'\x1e'}"
+            SHA="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f1)"
+            SUBJECT="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f2)"
+            BODY="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f3-)"
+            SHORT_SHA="${SHA:0:7}"
+
+            LINE="- ${SUBJECT} (${SHORT_SHA})"
+            COMMIT_LIST+=("$LINE")
+
+            TYPE="other"
+            if [[ "$SUBJECT" =~ ^([a-zA-Z]+)(\([^)]+\))?(!)?: ]]; then
+              TYPE="$(echo "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
+            fi
+
+            IS_BREAKING=false
+            if [[ "$SUBJECT" =~ !: ]] || grep -qi 'BREAKING CHANGE' <<< "$BODY"; then
+              IS_BREAKING=true
+            fi
+
+            if [[ "$IS_BREAKING" == true ]]; then
+              BREAKING+=("$LINE")
+              BUMP_LEVEL=major
+              continue
+            fi
+
+            case "$TYPE" in
+              feat)
+                FEATURES+=("$LINE")
+                if [[ "$BUMP_LEVEL" != major ]]; then
+                  BUMP_LEVEL=minor
+                fi
+                ;;
+              fix)
+                FIXES+=("$LINE")
+                ;;
+              docs|doc|ci|chore|build|refactor|test|style|perf)
+                DOCS_CI+=("$LINE")
+                ;;
+              *)
+                MAINTENANCE+=("$LINE")
+                ;;
+            esac
+          done
+
+          CURRENT_VERSION="${LAST_TAG#v}"
+          if [[ -z "$CURRENT_VERSION" || "$CURRENT_VERSION" == "$LAST_TAG" ]]; then
+            CURRENT_VERSION="0.0.0"
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          MAJOR="${MAJOR:-0}"
+          MINOR="${MINOR:-0}"
+          PATCH="${PATCH:-0}"
+
+          case "$BUMP_LEVEL" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          TODAY="$(date +%Y-%m-%d)"
+
+          OPENCLOUD_VERSION="$(awk '
+            /^image:$/ { in_image=1; next }
+            in_image && /^[^[:space:]]/ { in_image=0 }
+            in_image && $1 == "tag:" {
+              gsub(/"/, "", $2)
+              print $2
+              exit
+            }
+          ' charts/opencloud/values.yaml)"
+          if [[ -z "$OPENCLOUD_VERSION" ]]; then
+            OPENCLOUD_VERSION="unknown"
+          fi
+
+          cat > CHANGELOG_SECTION.md <<EOF
+## [${NEXT_VERSION}] - ${TODAY}
+
+### Breaking Changes
+EOF
+
+          if [[ ${#BREAKING[@]} -gt 0 ]]; then
+            printf '%s\n' "${BREAKING[@]}" >> CHANGELOG_SECTION.md
+          else
+            echo "- None" >> CHANGELOG_SECTION.md
+          fi
+
+          cat >> CHANGELOG_SECTION.md <<'EOF'
+
+### Features
+EOF
+          if [[ ${#FEATURES[@]} -gt 0 ]]; then
+            printf '%s\n' "${FEATURES[@]}" >> CHANGELOG_SECTION.md
+          else
+            echo "- None" >> CHANGELOG_SECTION.md
+          fi
+
+          cat >> CHANGELOG_SECTION.md <<'EOF'
+
+### Fixes
+EOF
+          if [[ ${#FIXES[@]} -gt 0 ]]; then
+            printf '%s\n' "${FIXES[@]}" >> CHANGELOG_SECTION.md
+          else
+            echo "- None" >> CHANGELOG_SECTION.md
+          fi
+
+          cat >> CHANGELOG_SECTION.md <<'EOF'
+
+### Chore / Docs / CI / Other
+EOF
+          if [[ ${#DOCS_CI[@]} -gt 0 ]]; then
+            printf '%s\n' "${DOCS_CI[@]}" >> CHANGELOG_SECTION.md
+          fi
+          if [[ ${#MAINTENANCE[@]} -gt 0 ]]; then
+            printf '%s\n' "${MAINTENANCE[@]}" >> CHANGELOG_SECTION.md
+          fi
+          if [[ ${#DOCS_CI[@]} -eq 0 && ${#MAINTENANCE[@]} -eq 0 ]]; then
+            echo "- None" >> CHANGELOG_SECTION.md
+          fi
+
+          if [[ ! -f CHANGELOG.md ]]; then
+            cat > CHANGELOG.md <<'EOF'
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+<!-- release-bot:start -->
+<!-- release-bot:end -->
+EOF
+          fi
+
+          if grep -q '<!-- release-bot:start -->' CHANGELOG.md && grep -q '<!-- release-bot:end -->' CHANGELOG.md; then
+            awk '
+              BEGIN { skip = 0 }
+              /<!-- release-bot:start -->/ {
+                print
+                print ""
+                while ((getline line < "CHANGELOG_SECTION.md") > 0) print line
+                print ""
+                skip = 1
+                next
+              }
+              /<!-- release-bot:end -->/ {
+                skip = 0
+                print
+                next
+              }
+              skip == 0 { print }
+            ' CHANGELOG.md > CHANGELOG.new.md
+            mv CHANGELOG.new.md CHANGELOG.md
+          else
+            {
+              cat <<'EOF'
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+<!-- release-bot:start -->
+EOF
+              cat CHANGELOG_SECTION.md
+              cat <<'EOF'
+
+<!-- release-bot:end -->
+EOF
+            } > CHANGELOG.new.md
+
+            if [[ -s CHANGELOG.md ]]; then
+              echo "" >> CHANGELOG.new.md
+              cat CHANGELOG.md >> CHANGELOG.new.md
+            fi
+            mv CHANGELOG.new.md CHANGELOG.md
+          fi
+
+          sed -i -E "s/^version: .*/version: ${NEXT_VERSION}/" charts/opencloud/Chart.yaml
+          sed -i -E "s/^appVersion: .*/appVersion: ${OPENCLOUD_VERSION}/" charts/opencloud/Chart.yaml
+          sed -i -E "s/--version [0-9]+\.[0-9]+\.[0-9]+/--version ${NEXT_VERSION}/" README.md
+
+          TABLE_ROW="| ${OPENCLOUD_VERSION}            | ${NEXT_VERSION} |"
+          if ! grep -Fq "$TABLE_ROW" README.md; then
+            awk -v row="$TABLE_ROW" '
+              {
+                print
+                if ($0 ~ /^\|[-]+\|[-]+\|$/) {
+                  print row
+                }
+              }
+            ' README.md > README.new.md
+            mv README.new.md README.md
+          fi
+
+          {
+            echo "## Release ${NEXT_VERSION}"
+            echo ""
+            if [[ -n "$LAST_TAG" ]]; then
+              echo "Basis: Änderungen seit ${LAST_TAG}."
+            else
+              echo "Basis: Änderungen seit Projektbeginn (kein bestehender Tag gefunden)."
+            fi
+            echo ""
+            echo "OpenCloud Version aus values.yaml: ${OPENCLOUD_VERSION}"
+            echo ""
+            echo "### Commit-Übersicht"
+            printf '%s\n' "${COMMIT_LIST[@]}"
+            echo ""
+            echo "### Changelog"
+            cat CHANGELOG_SECTION.md
+          } > .github/release-pr-body.md
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "next_version=${NEXT_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update release pull request
+        if: steps.build.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+          commit-message: "chore(release): prepare v${{ steps.build.outputs.next_version }}"
+          branch: release-bot/main
+          title: "chore(release): v${{ steps.build.outputs.next_version }}"
+          body-path: .github/release-pr-body.md
+          labels: |
+            automated
+            release
+          delete-branch: false
+
+  tag-and-release:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'release-bot/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+
+      - name: Create and push tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(awk '/^version:/ { print $2; exit }' charts/opencloud/Chart.yaml)"
+          TAG="v${VERSION}"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag ${TAG} existiert bereits."
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "Release ${TAG}"
+          git push origin "$TAG"
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes from changelog
+        if: steps.tag.outputs.created == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.tag.outputs.version }}"
+          awk -v version="$VERSION" '
+            $0 ~ "^## \\[" version "\\]" { in_section = 1; next }
+            in_section == 1 && /^## \[/ { exit }
+            in_section == 1 { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+
+          if [[ ! -s RELEASE_NOTES.md ]]; then
+            echo "Automated release ${VERSION}" > RELEASE_NOTES.md
+          fi
+
+      - name: Create GitHub release
+        if: steps.tag.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --title "${{ steps.tag.outputs.tag }}" \
+            --notes-file RELEASE_NOTES.md
