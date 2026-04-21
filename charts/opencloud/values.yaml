@@ -370,7 +370,7 @@ image:
   # OpenCloud image repository
   repository: opencloudeu/opencloud-rolling
   # OpenCloud image tag
-  tag: "6.0.0"
+  tag: "6.1.0"
   # Image pull policy
   pullPolicy: IfNotPresent
   # Image pull secrets
