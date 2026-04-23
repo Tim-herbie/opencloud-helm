@@ -1,0 +1,466 @@
+name: Release Bot
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-release-pr:
+    if: "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, 'chore(release): v')) }}"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Build release artifacts
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GH_TOKEN="${{ secrets.PAT != '' && secrets.PAT || github.token }}"
+
+          LAST_TAG="$({
+            git tag --sort=-v:refname | grep -E '^(v)?[0-9]+\.[0-9]+\.[0-9]+$' || true
+          } | head -n 1)"
+          if [[ -n "$LAST_TAG" ]]; then
+            RANGE="${LAST_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+
+          mapfile -t RAW_COMMITS < <(git log "$RANGE" --pretty=format:'%H%x1f%s%x1f%b%x1e')
+          if [[ ${#RAW_COMMITS[@]} -eq 0 ]]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BREAKING=()
+          FEATURES=()
+          FIXES=()
+          DOCS_CI=()
+          MAINTENANCE=()
+          PR_LIST=()
+
+          BUMP_LEVEL=patch
+          declare -A SEEN_PRS=()
+          TYPE_PATTERN='^([a-zA-Z]+)(\([^)]+\))?(!)?:'
+
+          for ENTRY in "${RAW_COMMITS[@]}"; do
+            ENTRY="${ENTRY%$'\x1e'}"
+            SHA="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f1)"
+            SUBJECT="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f2)"
+            BODY="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f3-)"
+
+            TYPE_SOURCE="$SUBJECT"
+            BODY_SOURCE="$BODY"
+            LINE=""
+            TYPE="other"
+            IS_BREAKING=false
+
+            PR_JSON="$(gh api -H 'Accept: application/vnd.github+json' "repos/${GITHUB_REPOSITORY}/commits/${SHA}/pulls" 2>/dev/null || true)"
+            PR_NUMBER="$(jq -r '.[0].number // empty' <<< "$PR_JSON")"
+            if [[ -n "$PR_NUMBER" && -z "${SEEN_PRS[$PR_NUMBER]:-}" ]]; then
+              SEEN_PRS["$PR_NUMBER"]=1
+              PR_TITLE="$(jq -r '.[0].title // empty' <<< "$PR_JSON")"
+              PR_URL="$(jq -r '.[0].html_url // empty' <<< "$PR_JSON")"
+              PR_BODY="$(jq -r '.[0].body // empty' <<< "$PR_JSON")"
+
+              if [[ -n "$PR_TITLE" && -n "$PR_URL" ]]; then
+                TYPE_SOURCE="$PR_TITLE"
+                BODY_SOURCE="$PR_BODY"
+                LINE="- [#${PR_NUMBER}](${PR_URL}) ${PR_TITLE}"
+                PR_LIST+=("$LINE")
+              fi
+            fi
+
+            if [[ "$TYPE_SOURCE" =~ $TYPE_PATTERN ]]; then
+              TYPE="$(echo "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
+            fi
+
+            if [[ "$TYPE_SOURCE" == *"!: "* ]] || grep -qi 'BREAKING CHANGE' <<< "$BODY_SOURCE"; then
+              IS_BREAKING=true
+            fi
+
+            if [[ "$IS_BREAKING" == true ]]; then
+              if [[ -n "$LINE" ]]; then
+                BREAKING+=("$LINE")
+              fi
+              BUMP_LEVEL=major
+              continue
+            fi
+
+            case "$TYPE" in
+              feat)
+                if [[ -n "$LINE" ]]; then
+                  FEATURES+=("$LINE")
+                fi
+                if [[ "$BUMP_LEVEL" != major ]]; then
+                  BUMP_LEVEL=minor
+                fi
+                ;;
+              fix)
+                if [[ -n "$LINE" ]]; then
+                  FIXES+=("$LINE")
+                fi
+                ;;
+              docs|doc|ci|chore|build|refactor|test|style|perf)
+                if [[ -n "$LINE" ]]; then
+                  DOCS_CI+=("$LINE")
+                fi
+                ;;
+              *)
+                if [[ -n "$LINE" ]]; then
+                  MAINTENANCE+=("$LINE")
+                fi
+                ;;
+            esac
+          done
+
+          CURRENT_VERSION="${LAST_TAG#v}"
+          if [[ -z "$CURRENT_VERSION" ]]; then
+            CURRENT_VERSION="0.0.0"
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          MAJOR="${MAJOR:-0}"
+          MINOR="${MINOR:-0}"
+          PATCH="${PATCH:-0}"
+
+          case "$BUMP_LEVEL" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          TODAY="$(date +%Y-%m-%d)"
+
+          OPENCLOUD_VERSION="$(awk '
+            /^image:$/ { in_image=1; next }
+            in_image && /^[^[:space:]]/ { in_image=0 }
+            in_image && $1 == "tag:" {
+              gsub(/"/, "", $2)
+              print $2
+              exit
+            }
+          ' charts/opencloud/values.yaml)"
+          if [[ -z "$OPENCLOUD_VERSION" ]]; then
+            OPENCLOUD_VERSION="unknown"
+          fi
+
+          {
+            echo "## [${NEXT_VERSION}] - ${TODAY}"
+            echo
+            echo "### Breaking Changes"
+            if [[ ${#BREAKING[@]} -gt 0 ]]; then
+              printf '%s\n' "${BREAKING[@]}"
+            else
+              echo "- None"
+            fi
+            echo
+            echo "### Features"
+            if [[ ${#FEATURES[@]} -gt 0 ]]; then
+              printf '%s\n' "${FEATURES[@]}"
+            else
+              echo "- None"
+            fi
+            echo
+            echo "### Fixes"
+            if [[ ${#FIXES[@]} -gt 0 ]]; then
+              printf '%s\n' "${FIXES[@]}"
+            else
+              echo "- None"
+            fi
+            echo
+            echo "### Chore / Docs / CI / Other"
+            if [[ ${#DOCS_CI[@]} -gt 0 ]]; then
+              printf '%s\n' "${DOCS_CI[@]}"
+            fi
+            if [[ ${#MAINTENANCE[@]} -gt 0 ]]; then
+              printf '%s\n' "${MAINTENANCE[@]}"
+            fi
+            if [[ ${#DOCS_CI[@]} -eq 0 && ${#MAINTENANCE[@]} -eq 0 ]]; then
+              echo "- None"
+            fi
+          } > CHANGELOG_SECTION.md
+
+          if [[ ! -f CHANGELOG.md ]]; then
+            {
+              echo "# Changelog"
+              echo
+              echo "All notable changes to this project will be documented in this file."
+              echo
+              echo "<!-- release-bot:start -->"
+              echo "<!-- release-bot:end -->"
+            } > CHANGELOG.md
+          fi
+
+          if grep -q '<!-- release-bot:start -->' CHANGELOG.md && grep -q '<!-- release-bot:end -->' CHANGELOG.md; then
+            awk '
+              BEGIN { skip = 0 }
+              /<!-- release-bot:start -->/ {
+                print
+                print ""
+                while ((getline line < "CHANGELOG_SECTION.md") > 0) print line
+                print ""
+                skip = 1
+                next
+              }
+              /<!-- release-bot:end -->/ {
+                skip = 0
+                print
+                next
+              }
+              skip == 0 { print }
+            ' CHANGELOG.md > CHANGELOG.new.md
+            mv CHANGELOG.new.md CHANGELOG.md
+          else
+            {
+              echo "# Changelog"
+              echo
+              echo "All notable changes to this project will be documented in this file."
+              echo
+              echo "<!-- release-bot:start -->"
+              cat CHANGELOG_SECTION.md
+              echo
+              echo "<!-- release-bot:end -->"
+            } > CHANGELOG.new.md
+
+            if [[ -s CHANGELOG.md ]]; then
+              echo "" >> CHANGELOG.new.md
+              cat CHANGELOG.md >> CHANGELOG.new.md
+            fi
+            mv CHANGELOG.new.md CHANGELOG.md
+          fi
+
+          sed -i -E "s/^version: .*/version: ${NEXT_VERSION}/" charts/opencloud/Chart.yaml
+          sed -i -E "s/^appVersion: .*/appVersion: ${OPENCLOUD_VERSION}/" charts/opencloud/Chart.yaml
+          sed -i -E "s/--version [0-9]+\.[0-9]+\.[0-9]+/--version ${NEXT_VERSION}/" README.md
+
+          TABLE_ROW="| ${OPENCLOUD_VERSION}            | ${NEXT_VERSION} |"
+          if ! grep -Fq "$TABLE_ROW" README.md; then
+            awk -v row="$TABLE_ROW" '
+              {
+                print
+                if ($0 ~ /^\|[-]+\|[-]+\|$/) {
+                  print row
+                }
+              }
+            ' README.md > README.new.md
+            mv README.new.md README.md
+          fi
+
+          {
+            echo "## Release ${NEXT_VERSION}"
+            echo ""
+            if [[ -n "$LAST_TAG" ]]; then
+              echo "Base: changes since ${LAST_TAG}."
+            else
+              echo "Base: changes since project start (no existing tag found)."
+            fi
+            echo ""
+            echo "OpenCloud version from values.yaml: ${OPENCLOUD_VERSION}"
+            echo ""
+            echo "### Pull Requests"
+            if [[ ${#PR_LIST[@]} -gt 0 ]]; then
+              printf '%s\n' "${PR_LIST[@]}"
+            else
+              echo "- No linked pull requests found."
+            fi
+            echo ""
+            echo "### Changelog"
+            cat CHANGELOG_SECTION.md
+          } > .github/release-pr-body.md
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "next_version=${NEXT_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update release pull request
+        if: steps.build.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+          commit-message: "chore(release): prepare v${{ steps.build.outputs.next_version }}"
+          branch: release-bot/main
+          title: "chore(release): v${{ steps.build.outputs.next_version }}"
+          body-path: .github/release-pr-body.md
+          labels: |
+            automated
+            release
+          delete-branch: false
+
+  create-tag:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'release-bot/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      created: ${{ steps.tag.outputs.created }}
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+
+      - name: Create and push tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(awk '/^version:/ { print $2; exit }' charts/opencloud/Chart.yaml)"
+          TAG="${VERSION}"
+          LEGACY_TAG="v${VERSION}"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists."
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git rev-parse "$LEGACY_TAG" >/dev/null 2>&1; then
+            echo "Tag ${LEGACY_TAG} already exists."
+            echo "tag=${LEGACY_TAG}" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "Release ${TAG}"
+          git push origin "$TAG"
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+  publish-helm-chart:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'release-bot/main'
+    runs-on: ubuntu-latest
+    needs: create-tag
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: 'latest'
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package and publish Helm chart
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          chart_version="$(helm show chart charts/opencloud | awk '/^version:/ {print $2}')"
+          if [[ "$chart_version" != "${{ needs.create-tag.outputs.version }}" ]]; then
+            echo "Chart version ${chart_version} does not match release version ${{ needs.create-tag.outputs.version }}." >&2
+            exit 1
+          fi
+
+          if helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version "$chart_version" >/dev/null 2>&1; then
+            echo "Chart ${chart_version} already exists in GHCR. Skipping publish."
+            exit 0
+          fi
+
+          rm -f opencloud-*.tgz
+          helm package charts/opencloud
+          helm push "opencloud-${chart_version}.tgz" oci://ghcr.io/tim-herbie/opencloud-helm
+
+          echo "Verifying published chart ${chart_version}."
+          rm -f "opencloud-${chart_version}.tgz"
+          helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version "$chart_version"
+
+  create-github-release:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'release-bot/main'
+    runs-on: ubuntu-latest
+    needs:
+      - create-tag
+      - publish-helm-chart
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+
+      - name: Generate release notes from changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.create-tag.outputs.version }}"
+          awk -v version="$VERSION" '
+            $0 ~ "^## \\[" version "\\]" { in_section = 1; next }
+            in_section == 1 && /^## \[/ { exit }
+            in_section == 1 { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+
+          if [[ ! -s RELEASE_NOTES.md ]]; then
+            echo "Automated release ${VERSION}" > RELEASE_NOTES.md
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
+        run: |
+          if gh release view "${{ needs.create-tag.outputs.tag }}" >/dev/null 2>&1; then
+            echo "GitHub release ${{ needs.create-tag.outputs.tag }} already exists. Skipping creation."
+            exit 0
+          fi
+
+          gh release create "${{ needs.create-tag.outputs.tag }}" \
+            --title "${{ needs.create-tag.outputs.tag }}" \
+            --notes-file RELEASE_NOTES.md
