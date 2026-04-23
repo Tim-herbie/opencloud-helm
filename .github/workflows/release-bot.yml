@@ -152,7 +152,7 @@ jobs:
             ## [${NEXT_VERSION}] - ${TODAY}
 
             ### Breaking Changes
-            EOF
+          EOF
 
           if [[ ${#BREAKING[@]} -gt 0 ]]; then
             printf '%s\n' "${BREAKING[@]}" >> CHANGELOG_SECTION.md
@@ -163,7 +163,7 @@ jobs:
           cat >> CHANGELOG_SECTION.md <<'EOF'
 
             ### Features
-            EOF
+          EOF
           if [[ ${#FEATURES[@]} -gt 0 ]]; then
             printf '%s\n' "${FEATURES[@]}" >> CHANGELOG_SECTION.md
           else
@@ -173,7 +173,7 @@ jobs:
           cat >> CHANGELOG_SECTION.md <<'EOF'
 
             ### Fixes
-            EOF
+          EOF
           if [[ ${#FIXES[@]} -gt 0 ]]; then
             printf '%s\n' "${FIXES[@]}" >> CHANGELOG_SECTION.md
           else
@@ -183,7 +183,7 @@ jobs:
           cat >> CHANGELOG_SECTION.md <<'EOF'
 
             ### Chore / Docs / CI / Other
-            EOF
+          EOF
           if [[ ${#DOCS_CI[@]} -gt 0 ]]; then
             printf '%s\n' "${DOCS_CI[@]}" >> CHANGELOG_SECTION.md
           fi
@@ -202,7 +202,7 @@ jobs:
 
             <!-- release-bot:start -->
             <!-- release-bot:end -->
-            EOF
+          EOF
           fi
 
           if grep -q '<!-- release-bot:start -->' CHANGELOG.md && grep -q '<!-- release-bot:end -->' CHANGELOG.md; then
@@ -232,12 +232,13 @@ jobs:
               All notable changes to this project will be documented in this file.
 
               <!-- release-bot:start -->
-              EOF
+              
+          EOF
               cat CHANGELOG_SECTION.md
               cat <<'EOF'
 
               <!-- release-bot:end -->
-              EOF
+          EOF
             } > CHANGELOG.new.md
 
             if [[ -s CHANGELOG.md ]]; then
