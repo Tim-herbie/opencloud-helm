@@ -284,18 +284,18 @@ jobs:
             echo "## Release ${NEXT_VERSION}"
             echo ""
             if [[ -n "$LAST_TAG" ]]; then
-              echo "Basis: Änderungen seit ${LAST_TAG}."
+              echo "Base: changes since ${LAST_TAG}."
             else
-              echo "Basis: Änderungen seit Projektbeginn (kein bestehender Tag gefunden)."
+              echo "Base: changes since project start (no existing tag found)."
             fi
             echo ""
-            echo "OpenCloud Version aus values.yaml: ${OPENCLOUD_VERSION}"
+            echo "OpenCloud version from values.yaml: ${OPENCLOUD_VERSION}"
             echo ""
             echo "### Pull Requests"
             if [[ ${#PR_LIST[@]} -gt 0 ]]; then
               printf '%s\n' "${PR_LIST[@]}"
             else
-              echo "- Keine verknüpften Pull Requests gefunden."
+              echo "- No linked pull requests found."
             fi
             echo ""
             echo "### Changelog"
@@ -341,14 +341,14 @@ jobs:
           LEGACY_TAG="v${VERSION}"
 
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag ${TAG} existiert bereits."
+            echo "Tag ${TAG} already exists."
             echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
             echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
             echo "created=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if git rev-parse "$LEGACY_TAG" >/dev/null 2>&1; then
-            echo "Tag ${LEGACY_TAG} existiert bereits."
+            echo "Tag ${LEGACY_TAG} already exists."
             echo "tag=${LEGACY_TAG}" >> "$GITHUB_OUTPUT"
             echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
             echo "created=false" >> "$GITHUB_OUTPUT"
