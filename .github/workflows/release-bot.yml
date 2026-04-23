@@ -60,6 +60,7 @@ jobs:
           COMMIT_LIST=()
 
           BUMP_LEVEL=patch
+          TYPE_PATTERN='^([a-zA-Z]+)(\([^)]+\))?(!)?:'
 
           for ENTRY in "${RAW_COMMITS[@]}"; do
             ENTRY="${ENTRY%$'\x1e'}"
@@ -72,7 +73,7 @@ jobs:
             COMMIT_LIST+=("$LINE")
 
             TYPE="other"
-            if [[ "$SUBJECT" =~ ^([a-zA-Z]+)(\([^)]+\))?(!)?: ]]; then
+            if [[ "$SUBJECT" =~ $TYPE_PATTERN ]]; then
               TYPE="$(echo "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
             fi
 
