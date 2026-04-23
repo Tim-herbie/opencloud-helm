@@ -9,9 +9,9 @@ maintainers:
   - name: Tim Herbert
     url: https://timherbert.de
 type: application
-version: 2.2.0
+version: 3.0.0
 # renovate: datasource=docker depName=opencloudeu/opencloud-rolling
-appVersion: latest
+appVersion: 6.1.0
 kubeVersion: ""
 sources:
   - https://github.com/Tim-herbie/opencloud-helm
