@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   prepare-release-pr:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, 'chore(release): v')) }}
+    if: "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, 'chore(release): v')) }}"
     runs-on: ubuntu-latest
 
     steps:
@@ -148,10 +148,10 @@ jobs:
           fi
 
           cat > CHANGELOG_SECTION.md <<EOF
-## [${NEXT_VERSION}] - ${TODAY}
+            ## [${NEXT_VERSION}] - ${TODAY}
 
-### Breaking Changes
-EOF
+            ### Breaking Changes
+            EOF
 
           if [[ ${#BREAKING[@]} -gt 0 ]]; then
             printf '%s\n' "${BREAKING[@]}" >> CHANGELOG_SECTION.md
@@ -161,8 +161,8 @@ EOF
 
           cat >> CHANGELOG_SECTION.md <<'EOF'
 
-### Features
-EOF
+            ### Features
+            EOF
           if [[ ${#FEATURES[@]} -gt 0 ]]; then
             printf '%s\n' "${FEATURES[@]}" >> CHANGELOG_SECTION.md
           else
@@ -171,8 +171,8 @@ EOF
 
           cat >> CHANGELOG_SECTION.md <<'EOF'
 
-### Fixes
-EOF
+            ### Fixes
+            EOF
           if [[ ${#FIXES[@]} -gt 0 ]]; then
             printf '%s\n' "${FIXES[@]}" >> CHANGELOG_SECTION.md
           else
@@ -181,8 +181,8 @@ EOF
 
           cat >> CHANGELOG_SECTION.md <<'EOF'
 
-### Chore / Docs / CI / Other
-EOF
+            ### Chore / Docs / CI / Other
+            EOF
           if [[ ${#DOCS_CI[@]} -gt 0 ]]; then
             printf '%s\n' "${DOCS_CI[@]}" >> CHANGELOG_SECTION.md
           fi
@@ -195,13 +195,13 @@ EOF
 
           if [[ ! -f CHANGELOG.md ]]; then
             cat > CHANGELOG.md <<'EOF'
-# Changelog
+            # Changelog
 
-All notable changes to this project will be documented in this file.
+            All notable changes to this project will be documented in this file.
 
-<!-- release-bot:start -->
-<!-- release-bot:end -->
-EOF
+            <!-- release-bot:start -->
+            <!-- release-bot:end -->
+            EOF
           fi
 
           if grep -q '<!-- release-bot:start -->' CHANGELOG.md && grep -q '<!-- release-bot:end -->' CHANGELOG.md; then
@@ -226,17 +226,17 @@ EOF
           else
             {
               cat <<'EOF'
-# Changelog
+              # Changelog
 
-All notable changes to this project will be documented in this file.
+              All notable changes to this project will be documented in this file.
 
-<!-- release-bot:start -->
-EOF
+              <!-- release-bot:start -->
+              EOF
               cat CHANGELOG_SECTION.md
               cat <<'EOF'
 
-<!-- release-bot:end -->
-EOF
+              <!-- release-bot:end -->
+              EOF
             } > CHANGELOG.new.md
 
             if [[ -s CHANGELOG.md ]]; then
