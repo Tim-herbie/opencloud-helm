@@ -263,21 +263,57 @@ jobs:
           fi
 
           sed -i -E "s/^version: .*/version: ${NEXT_VERSION}/" charts/opencloud/Chart.yaml
-          sed -i -E "s/^appVersion: .*/appVersion: ${OPENCLOUD_VERSION}/" charts/opencloud/Chart.yaml
           sed -i -E "s/--version [0-9]+\.[0-9]+\.[0-9]+/--version ${NEXT_VERSION}/" README.md
 
-          TABLE_ROW="| ${OPENCLOUD_VERSION}            | ${NEXT_VERSION} |"
-          if ! grep -Fq "$TABLE_ROW" README.md; then
-            awk -v row="$TABLE_ROW" '
-              {
-                print
-                if ($0 ~ /^\|[-]+\|[-]+\|$/) {
-                  print row
+          awk -v opencloud_version="${OPENCLOUD_VERSION}" -v chart_version="${NEXT_VERSION}" '
+            function trim(value) {
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+              return value
+            }
+
+            BEGIN {
+              updated = 0
+              line_count = 0
+            }
+
+            {
+              lines[++line_count] = $0
+
+              if ($0 ~ /^\|/ && $0 !~ /^\|[-]+\|[-]+\|$/) {
+                column_count = split($0, columns, "|")
+                if (column_count >= 4 && trim(columns[2]) == opencloud_version) {
+                  versions = trim(columns[3])
+                  version_count = split(versions, version_list, /,[[:space:]]*/)
+                  found = 0
+                  for (version_index = 1; version_index <= version_count; version_index++) {
+                    if (trim(version_list[version_index]) == chart_version) {
+                      found = 1
+                      break
+                    }
+                  }
+                  if (!found) {
+                    if (versions == "") {
+                      versions = chart_version
+                    } else {
+                      versions = versions ", " chart_version
+                    }
+                  }
+                  lines[line_count] = sprintf("| %-16s | %s |", opencloud_version, versions)
+                  updated = 1
                 }
               }
-            ' README.md > README.new.md
-            mv README.new.md README.md
-          fi
+            }
+
+            END {
+              for (line_index = 1; line_index <= line_count; line_index++) {
+                print lines[line_index]
+              }
+              if (!updated) {
+                printf("| %-16s | %s |\n", opencloud_version, chart_version)
+              }
+            }
+          ' README.md > README.new.md
+          mv README.new.md README.md
 
           {
             echo "## Release ${NEXT_VERSION}"
