@@ -82,5 +82,3 @@ Follow these steps to quickly deploy OpenCloud using the Helm chart:
     --namespace opencloud \
     --create-namespace
   ```
-
-  For more configuration options, see the [Production Chart Documentation](./charts/opencloud/README.md).
