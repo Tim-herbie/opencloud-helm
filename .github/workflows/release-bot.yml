@@ -306,7 +306,7 @@ jobs:
 
       - name: Create or update release pull request
         if: steps.build.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.PAT != '' && secrets.PAT || github.token }}
           commit-message: "chore(release): prepare v${{ steps.build.outputs.next_version }}"
