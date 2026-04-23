@@ -138,7 +138,7 @@ jobs:
           done
 
           CURRENT_VERSION="${LAST_TAG#v}"
-          if [[ -z "$CURRENT_VERSION" || "$CURRENT_VERSION" == "$LAST_TAG" ]]; then
+          if [[ -z "$CURRENT_VERSION" ]]; then
             CURRENT_VERSION="0.0.0"
           fi
 
