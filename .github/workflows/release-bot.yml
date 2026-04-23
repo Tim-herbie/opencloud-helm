@@ -38,8 +38,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export GH_TOKEN="${{ secrets.PAT != '' && secrets.PAT || github.token }}"
 
-          LAST_TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)"
+          LAST_TAG="$({
+            git tag --sort=-v:refname | grep -E '^(v)?[0-9]+\.[0-9]+\.[0-9]+$' || true
+          } | head -n 1)"
           if [[ -n "$LAST_TAG" ]]; then
             RANGE="${LAST_TAG}..HEAD"
           else
@@ -55,11 +58,12 @@ jobs:
           BREAKING=()
           FEATURES=()
           FIXES=()
-          MAINTENANCE=()
           DOCS_CI=()
-          COMMIT_LIST=()
+          MAINTENANCE=()
+          PR_LIST=()
 
           BUMP_LEVEL=patch
+          declare -A SEEN_PRS=()
           TYPE_PATTERN='^([a-zA-Z]+)(\([^)]+\))?(!)?:'
 
           for ENTRY in "${RAW_COMMITS[@]}"; do
@@ -67,42 +71,68 @@ jobs:
             SHA="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f1)"
             SUBJECT="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f2)"
             BODY="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f3-)"
-            SHORT_SHA="${SHA:0:7}"
 
-            LINE="- ${SUBJECT} (${SHORT_SHA})"
-            COMMIT_LIST+=("$LINE")
-
+            TYPE_SOURCE="$SUBJECT"
+            BODY_SOURCE="$BODY"
+            LINE=""
             TYPE="other"
-            if [[ "$SUBJECT" =~ $TYPE_PATTERN ]]; then
+            IS_BREAKING=false
+
+            PR_JSON="$(gh api -H 'Accept: application/vnd.github+json' "repos/${GITHUB_REPOSITORY}/commits/${SHA}/pulls" 2>/dev/null || true)"
+            PR_NUMBER="$(jq -r '.[0].number // empty' <<< "$PR_JSON")"
+            if [[ -n "$PR_NUMBER" && -z "${SEEN_PRS[$PR_NUMBER]:-}" ]]; then
+              SEEN_PRS["$PR_NUMBER"]=1
+              PR_TITLE="$(jq -r '.[0].title // empty' <<< "$PR_JSON")"
+              PR_URL="$(jq -r '.[0].html_url // empty' <<< "$PR_JSON")"
+              PR_BODY="$(jq -r '.[0].body // empty' <<< "$PR_JSON")"
+
+              if [[ -n "$PR_TITLE" && -n "$PR_URL" ]]; then
+                TYPE_SOURCE="$PR_TITLE"
+                BODY_SOURCE="$PR_BODY"
+                LINE="- [#${PR_NUMBER}](${PR_URL}) ${PR_TITLE}"
+                PR_LIST+=("$LINE")
+              fi
+            fi
+
+            if [[ "$TYPE_SOURCE" =~ $TYPE_PATTERN ]]; then
               TYPE="$(echo "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
             fi
 
-            IS_BREAKING=false
-            if [[ "$SUBJECT" =~ !: ]] || grep -qi 'BREAKING CHANGE' <<< "$BODY"; then
+            if [[ "$TYPE_SOURCE" == *"!: "* ]] || grep -qi 'BREAKING CHANGE' <<< "$BODY_SOURCE"; then
               IS_BREAKING=true
             fi
 
             if [[ "$IS_BREAKING" == true ]]; then
-              BREAKING+=("$LINE")
+              if [[ -n "$LINE" ]]; then
+                BREAKING+=("$LINE")
+              fi
               BUMP_LEVEL=major
               continue
             fi
 
             case "$TYPE" in
               feat)
-                FEATURES+=("$LINE")
+                if [[ -n "$LINE" ]]; then
+                  FEATURES+=("$LINE")
+                fi
                 if [[ "$BUMP_LEVEL" != major ]]; then
                   BUMP_LEVEL=minor
                 fi
                 ;;
               fix)
-                FIXES+=("$LINE")
+                if [[ -n "$LINE" ]]; then
+                  FIXES+=("$LINE")
+                fi
                 ;;
               docs|doc|ci|chore|build|refactor|test|style|perf)
-                DOCS_CI+=("$LINE")
+                if [[ -n "$LINE" ]]; then
+                  DOCS_CI+=("$LINE")
+                fi
                 ;;
               *)
-                MAINTENANCE+=("$LINE")
+                if [[ -n "$LINE" ]]; then
+                  MAINTENANCE+=("$LINE")
+                fi
                 ;;
             esac
           done
@@ -148,61 +178,51 @@ jobs:
             OPENCLOUD_VERSION="unknown"
           fi
 
-          cat > CHANGELOG_SECTION.md <<EOF
-            ## [${NEXT_VERSION}] - ${TODAY}
-
-            ### Breaking Changes
-          EOF
-
-          if [[ ${#BREAKING[@]} -gt 0 ]]; then
-            printf '%s\n' "${BREAKING[@]}" >> CHANGELOG_SECTION.md
-          else
-            echo "- None" >> CHANGELOG_SECTION.md
-          fi
-
-          cat >> CHANGELOG_SECTION.md <<'EOF'
-
-            ### Features
-          EOF
-          if [[ ${#FEATURES[@]} -gt 0 ]]; then
-            printf '%s\n' "${FEATURES[@]}" >> CHANGELOG_SECTION.md
-          else
-            echo "- None" >> CHANGELOG_SECTION.md
-          fi
-
-          cat >> CHANGELOG_SECTION.md <<'EOF'
-
-            ### Fixes
-          EOF
-          if [[ ${#FIXES[@]} -gt 0 ]]; then
-            printf '%s\n' "${FIXES[@]}" >> CHANGELOG_SECTION.md
-          else
-            echo "- None" >> CHANGELOG_SECTION.md
-          fi
-
-          cat >> CHANGELOG_SECTION.md <<'EOF'
-
-            ### Chore / Docs / CI / Other
-          EOF
-          if [[ ${#DOCS_CI[@]} -gt 0 ]]; then
-            printf '%s\n' "${DOCS_CI[@]}" >> CHANGELOG_SECTION.md
-          fi
-          if [[ ${#MAINTENANCE[@]} -gt 0 ]]; then
-            printf '%s\n' "${MAINTENANCE[@]}" >> CHANGELOG_SECTION.md
-          fi
-          if [[ ${#DOCS_CI[@]} -eq 0 && ${#MAINTENANCE[@]} -eq 0 ]]; then
-            echo "- None" >> CHANGELOG_SECTION.md
-          fi
+          {
+            echo "## [${NEXT_VERSION}] - ${TODAY}"
+            echo
+            echo "### Breaking Changes"
+            if [[ ${#BREAKING[@]} -gt 0 ]]; then
+              printf '%s\n' "${BREAKING[@]}"
+            else
+              echo "- None"
+            fi
+            echo
+            echo "### Features"
+            if [[ ${#FEATURES[@]} -gt 0 ]]; then
+              printf '%s\n' "${FEATURES[@]}"
+            else
+              echo "- None"
+            fi
+            echo
+            echo "### Fixes"
+            if [[ ${#FIXES[@]} -gt 0 ]]; then
+              printf '%s\n' "${FIXES[@]}"
+            else
+              echo "- None"
+            fi
+            echo
+            echo "### Chore / Docs / CI / Other"
+            if [[ ${#DOCS_CI[@]} -gt 0 ]]; then
+              printf '%s\n' "${DOCS_CI[@]}"
+            fi
+            if [[ ${#MAINTENANCE[@]} -gt 0 ]]; then
+              printf '%s\n' "${MAINTENANCE[@]}"
+            fi
+            if [[ ${#DOCS_CI[@]} -eq 0 && ${#MAINTENANCE[@]} -eq 0 ]]; then
+              echo "- None"
+            fi
+          } > CHANGELOG_SECTION.md
 
           if [[ ! -f CHANGELOG.md ]]; then
-            cat > CHANGELOG.md <<'EOF'
-            # Changelog
-
-            All notable changes to this project will be documented in this file.
-
-            <!-- release-bot:start -->
-            <!-- release-bot:end -->
-          EOF
+            {
+              echo "# Changelog"
+              echo
+              echo "All notable changes to this project will be documented in this file."
+              echo
+              echo "<!-- release-bot:start -->"
+              echo "<!-- release-bot:end -->"
+            } > CHANGELOG.md
           fi
 
           if grep -q '<!-- release-bot:start -->' CHANGELOG.md && grep -q '<!-- release-bot:end -->' CHANGELOG.md; then
@@ -226,19 +246,14 @@ jobs:
             mv CHANGELOG.new.md CHANGELOG.md
           else
             {
-              cat <<'EOF'
-              # Changelog
-
-              All notable changes to this project will be documented in this file.
-
-              <!-- release-bot:start -->
-              
-          EOF
+              echo "# Changelog"
+              echo
+              echo "All notable changes to this project will be documented in this file."
+              echo
+              echo "<!-- release-bot:start -->"
               cat CHANGELOG_SECTION.md
-              cat <<'EOF'
-
-              <!-- release-bot:end -->
-          EOF
+              echo
+              echo "<!-- release-bot:end -->"
             } > CHANGELOG.new.md
 
             if [[ -s CHANGELOG.md ]]; then
@@ -276,8 +291,12 @@ jobs:
             echo ""
             echo "OpenCloud Version aus values.yaml: ${OPENCLOUD_VERSION}"
             echo ""
-            echo "### Commit-Übersicht"
-            printf '%s\n' "${COMMIT_LIST[@]}"
+            echo "### Pull Requests"
+            if [[ ${#PR_LIST[@]} -gt 0 ]]; then
+              printf '%s\n' "${PR_LIST[@]}"
+            else
+              echo "- Keine verknüpften Pull Requests gefunden."
+            fi
             echo ""
             echo "### Changelog"
             cat CHANGELOG_SECTION.md
@@ -318,11 +337,19 @@ jobs:
           set -euo pipefail
 
           VERSION="$(awk '/^version:/ { print $2; exit }' charts/opencloud/Chart.yaml)"
-          TAG="v${VERSION}"
+          TAG="${VERSION}"
+          LEGACY_TAG="v${VERSION}"
 
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag ${TAG} existiert bereits."
             echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git rev-parse "$LEGACY_TAG" >/dev/null 2>&1; then
+            echo "Tag ${LEGACY_TAG} existiert bereits."
+            echo "tag=${LEGACY_TAG}" >> "$GITHUB_OUTPUT"
             echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
             echo "created=false" >> "$GITHUB_OUTPUT"
             exit 0
