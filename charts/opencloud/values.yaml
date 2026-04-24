@@ -290,6 +290,26 @@ webExtensions:
     unzip:
       enabled: true
       tag: unzip-1.0.4
+    # Arcade extension
+    arcade:
+      enabled: false
+      tag: arcade-2.0.0
+    # Calculator extension
+    calculator:
+      enabled: false
+      tag: calculator-2.0.0
+    # Cast extension
+    cast:
+      enabled: false
+      tag: cast-1.0.0
+    # Maps extension
+    maps:
+      enabled: false
+      tag: maps-3.0.0
+    # Pastebin extension
+    pastebin:
+      enabled: false
+      tag: pastebin-2.0.0
 
 # =====================================================================
 # COLLABORATION (COLLABORA)
