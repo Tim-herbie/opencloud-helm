@@ -21,6 +21,7 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
   - [PostgreSQL Settings](#postgresql-settings)
   - [Collabora Settings](#collabora-settings)
   - [Collaboration Service Settings](#collaboration-service-settings)
+  - [Web Extensions Settings](#web-extensions-settings)
 - [Gateway API Configuration](#gateway-api-configuration)
   - [HTTPRoute Settings](#httproute-settings)
 - [Setting Up Gateway API with Talos, Cilium, and cert-manager](#setting-up-gateway-api-with-talos-cilium-and-cert-manager)
@@ -448,6 +449,37 @@ postgres:
 | --------- | ----------- | ------- |
 | `collaboration.enabled` | Enable collaboration service | `true` |
 | `collaboration.resources` | CPU/Memory resource requests/limits | `{}` |
+
+### Web Extensions Settings
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `webExtensions.enabled` | Enable web extensions | `true` |
+| `webExtensions.image.registry` | Registry for web extensions images | `docker.io` |
+| `webExtensions.image.repository` | Repository for web extensions images | `opencloudeu/web-extensions` |
+| `webExtensions.image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `webExtensions.extensions.drawio.enabled` | Enable Draw.io extension | `true` |
+| `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-1.0.1` |
+| `webExtensions.extensions.externalsites.enabled` | Enable External Sites extension | `true` |
+| `webExtensions.extensions.externalsites.tag` | External Sites image tag | `external-sites-1.3.0` |
+| `webExtensions.extensions.importer.enabled` | Enable Importer extension | `true` |
+| `webExtensions.extensions.importer.tag` | Importer image tag | `importer-1.0.0` |
+| `webExtensions.extensions.jsonviewer.enabled` | Enable JSON Viewer extension | `true` |
+| `webExtensions.extensions.jsonviewer.tag` | JSON Viewer image tag | `json-viewer-1.0.2` |
+| `webExtensions.extensions.progressbars.enabled` | Enable Progress Bars extension | `true` |
+| `webExtensions.extensions.progressbars.tag` | Progress Bars image tag | `progress-bars-1.1.0` |
+| `webExtensions.extensions.unzip.enabled` | Enable Unzip extension | `true` |
+| `webExtensions.extensions.unzip.tag` | Unzip image tag | `unzip-1.0.4` |
+| `webExtensions.extensions.arcade.enabled` | Enable Arcade extension | `false` |
+| `webExtensions.extensions.arcade.tag` | Arcade image tag | `arcade-2.0.0` |
+| `webExtensions.extensions.calculator.enabled` | Enable Calculator extension | `false` |
+| `webExtensions.extensions.calculator.tag` | Calculator image tag | `calculator-2.0.0` |
+| `webExtensions.extensions.cast.enabled` | Enable Cast extension | `false` |
+| `webExtensions.extensions.cast.tag` | Cast image tag | `cast-1.0.0` |
+| `webExtensions.extensions.maps.enabled` | Enable Maps extension | `false` |
+| `webExtensions.extensions.maps.tag` | Maps image tag | `maps-3.0.0` |
+| `webExtensions.extensions.pastebin.enabled` | Enable Pastebin extension | `false` |
+| `webExtensions.extensions.pastebin.tag` | Pastebin image tag | `pastebin-2.0.0` |
 
 ## Ingress Configuration
 
