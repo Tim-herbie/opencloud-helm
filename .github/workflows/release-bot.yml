@@ -78,12 +78,12 @@ jobs:
             IS_BREAKING=false
 
             PR_JSON="$(gh api -H 'Accept: application/vnd.github+json' "repos/${GITHUB_REPOSITORY}/commits/${SHA}/pulls" 2>/dev/null || true)"
-            PR_NUMBER="$(jq -r '.[0].number // empty' <<< "$PR_JSON")"
+            PR_NUMBER="$(jq -r 'try (.[0].number // empty) catch empty' <<< "$PR_JSON")"
             if [[ -n "$PR_NUMBER" && -z "${SEEN_PRS[$PR_NUMBER]:-}" ]]; then
               SEEN_PRS["$PR_NUMBER"]=1
-              PR_TITLE="$(jq -r '.[0].title // empty' <<< "$PR_JSON")"
-              PR_URL="$(jq -r '.[0].html_url // empty' <<< "$PR_JSON")"
-              PR_BODY="$(jq -r '.[0].body // empty' <<< "$PR_JSON")"
+              PR_TITLE="$(jq -r 'try (.[0].title // empty) catch empty' <<< "$PR_JSON")"
+              PR_URL="$(jq -r 'try (.[0].html_url // empty) catch empty' <<< "$PR_JSON")"
+              PR_BODY="$(jq -r 'try (.[0].body // empty) catch empty' <<< "$PR_JSON")"
 
               if [[ -n "$PR_TITLE" && -n "$PR_URL" ]]; then
                 TYPE_SOURCE="$PR_TITLE"
