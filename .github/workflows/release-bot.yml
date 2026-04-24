@@ -178,6 +178,8 @@ jobs:
             OPENCLOUD_VERSION="unknown"
           fi
 
+          CHANGELOG_SECTION_FILE="$(mktemp)"
+
           {
             echo "## [${NEXT_VERSION}] - ${TODAY}"
             echo
@@ -212,7 +214,7 @@ jobs:
             if [[ ${#DOCS_CI[@]} -eq 0 && ${#MAINTENANCE[@]} -eq 0 ]]; then
               echo "- None"
             fi
-          } > CHANGELOG_SECTION.md
+          } > "$CHANGELOG_SECTION_FILE"
 
           if [[ ! -f CHANGELOG.md ]]; then
             {
@@ -231,7 +233,7 @@ jobs:
               /<!-- release-bot:start -->/ {
                 print
                 print ""
-                while ((getline line < "CHANGELOG_SECTION.md") > 0) print line
+                while ((getline line < changelog_section_file) > 0) print line
                 print ""
                 skip = 1
                 next
@@ -242,7 +244,7 @@ jobs:
                 next
               }
               skip == 0 { print }
-            ' CHANGELOG.md > CHANGELOG.new.md
+            ' -v changelog_section_file="$CHANGELOG_SECTION_FILE" CHANGELOG.md > CHANGELOG.new.md
             mv CHANGELOG.new.md CHANGELOG.md
           else
             {
@@ -251,7 +253,7 @@ jobs:
               echo "All notable changes to this project will be documented in this file."
               echo
               echo "<!-- release-bot:start -->"
-              cat CHANGELOG_SECTION.md
+              cat "$CHANGELOG_SECTION_FILE"
               echo
               echo "<!-- release-bot:end -->"
             } > CHANGELOG.new.md
@@ -335,8 +337,10 @@ jobs:
             fi
             echo ""
             echo "### Changelog"
-            cat CHANGELOG_SECTION.md
+            cat "$CHANGELOG_SECTION_FILE"
           } > .github/release-pr-body.md
+
+          rm -f "$CHANGELOG_SECTION_FILE"
 
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
           echo "next_version=${NEXT_VERSION}" >> "$GITHUB_OUTPUT"
