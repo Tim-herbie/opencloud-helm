@@ -86,8 +86,9 @@ jobs:
               PR_BODY="$(jq -r 'try (.[0].body // empty) catch empty' <<< "$PR_JSON")"
 
               if [[ -n "$PR_TITLE" && -n "$PR_URL" ]]; then
-                TYPE_SOURCE="$PR_TITLE"
-                BODY_SOURCE="$PR_BODY"
+                if [[ -n "$PR_BODY" ]]; then
+                  BODY_SOURCE="$BODY"$'\n\n'"$PR_BODY"
+                fi
                 LINE="- [#${PR_NUMBER}](${PR_URL}) ${PR_TITLE}"
                 PR_LIST+=("$LINE")
               fi
