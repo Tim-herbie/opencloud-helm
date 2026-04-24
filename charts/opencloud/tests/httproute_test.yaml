@@ -1,0 +1,354 @@
+suite: HTTPRoute Tests
+
+tests:
+  # -----------------------------------------------------------------------
+  # OpenCloud HTTPRoute
+  # -----------------------------------------------------------------------
+
+  - it: OpenCloud HTTPRoute is not created when httpRoute is disabled (default)
+    template: opencloud/httproute.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: OpenCloud HTTPRoute is created when httpRoute is enabled
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+      - isAPIVersion:
+          of: gateway.networking.k8s.io/v1beta1
+
+  - it: OpenCloud HTTPRoute uses the configured gateway name
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.name: my-gateway
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].name
+          value: my-gateway
+
+  - it: OpenCloud HTTPRoute uses the release namespace when gateway namespace is not set
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.namespace: ""
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].namespace
+          value: NAMESPACE
+
+  - it: OpenCloud HTTPRoute uses custom gateway namespace when set
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.namespace: gateway-ns
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].namespace
+          value: gateway-ns
+
+  - it: OpenCloud HTTPRoute includes sectionName when configured
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.sectionName: https
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: https
+
+  - it: OpenCloud HTTPRoute omits sectionName when not configured
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.sectionName: ""
+    asserts:
+      - notExists:
+          path: spec.parentRefs[0].sectionName
+
+  - it: OpenCloud HTTPRoute uses the configured opencloud domain as hostname
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      global.domain.opencloud: cloud.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: cloud.example.com
+
+  - it: OpenCloud HTTPRoute routes traffic to port 9200
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 9200
+
+  - it: OpenCloud HTTPRoute removes Permissions-Policy header
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.rules[0].filters
+          content:
+            type: RequestHeaderModifier
+      - equal:
+          path: spec.rules[0].filters[0].requestHeaderModifier.remove[0]
+          value: Permissions-Policy
+
+  # -----------------------------------------------------------------------
+  # Keycloak HTTPRoute
+  # -----------------------------------------------------------------------
+
+  - it: Keycloak HTTPRoute is not created when httpRoute is disabled (default)
+    template: keycloak/httproute.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Keycloak HTTPRoute is not created when oidc is disabled
+    template: keycloak/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      oidc.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Keycloak HTTPRoute is created when httpRoute and oidc are enabled
+    template: keycloak/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      oidc.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+
+  - it: Keycloak HTTPRoute uses the OIDC domain as hostname
+    template: keycloak/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      oidc.enabled: true
+      global.domain.oidc: keycloak.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: keycloak.example.com
+
+  - it: Keycloak HTTPRoute routes traffic to port 8080
+    template: keycloak/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      oidc.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 8080
+
+  - it: Keycloak HTTPRoute uses the configured gateway name and namespace
+    template: keycloak/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      oidc.enabled: true
+      httpRoute.gateway.name: my-gateway
+      httpRoute.gateway.namespace: gateway-ns
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].name
+          value: my-gateway
+      - equal:
+          path: spec.parentRefs[0].namespace
+          value: gateway-ns
+
+  - it: Keycloak HTTPRoute includes sectionName when configured
+    template: keycloak/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      oidc.enabled: true
+      httpRoute.gateway.sectionName: https
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: https
+
+  # -----------------------------------------------------------------------
+  # Collabora HTTPRoute
+  # -----------------------------------------------------------------------
+
+  - it: Collabora HTTPRoute is not created when httpRoute is disabled (default)
+    template: collabora/httproute.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Collabora HTTPRoute is not created when collabora is disabled
+    template: collabora/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collabora.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Collabora HTTPRoute is created when httpRoute and collabora are enabled
+    template: collabora/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collabora.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+
+  - it: Collabora HTTPRoute uses the collabora domain as hostname
+    template: collabora/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collabora.enabled: true
+      global.domain.collabora: collabora.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: collabora.example.com
+
+  - it: Collabora HTTPRoute routes traffic to port 9980
+    template: collabora/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collabora.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 9980
+
+  # -----------------------------------------------------------------------
+  # Collaboration (WOPI) HTTPRoute
+  # -----------------------------------------------------------------------
+
+  - it: Collaboration HTTPRoute is not created when httpRoute is disabled (default)
+    template: collaboration/httproute.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Collaboration HTTPRoute is not created when collaboration is disabled
+    template: collaboration/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collaboration.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Collaboration HTTPRoute is created when httpRoute and collaboration are enabled
+    template: collaboration/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collaboration.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+
+  - it: Collaboration HTTPRoute uses the WOPI domain as hostname
+    template: collaboration/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collaboration.enabled: true
+      global.domain.wopi: wopi.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: wopi.example.com
+
+  - it: Collaboration HTTPRoute routes traffic to port 9300
+    template: collaboration/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collaboration.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 9300
+
+  - it: Collaboration HTTPRoute uses the configured gateway name
+    template: collaboration/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collaboration.enabled: true
+      httpRoute.gateway.name: custom-gateway
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].name
+          value: custom-gateway
+
+  # -----------------------------------------------------------------------
+  # MinIO HTTPRoute
+  # -----------------------------------------------------------------------
+
+  - it: MinIO HTTPRoute is not created when httpRoute is disabled (default)
+    template: minio/httproute.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: MinIO HTTPRoute is created when httpRoute, s3 storage and minio httpRoute are enabled
+    template: minio/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      opencloud.storage.mode: s3
+      opencloud.storage.s3.enabled: true
+      opencloud.storage.s3.httpRoute.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+
+  - it: MinIO HTTPRoute is not created when s3 httpRoute is disabled
+    template: minio/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      opencloud.storage.mode: s3
+      opencloud.storage.s3.enabled: true
+      opencloud.storage.s3.httpRoute.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: MinIO HTTPRoute is not created when storage mode is posixfs
+    template: minio/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      opencloud.storage.mode: posixfs
+      opencloud.storage.s3.enabled: true
+      opencloud.storage.s3.httpRoute.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: MinIO HTTPRoute uses the minio domain as hostname
+    template: minio/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      opencloud.storage.mode: s3
+      opencloud.storage.s3.enabled: true
+      opencloud.storage.s3.httpRoute.enabled: true
+      global.domain.minio: minio.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: minio.example.com

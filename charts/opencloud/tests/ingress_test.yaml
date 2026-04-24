@@ -1,0 +1,344 @@
+suite: Ingress Tests
+
+tests:
+  # -----------------------------------------------------------------------
+  # OpenCloud Ingress
+  # -----------------------------------------------------------------------
+
+  - it: OpenCloud Ingress is not created when ingress is disabled (default)
+    template: opencloud/ingress.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: OpenCloud Ingress is created when ingress is enabled
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - isAPIVersion:
+          of: networking.k8s.io/v1
+
+  - it: OpenCloud Ingress uses the configured domain as host
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+      global.domain.opencloud: cloud.example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: cloud.example.com
+
+  - it: OpenCloud Ingress routes traffic to port 9200
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 9200
+
+  - it: OpenCloud Ingress uses path prefix /
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+
+  - it: OpenCloud Ingress sets ingressClassName when configured
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+      ingress.ingressClassName: nginx
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+
+  - it: OpenCloud Ingress omits ingressClassName when not configured
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+      ingress.ingressClassName: ""
+    asserts:
+      - notExists:
+          path: spec.ingressClassName
+
+  - it: OpenCloud Ingress includes custom annotations
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+      ingress.annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/cluster-issuer"]
+          value: letsencrypt-prod
+
+  - it: OpenCloud Ingress includes TLS block when TLS is enabled
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+      global.tls.enabled: true
+      global.tls.secretName: my-tls-secret
+      global.domain.opencloud: cloud.example.com
+    asserts:
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: cloud.example.com
+      - equal:
+          path: spec.tls[0].secretName
+          value: my-tls-secret-opencloud
+
+  - it: OpenCloud Ingress TLS block has no secretName when secretName is empty
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+      global.tls.enabled: true
+      global.tls.secretName: ""
+    asserts:
+      - notExists:
+          path: spec.tls[0].secretName
+
+  - it: OpenCloud Ingress is not created when opencloud is disabled
+    template: opencloud/ingress.yaml
+    set:
+      ingress.enabled: true
+      opencloud.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # -----------------------------------------------------------------------
+  # Keycloak Ingress
+  # -----------------------------------------------------------------------
+
+  - it: Keycloak Ingress is not created when ingress is disabled (default)
+    template: keycloak/ingress.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Keycloak Ingress is created when ingress and oidc are enabled
+    template: keycloak/ingress.yaml
+    set:
+      ingress.enabled: true
+      oidc.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+
+  - it: Keycloak Ingress is not created when oidc is disabled
+    template: keycloak/ingress.yaml
+    set:
+      ingress.enabled: true
+      oidc.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Keycloak Ingress uses the OIDC domain as host
+    template: keycloak/ingress.yaml
+    set:
+      ingress.enabled: true
+      oidc.enabled: true
+      global.domain.oidc: keycloak.example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: keycloak.example.com
+
+  - it: Keycloak Ingress routes traffic to port 8080
+    template: keycloak/ingress.yaml
+    set:
+      ingress.enabled: true
+      oidc.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 8080
+
+  - it: Keycloak Ingress includes TLS block when TLS is enabled
+    template: keycloak/ingress.yaml
+    set:
+      ingress.enabled: true
+      oidc.enabled: true
+      global.tls.enabled: true
+      global.tls.secretName: my-tls-secret
+      global.domain.oidc: keycloak.example.com
+    asserts:
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: keycloak.example.com
+      - equal:
+          path: spec.tls[0].secretName
+          value: my-tls-secret-keycloak
+
+  - it: Keycloak Ingress sets ingressClassName when configured
+    template: keycloak/ingress.yaml
+    set:
+      ingress.enabled: true
+      oidc.enabled: true
+      ingress.ingressClassName: traefik
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: traefik
+
+  # -----------------------------------------------------------------------
+  # Collabora Ingress
+  # -----------------------------------------------------------------------
+
+  - it: Collabora Ingress is not created when ingress is disabled (default)
+    template: collabora/ingress.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Collabora Ingress is created when ingress and collabora are enabled
+    template: collabora/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+
+  - it: Collabora Ingress is not created when collabora is disabled
+    template: collabora/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Collabora Ingress uses the collabora domain as host
+    template: collabora/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: true
+      global.domain.collabora: collabora.example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: collabora.example.com
+
+  - it: Collabora Ingress routes traffic to port 9980
+    template: collabora/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 9980
+
+  - it: Collabora Ingress includes TLS block when TLS is enabled
+    template: collabora/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: true
+      global.tls.enabled: true
+      global.tls.secretName: my-tls-secret
+      global.domain.collabora: collabora.example.com
+    asserts:
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: collabora.example.com
+      - equal:
+          path: spec.tls[0].secretName
+          value: my-tls-secret-collabora
+
+  # -----------------------------------------------------------------------
+  # Collaboration (WOPI) Ingress
+  # -----------------------------------------------------------------------
+
+  - it: Collaboration Ingress is not created when ingress is disabled (default)
+    template: collaboration/ingress.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Collaboration Ingress is created when ingress and collabora are enabled
+    template: collaboration/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+
+  - it: Collaboration Ingress is created when ingress and external collabora are enabled
+    template: collaboration/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: false
+      collabora.external.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+
+  - it: Collaboration Ingress is not created when both collabora and external are disabled
+    template: collaboration/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: false
+      collabora.external.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Collaboration Ingress uses the WOPI domain as host
+    template: collaboration/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: true
+      global.domain.wopi: wopi.example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: wopi.example.com
+
+  - it: Collaboration Ingress routes traffic to port 9300
+    template: collaboration/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 9300
+
+  - it: Collaboration Ingress includes TLS block when TLS is enabled
+    template: collaboration/ingress.yaml
+    set:
+      ingress.enabled: true
+      collabora.enabled: true
+      global.tls.enabled: true
+      global.tls.secretName: my-tls-secret
+      global.domain.wopi: wopi.example.com
+    asserts:
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: wopi.example.com
+      - equal:
+          path: spec.tls[0].secretName
+          value: my-tls-secret-collaboration

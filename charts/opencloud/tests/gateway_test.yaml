@@ -1,0 +1,331 @@
+suite: Gateway Resource Tests
+
+tests:
+  # -----------------------------------------------------------------------
+  # Gateway resource creation
+  # -----------------------------------------------------------------------
+
+  - it: Gateway is not created when httpRoute.gateway.create is false (default)
+    template: gateway/gateway.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Gateway is created when httpRoute.gateway.create is true
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Gateway
+      - isAPIVersion:
+          of: gateway.networking.k8s.io/v1
+
+  - it: Gateway uses the configured gatewayClassName
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: nginx
+    asserts:
+      - equal:
+          path: spec.gatewayClassName
+          value: nginx
+
+  - it: Gateway is created in the release namespace by default
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      httpRoute.gateway.namespace: ""
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+
+  - it: Gateway is created in the configured namespace when set
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      httpRoute.gateway.namespace: gateway-ns
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: gateway-ns
+
+  - it: Gateway uses the configured name
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      httpRoute.gateway.name: my-custom-gateway
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-custom-gateway
+
+  - it: Gateway includes custom annotations when set
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      httpRoute.gateway.annotations:
+        io.cilium/lb-ipam-ips: "192.168.1.100"
+    asserts:
+      - equal:
+          path: metadata.annotations["io.cilium/lb-ipam-ips"]
+          value: "192.168.1.100"
+
+  # -----------------------------------------------------------------------
+  # Gateway HTTP listeners (TLS disabled)
+  # -----------------------------------------------------------------------
+
+  - it: Gateway creates HTTP listener for OpenCloud by default
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: false
+      global.domain.opencloud: cloud.example.com
+    asserts:
+      - contains:
+          any: true
+          path: spec.listeners
+          content:
+            name: opencloud-http
+            protocol: HTTP
+
+  - it: Gateway creates HTTP listener for Keycloak when oidc is enabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: false
+      oidc.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.listeners
+          content:
+            name: keycloak-http
+            protocol: HTTP
+
+  - it: Gateway does not create Keycloak listener when oidc is disabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: false
+      oidc.enabled: false
+    asserts:
+      - notContains:
+          any: true
+          path: spec.listeners
+          content:
+            name: keycloak-http
+
+  - it: Gateway creates Collabora HTTP listener when collabora is enabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: false
+      collabora.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.listeners
+          content:
+            name: collabora-http
+            protocol: HTTP
+
+  - it: Gateway does not create Collabora listener when collabora is disabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: false
+      collabora.enabled: false
+    asserts:
+      - notContains:
+          any: true
+          path: spec.listeners
+          content:
+            name: collabora-http
+
+  - it: Gateway creates MinIO HTTP listener when s3 and minio httpRoute are enabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: false
+      opencloud.storage.mode: s3
+      opencloud.storage.s3.enabled: true
+      opencloud.storage.s3.httpRoute.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.listeners
+          content:
+            name: minio-http
+            protocol: HTTP
+
+  - it: Gateway does not create MinIO listener when minio httpRoute is disabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: false
+      opencloud.storage.mode: s3
+      opencloud.storage.s3.enabled: true
+      opencloud.storage.s3.httpRoute.enabled: false
+    asserts:
+      - notContains:
+          any: true
+          path: spec.listeners
+          content:
+            name: minio-http
+
+  # -----------------------------------------------------------------------
+  # Gateway HTTPS listeners (TLS enabled)
+  # -----------------------------------------------------------------------
+
+  - it: Gateway creates HTTPS listener for OpenCloud when TLS is enabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: true
+      global.tls.secretName: my-tls-secret
+      global.domain.opencloud: cloud.example.com
+    asserts:
+      - contains:
+          any: true
+          path: spec.listeners
+          content:
+            name: opencloud-https
+            protocol: HTTPS
+
+  - it: Gateway creates HTTPS listener for Keycloak when TLS and oidc are enabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      global.tls.enabled: true
+      global.tls.secretName: my-tls-secret
+      oidc.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.listeners
+          content:
+            name: keycloak-https
+            protocol: HTTPS
+
+  - it: Gateway listener uses the configured port
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      httpRoute.gateway.port: 8080
+    asserts:
+      - equal:
+          path: spec.listeners[0].port
+          value: 8080
+
+  - it: Gateway listener restricts routes to the release namespace
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+    asserts:
+      - equal:
+          path: spec.listeners[0].allowedRoutes.namespaces.from
+          value: Selector
+
+  # -----------------------------------------------------------------------
+  # ReferenceGrant resources
+  # -----------------------------------------------------------------------
+
+  - it: ReferenceGrant resources are not created when httpRoute is disabled (default)
+    template: gateway/reference-grant.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: ReferenceGrant resources are created when httpRoute is enabled
+    template: gateway/reference-grant.yaml
+    set:
+      httpRoute.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: First ReferenceGrant allows HTTPRoute access to Gateway
+    template: gateway/reference-grant.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.name: my-gateway
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: ReferenceGrant
+      - equal:
+          path: spec.from[0].kind
+          value: HTTPRoute
+      - equal:
+          path: spec.to[0].kind
+          value: Gateway
+      - equal:
+          path: spec.to[0].name
+          value: my-gateway
+
+  - it: Second ReferenceGrant allows Gateway to access TLS secrets
+    template: gateway/reference-grant.yaml
+    set:
+      httpRoute.enabled: true
+    documentIndex: 1
+    asserts:
+      - isKind:
+          of: ReferenceGrant
+      - equal:
+          path: spec.from[0].kind
+          value: Gateway
+      - equal:
+          path: spec.to[0].kind
+          value: Secret
+
+  # -----------------------------------------------------------------------
+  # Traefik Middleware
+  # -----------------------------------------------------------------------
+
+  - it: Traefik Middleware is not created when httpRoute is disabled (default)
+    template: gateway/traefik-middleware.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Traefik Middleware is not created when gateway className is not traefik
+    template: gateway/traefik-middleware.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Traefik Middleware is created when className is traefik and gateway.create is true
+    template: gateway/traefik-middleware.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: traefik
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Middleware

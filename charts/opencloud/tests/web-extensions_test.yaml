@@ -1,0 +1,251 @@
+suite: Web Extensions Tests
+
+tests:
+  # -----------------------------------------------------------------------
+  # Deployment init-containers: default enabled extensions
+  # -----------------------------------------------------------------------
+
+  - it: default extensions create init containers for all 6 enabled extensions
+    template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-drawio
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-externalsites
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-importer
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-jsonviewer
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-progressbars
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-unzip
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-web-extensions
+
+  - it: default extensions do NOT create init containers for disabled optional extensions
+    template: opencloud/deployment.yaml
+    asserts:
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-arcade
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-calculator
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-cast
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-maps
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-pastebin
+
+  # -----------------------------------------------------------------------
+  # Deployment init-containers: webExtensions disabled
+  # -----------------------------------------------------------------------
+
+  - it: disabling webExtensions removes all extension init containers
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.enabled: false
+    asserts:
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-drawio
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-externalsites
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-importer
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-web-extensions
+
+  # -----------------------------------------------------------------------
+  # Deployment init-containers: individual extension toggling
+  # -----------------------------------------------------------------------
+
+  - it: enabling arcade adds init-arcade init container
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.extensions.arcade.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-arcade
+
+  - it: disabling drawio removes init-drawio init container
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.extensions.drawio.enabled: false
+    asserts:
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-drawio
+
+  - it: disabling externalsites removes init-externalsites init container
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.extensions.externalsites.enabled: false
+    asserts:
+      - notContains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-externalsites
+
+  - it: enabling calculator adds init-calculator init container
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.extensions.calculator.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-calculator
+
+  - it: enabling maps adds init-maps init container
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.extensions.maps.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-maps
+
+  - it: enabling pastebin adds init-pastebin init container
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.extensions.pastebin.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-pastebin
+
+  - it: enabling cast adds init-cast init container
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.extensions.cast.enabled: true
+    asserts:
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-cast
+
+  # -----------------------------------------------------------------------
+  # Extension init container images
+  # -----------------------------------------------------------------------
+
+  - it: drawio init container uses configured image tag
+    template: opencloud/deployment.yaml
+    set:
+      webExtensions.image.registry: docker.io
+      webExtensions.image.repository: opencloudeu/web-extensions
+      webExtensions.extensions.drawio.tag: draw-io-2.0.0
+    asserts:
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-drawio
+            image: "docker.io/opencloudeu/web-extensions:draw-io-2.0.0"
+
+  - it: global registry override applies to extension init containers
+    template: opencloud/deployment.yaml
+    set:
+      global.image.registry: my-registry.example.com
+      webExtensions.image.repository: opencloudeu/web-extensions
+      webExtensions.extensions.drawio.tag: draw-io-1.0.1
+    asserts:
+      - contains:
+          any: true
+          path: spec.template.spec.initContainers
+          content:
+            name: init-drawio
+            image: "my-registry.example.com/opencloudeu/web-extensions:draw-io-1.0.1"
+
+  # -----------------------------------------------------------------------
+  # Web-extensions init ConfigMap
+  # -----------------------------------------------------------------------
+
+  - it: web-extensions ConfigMap is created when webExtensions is enabled
+    template: opencloud/web-extensions-init.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+
+  - it: web-extensions ConfigMap is not created when webExtensions is disabled
+    template: opencloud/web-extensions-init.yaml
+    set:
+      webExtensions.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: web-extensions ConfigMap is not created when opencloud is disabled
+    template: opencloud/web-extensions-init.yaml
+    set:
+      opencloud.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: web-extensions ConfigMap contains init-web-extensions.sh key
+    template: opencloud/web-extensions-init.yaml
+    asserts:
+      - isNotEmpty:
+          path: data["init-web-extensions.sh"]
