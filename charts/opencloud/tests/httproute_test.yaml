@@ -1,0 +1,58 @@
+suite: HTTPRoute Tests
+
+tests:
+  - it: OpenCloud HTTPRoute is created when httpRoute is enabled
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+
+  - it: Keycloak HTTPRoute is created when httpRoute and oidc are enabled
+    template: keycloak/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      oidc.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+
+  - it: Collabora HTTPRoute is created when httpRoute and collabora are enabled
+    template: collabora/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collabora.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+
+  - it: Collaboration HTTPRoute is created when httpRoute and collaboration are enabled
+    template: collaboration/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collaboration.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+
+  - it: MinIO HTTPRoute is created when httpRoute, s3 storage and minio httpRoute are enabled
+    template: minio/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      opencloud.storage.mode: s3
+      opencloud.storage.s3.enabled: true
+      opencloud.storage.s3.httpRoute.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute

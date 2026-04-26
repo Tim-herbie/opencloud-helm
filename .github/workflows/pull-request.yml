@@ -27,6 +27,12 @@ jobs:
           echo "Linting charts/opencloud..."
           helm lint charts/opencloud
 
+      - name: Install helm-unittest plugin
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.5.1 --verify=false
+
+      - name: Run Helm unit tests
+        run: helm unittest charts/opencloud
+
       # Create ephemeral Kubernetes cluster
       - name: Create Kind cluster
         uses: helm/kind-action@v1

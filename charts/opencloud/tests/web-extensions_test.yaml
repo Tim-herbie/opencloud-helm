@@ -1,0 +1,10 @@
+suite: Web Extensions Tests
+
+tests:
+  - it: web-extensions ConfigMap is created when webExtensions is enabled
+    template: opencloud/web-extensions-init.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
