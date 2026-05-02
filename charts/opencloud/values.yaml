@@ -461,6 +461,11 @@ opencloud:
   # Admin password
   # ignored if opencloud.existingSecret is set
   adminPassword: admin
+
+  # Init secrets for deterministic service credentials across restarts.
+  # Set existingSecret to use a pre-created Secret; otherwise auto-generated.
+  initSecrets:
+    existingSecret: ""
   
   # Create demo users
   createDemoUsers: false
