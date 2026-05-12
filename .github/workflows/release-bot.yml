@@ -277,32 +277,37 @@ jobs:
             BEGIN {
               updated = 0
               line_count = 0
+              last_table_line = 0
             }
 
             {
               lines[++line_count] = $0
 
-              if ($0 ~ /^\|/ && $0 !~ /^\|[-]+\|[-]+\|$/) {
-                column_count = split($0, columns, "|")
-                if (column_count >= 4 && trim(columns[2]) == opencloud_version) {
-                  versions = trim(columns[3])
-                  version_count = split(versions, version_list, /,[[:space:]]*/)
-                  found = 0
-                  for (version_index = 1; version_index <= version_count; version_index++) {
-                    if (trim(version_list[version_index]) == chart_version) {
-                      found = 1
-                      break
+              if ($0 ~ /^\|/) {
+                last_table_line = line_count
+
+                if ($0 !~ /^\|[-]+\|[-]+\|$/) {
+                  column_count = split($0, columns, "|")
+                  if (column_count >= 4 && trim(columns[2]) == opencloud_version) {
+                    versions = trim(columns[3])
+                    version_count = split(versions, version_list, /,[[:space:]]*/)
+                    found = 0
+                    for (version_index = 1; version_index <= version_count; version_index++) {
+                      if (trim(version_list[version_index]) == chart_version) {
+                        found = 1
+                        break
+                      }
                     }
-                  }
-                  if (!found) {
-                    if (versions == "") {
-                      versions = chart_version
-                    } else {
-                      versions = versions ", " chart_version
+                    if (!found) {
+                      if (versions == "") {
+                        versions = chart_version
+                      } else {
+                        versions = versions ", " chart_version
+                      }
                     }
+                    lines[line_count] = sprintf("| %-16s | %s |", opencloud_version, versions)
+                    updated = 1
                   }
-                  lines[line_count] = sprintf("| %-16s | %s |", opencloud_version, versions)
-                  updated = 1
                 }
               }
             }
@@ -310,9 +315,10 @@ jobs:
             END {
               for (line_index = 1; line_index <= line_count; line_index++) {
                 print lines[line_index]
-              }
-              if (!updated) {
-                printf("| %-16s | %s |\n", opencloud_version, chart_version)
+                if (!updated && line_index == last_table_line) {
+                  printf("| %-16s | %s |\n", opencloud_version, chart_version)
+                  updated = 1
+                }
               }
             }
           ' README.md > README.new.md
