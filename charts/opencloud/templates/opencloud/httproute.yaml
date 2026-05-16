@@ -9,7 +9,9 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      sectionName: {{ .Values.httpRoute.gateway.sectionName | default "opencloud-https" }}
+      {{- with .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
   hostnames:
     - {{ include "opencloud.domain" . | quote }}
   rules:

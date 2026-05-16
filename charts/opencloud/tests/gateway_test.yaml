@@ -1,0 +1,33 @@
+suite: Gateway Resource Tests
+
+tests:
+  - it: Gateway is created when httpRoute.gateway.create is true
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Gateway
+
+  - it: ReferenceGrant resources are created when httpRoute is enabled
+    template: gateway/reference-grant.yaml
+    set:
+      httpRoute.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: Traefik Middleware is created when className is traefik and gateway.create is true
+    template: gateway/traefik-middleware.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: traefik
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Middleware

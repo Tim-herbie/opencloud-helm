@@ -10,7 +10,9 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      sectionName: {{ .Values.httpRoute.gateway.sectionName | default "collaboration-https" }}
+      {{- with .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
   hostnames:
     - {{ .Values.global.domain.wopi | quote }}
   rules:

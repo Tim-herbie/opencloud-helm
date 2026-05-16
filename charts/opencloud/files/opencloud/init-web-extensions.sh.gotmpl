@@ -35,4 +35,29 @@ echo "Initializing Unzip extension..."
 cp -R /extensions/unzip/ /var/lib/opencloud/web/assets/apps/
 {{- end }}
 
+{{- if .Values.webExtensions.extensions.arcade.enabled }}
+echo "Initializing Arcade extension..."
+cp -R /extensions/arcade/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
+{{- if .Values.webExtensions.extensions.calculator.enabled }}
+echo "Initializing Calculator extension..."
+cp -R /extensions/calculator/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
+{{- if .Values.webExtensions.extensions.cast.enabled }}
+echo "Initializing Cast extension..."
+cp -R /extensions/cast/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
+{{- if .Values.webExtensions.extensions.maps.enabled }}
+echo "Initializing Maps extension..."
+cp -R /extensions/maps/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
+{{- if .Values.webExtensions.extensions.pastebin.enabled }}
+echo "Initializing Pastebin extension..."
+cp -R /extensions/pastebin/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
 echo "Web extensions initialization completed."

@@ -21,6 +21,7 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
   - [PostgreSQL Settings](#postgresql-settings)
   - [Collabora Settings](#collabora-settings)
   - [Collaboration Service Settings](#collaboration-service-settings)
+  - [Web Extensions Settings](#web-extensions-settings)
 - [Gateway API Configuration](#gateway-api-configuration)
   - [HTTPRoute Settings](#httproute-settings)
 - [Setting Up Gateway API with Talos, Cilium, and cert-manager](#setting-up-gateway-api-with-talos-cilium-and-cert-manager)
@@ -224,6 +225,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `opencloud.enabled` | Enable OpenCloud | `true` |
+| `opencloud.graphAvailableRoles` | Comma-separated list of available roles for the graph service | `b1e2218d-eef8-4d4c-b82d-0f1a1b48f3b5,a8d5fe5e-96e3-418d-825b-534dbdf22b99,fb6c3e19-e378-47e5-b277-9732f9de6e21,58c63c02-1d89-4572-916a-870abc5a1b7d,2d00ce52-1fc2-4dbc-8b95-a73b73395f5a,1c996275-f1c9-4e71-abdf-a42f6495e960,312c0871-5ef7-4b3a-85b6-0e4074c64049,aa97fe03-7980-45ac-9e50-b325749fd7e6` |
 | `opencloud.replicas` | Number of replicas (Note: When using multiple replicas, persistence should be disabled or use a storage class that supports ReadWriteMany access mode) | `1` |
 | `opencloud.logLevel` | Log level | `info` |
 | `opencloud.logColor` | Enable log color | `false` |
@@ -249,6 +251,30 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.smtp.authentication` | SMTP authentication | `plain` |
 | `opencloud.smtp.encryption` | SMTP encryption | `starttls` |
 | `opencloud.storage.mode` | Choice between s3 and posixfs for user files | `s3` |
+| `opencloud.proxyTls` | Use TLS between proxy and OpenCloud | `false` |
+| `opencloud.gatewayGrpcAddr` | gRPC address for the REVA gateway | `0.0.0.0:9142` |
+| `opencloud.proxyEnableBasicAuth` | Enable basic auth for proxy | `false` |
+| `opencloud.sharingPublicShareMustHavePassword` | Require password for public shares | `false` |
+| `opencloud.passwordPolicyBannedPasswordsList` | File name for banned password list | `banned-password-list.txt` |
+| `opencloud.searchExtractorType` | Search extractor type | `tika` |
+| `opencloud.grpcMaxReceivedMessageSize` | Max gRPC received message size | `102400000` |
+| `opencloud.proxyAutoprovisionAccounts` | Autoprovision accounts via proxy | `true` |
+| `opencloud.frontendReadonlyUserAttributes` | Readonly user attributes in frontend | `user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.accountEnabled,user.appRoleAssignments` |
+| `opencloud.proxyRoleAssignmentDriver` | Role assignment driver for proxy | `oidc` |
+| `opencloud.proxyOidcRewriteWellknown` | Rewrite OIDC .well-known endpoint | `true` |
+| `opencloud.proxyUserOidcClaim` | OIDC claim for user | `preferred_username` |
+| `opencloud.proxyUserCs3Claim` | CS3 claim for user | `username` |
+| `opencloud.adminUserId` | Admin user id | `""` |
+| `opencloud.graphAssignDefaultUserRole` | Assign default user role in graph | `false` |
+| `opencloud.graphUsernameMatch` | Username match strategy for graph | `none` |
+| `opencloud.proxyRoleAssignmentOidcClaim` | OIDC claim for role assignment | `roles` |
+| `opencloud.proxyOidcAccessTokenVerifyMethod` | OIDC access token verify method | `jwt` |
+| `opencloud.oidc.scope` | OIDC scope for web | `openid profile email groups roles` |
+| `opencloud.nats.internalEndpoint` | Internal NATS endpoint | `127.0.0.1:9233` |
+| `opencloud.nats.host` | NATS host | `0.0.0.0` |
+| `opencloud.nats.port` | NATS port | `9233` |
+| `opencloud.cspConfigFileLocation` | CSP config file location | `/etc/opencloud/csp.yaml` |
+| `opencloud.storage.systemDriver` | Storage system driver | `decomposed` |
 
 ### OpenCloud S3 Storage Settings
 
@@ -452,6 +478,37 @@ postgres:
 | --------- | ----------- | ------- |
 | `collaboration.enabled` | Enable collaboration service | `true` |
 | `collaboration.resources` | CPU/Memory resource requests/limits | `{}` |
+
+### Web Extensions Settings
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `webExtensions.enabled` | Enable web extensions | `true` |
+| `webExtensions.image.registry` | Registry for web extensions images | `docker.io` |
+| `webExtensions.image.repository` | Repository for web extensions images | `opencloudeu/web-extensions` |
+| `webExtensions.image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `webExtensions.extensions.drawio.enabled` | Enable Draw.io extension | `true` |
+| `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-1.0.1` |
+| `webExtensions.extensions.externalsites.enabled` | Enable External Sites extension | `true` |
+| `webExtensions.extensions.externalsites.tag` | External Sites image tag | `external-sites-1.3.0` |
+| `webExtensions.extensions.importer.enabled` | Enable Importer extension | `true` |
+| `webExtensions.extensions.importer.tag` | Importer image tag | `importer-1.0.0` |
+| `webExtensions.extensions.jsonviewer.enabled` | Enable JSON Viewer extension | `true` |
+| `webExtensions.extensions.jsonviewer.tag` | JSON Viewer image tag | `json-viewer-1.0.2` |
+| `webExtensions.extensions.progressbars.enabled` | Enable Progress Bars extension | `true` |
+| `webExtensions.extensions.progressbars.tag` | Progress Bars image tag | `progress-bars-1.1.0` |
+| `webExtensions.extensions.unzip.enabled` | Enable Unzip extension | `true` |
+| `webExtensions.extensions.unzip.tag` | Unzip image tag | `unzip-1.0.4` |
+| `webExtensions.extensions.arcade.enabled` | Enable Arcade extension | `false` |
+| `webExtensions.extensions.arcade.tag` | Arcade image tag | `arcade-2.0.0` |
+| `webExtensions.extensions.calculator.enabled` | Enable Calculator extension | `false` |
+| `webExtensions.extensions.calculator.tag` | Calculator image tag | `calculator-2.0.0` |
+| `webExtensions.extensions.cast.enabled` | Enable Cast extension | `false` |
+| `webExtensions.extensions.cast.tag` | Cast image tag | `cast-1.0.0` |
+| `webExtensions.extensions.maps.enabled` | Enable Maps extension | `false` |
+| `webExtensions.extensions.maps.tag` | Maps image tag | `maps-3.0.0` |
+| `webExtensions.extensions.pastebin.enabled` | Enable Pastebin extension | `false` |
+| `webExtensions.extensions.pastebin.tag` | Pastebin image tag | `pastebin-2.0.0` |
 
 ## Ingress Configuration
 
