@@ -239,6 +239,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.persistence.size` | Size of the persistent volume | `10Gi` |
 | `opencloud.persistence.storageClass` | Storage class | `""` |
 | `opencloud.persistence.accessMode` | Access mode | `ReadWriteOnce` |
+| `opencloud.initSecrets.existingSecret` | Use a pre-created Secret for init credentials (see [Init Secrets](#init-secrets)) | `""` |
 | `opencloud.smtp.enabled` | Enable smtp for opencloud | `false` |
 | `opencloud.smtp.host` | SMTP host | `` |
 | `opencloud.smtp.port` | SMTP port | `587` |
@@ -346,6 +347,34 @@ The following options allow setting up a POSIX-compatible filesystem (such as NF
 >   --from-file=ca.crt=./path/to/nats-ca.pem \
 >   --namespace your-namespace
 > ```
+
+### Init Secrets
+
+OpenCloud requires internal service credentials (JWT, IDM passwords, transfer secrets, UUIDs, etc.). Instead of running `opencloud init` at startup, the chart injects all credentials as runtime environment variables from a Kubernetes Secret. This eliminates init-time config generation, making deployments fully stateless and restart-safe.
+
+By default, the chart auto-generates and persists these credentials across Helm upgrades.
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `opencloud.initSecrets.existingSecret` | Use a pre-created Secret instead of auto-generating | `""` |
+
+**New installs**: No action needed — the chart generates stable secrets and UUIDs automatically.
+
+**Existing installs upgrading to this version**: No breaking changes. The chart creates a new `*-init` Secret alongside existing resources. If you manage secrets externally, set `opencloud.initSecrets.existingSecret` to your secret name. Required keys:
+
+```
+# Secrets (random strings)
+jwtSecret, machineAuthApiKey, transferSecret, serviceAccountSecret,
+idmServicePassword, idmRevaServicePassword, idmIdpServicePassword,
+collaborationWopiSecret, systemUserApiKey, urlSigningSecret,
+thumbnailsTransferSecret
+
+# UUIDs (stable v4 UUIDs)
+systemUserID, adminUserID, serviceAccountID, graphApplicationID,
+storageUsersMountID
+```
+
+The chart maps these keys to the correct runtime ENV vars for each OpenCloud service, including per-service LDAP bind passwords (e.g., `USERS_LDAP_BIND_PASSWORD` ← `idmRevaServicePassword`).
 
 ### Keycloak Settings
 

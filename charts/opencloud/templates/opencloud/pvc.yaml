@@ -1,28 +1,3 @@
-{{- if and .Values.opencloud.enabled (and .Values.opencloud.persistence.config.enabled (not .Values.opencloud.persistence.config.existingClaim)) }}
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "opencloud.opencloud.fullname" . }}-config
-  annotations:
-    "helm.sh/resource-policy": "keep"
-  labels:
-    {{- include "opencloud.labels" . | nindent 4 }}
-    app.kubernetes.io/component: opencloud
-spec:
-  accessModes:
-    - {{ .Values.opencloud.persistence.config.accessMode | quote }}
-  resources:
-    requests:
-      storage: {{ .Values.opencloud.persistence.config.size | quote }}
-  {{- if .Values.opencloud.persistence.config.storageClass }}
-  {{- if (eq "-" .Values.opencloud.persistence.config.storageClass) }}
-  storageClassName: ""
-  {{- else }}
-  storageClassName: {{ .Values.opencloud.persistence.config.storageClass | quote }}
-  {{- end }}
-  {{- end }}
-{{- end }}
-
 {{- if and .Values.opencloud.enabled (and .Values.opencloud.persistence.data.enabled (not .Values.opencloud.persistence.data.existingClaim)) }}
 ---
 apiVersion: v1

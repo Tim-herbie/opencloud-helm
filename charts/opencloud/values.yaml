@@ -461,6 +461,11 @@ opencloud:
   # Admin password
   # ignored if opencloud.existingSecret is set
   adminPassword: admin
+
+  # Init secrets for deterministic service credentials across restarts.
+  # Set existingSecret to use a pre-created Secret; otherwise auto-generated.
+  initSecrets:
+    existingSecret: ""
   
   # Create demo users
   createDemoUsers: false
@@ -480,17 +485,6 @@ opencloud:
       memory: 20Gi
   # Persistence configuration
   persistence:
-    config:
-      # Enable persistence
-      enabled: true
-      # Name of existing PVC to use (overrides all other persistence values)
-      existingClaim: ""
-      # Size of the persistent volume for config
-      size: 5Gi
-      # Storage class
-      storageClass: ""
-      # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
-      accessMode: ReadWriteOnce
     data:
       # Enable persistence
       enabled: true
