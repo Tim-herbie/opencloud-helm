@@ -100,6 +100,20 @@ spec:
               value: "{{ .Values.opencloud.logLevel }}"
             - name: OC_URL
               value: "https://{{ include "opencloud.domain" . }}"
+            
+            {{- /* Runtime secrets — injected directly, no opencloud init needed */ -}}
+            {{- $initSecretName := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) }}
+            - name: OC_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: jwtSecret
+            - name: COLLABORATION_WOPI_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: collaborationWopiSecret
+
             {{- with .Values.collaboration.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
