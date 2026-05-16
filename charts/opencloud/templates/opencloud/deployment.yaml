@@ -44,8 +44,6 @@ spec:
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
           command: ['sh', '-c', 'mkdir -p /etc/opencloud /var/lib/opencloud']
           volumeMounts:
-            - name: config
-              mountPath: /etc/opencloud
             - name: data
               mountPath: /var/lib/opencloud
         {{- if .Values.webExtensions.enabled }}
@@ -513,8 +511,6 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           volumeMounts:
-            - name: config
-              mountPath: /etc/opencloud
             - name: data
               mountPath: /var/lib/opencloud
             {{- if and (eq .Values.opencloud.storage.mode "posixfs") .Values.opencloud.storage.posixfs.persistence.enabled }}
@@ -544,17 +540,6 @@ spec:
           resources:
             {{- toYaml .Values.opencloud.resources | nindent 12 }}
       volumes:
-        - name: config
-          {{- if .Values.opencloud.persistence.config.enabled }}
-          persistentVolumeClaim:
-            {{- if .Values.opencloud.persistence.config.existingClaim }}
-            claimName: {{ .Values.opencloud.persistence.config.existingClaim | quote }}
-            {{- else }}
-            claimName: {{ include "opencloud.opencloud.fullname" . }}-config
-            {{- end }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
         - name: data
           {{- if .Values.opencloud.persistence.data.enabled }}
           persistentVolumeClaim:

@@ -30,17 +30,6 @@ spec:
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
           command: ['sh', '-c', 'until wget -q -O- http://{{ include "opencloud.opencloud.fullname" . }}:9200/health; do echo waiting for opencloud; sleep 5; done;']
 
-        {{- if not .Values.opencloud.persistence.enabled }}
-        # Copy config from OpenCloud API if persistence is disabled
-        - name: copy-config
-          image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
-          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
-          command: ['sh', '-c', 'mkdir -p /etc/opencloud && wget -q -O /etc/opencloud/config.json http://{{ include "opencloud.opencloud.fullname" . }}:9200/api/v1/config/secrets || echo "Failed to get config from OpenCloud"']
-          volumeMounts:
-            - name: etc-opencloud
-              mountPath: /etc/opencloud
-        {{- end }}
-
         {{- if .Values.collabora.enabled }}
         # Wait for Collabora to be ready
         - name: wait-for-collabora
@@ -124,9 +113,6 @@ spec:
             - name: grpc
               containerPort: 9301
               protocol: TCP
-          volumeMounts:
-            - name: etc-opencloud
-              mountPath: /etc/opencloud
           livenessProbe:
             {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             exec:
@@ -141,18 +127,4 @@ spec:
             failureThreshold: 1
           resources:
             {{- toYaml .Values.collaboration.resources | nindent 12 }}
-      volumes:
-        - name: etc-opencloud
-          {{- if .Values.opencloud.persistence.config.enabled }}
-          persistentVolumeClaim:
-            {{- if .Values.opencloud.persistence.config.existingClaim }}
-            claimName: {{ .Values.opencloud.persistence.config.existingClaim | quote }}
-            {{- else }}
-            claimName: {{ include "opencloud.opencloud.fullname" . }}-config
-            {{- end }}
-            readOnly: true
-          {{- else }}
-          # If persistence is disabled, use an init container to copy the config
-          emptyDir: {}
-          {{- end }}
 {{- end }}

@@ -485,17 +485,6 @@ opencloud:
       memory: 20Gi
   # Persistence configuration
   persistence:
-    config:
-      # Enable persistence
-      enabled: true
-      # Name of existing PVC to use (overrides all other persistence values)
-      existingClaim: ""
-      # Size of the persistent volume for config
-      size: 5Gi
-      # Storage class
-      storageClass: ""
-      # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
-      accessMode: ReadWriteOnce
     data:
       # Enable persistence
       enabled: true
