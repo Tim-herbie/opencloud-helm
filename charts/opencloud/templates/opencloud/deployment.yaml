@@ -293,16 +293,6 @@ spec:
             - name: WEB_OIDC_SCOPE
               value: {{ .Values.opencloud.oidc.scope | quote }}
             {{- end }}
-            # Admin user password
-            - name: IDM_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{- if .Values.opencloud.existingSecret }}
-                          {{ .Values.opencloud.existingSecret }}
-                        {{- else }}
-                          {{ include "opencloud.opencloud.fullname" . }}
-                        {{- end }}
-                  key: adminPassword
             {{- /* Runtime secrets — injected directly, no opencloud init needed */ -}}
             {{- $initSecretName := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) }}
             - name: OC_JWT_SECRET
@@ -370,11 +360,6 @@ spec:
                 secretKeyRef:
                   name: {{ $initSecretName }}
                   key: systemUserID
-            - name: OC_ADMIN_USER_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: adminUserID
             - name: GRAPH_APPLICATION_ID
               valueFrom:
                 secretKeyRef:
