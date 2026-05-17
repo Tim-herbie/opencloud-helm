@@ -488,17 +488,17 @@ postgres:
 | `webExtensions.image.repository` | Repository for web extensions images | `opencloudeu/web-extensions` |
 | `webExtensions.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `webExtensions.extensions.drawio.enabled` | Enable Draw.io extension | `true` |
-| `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-1.0.1` |
+| `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-2.0.0` |
 | `webExtensions.extensions.externalsites.enabled` | Enable External Sites extension | `true` |
-| `webExtensions.extensions.externalsites.tag` | External Sites image tag | `external-sites-1.3.0` |
+| `webExtensions.extensions.externalsites.tag` | External Sites image tag | `external-sites-2.0.0` |
 | `webExtensions.extensions.importer.enabled` | Enable Importer extension | `true` |
 | `webExtensions.extensions.importer.tag` | Importer image tag | `importer-1.0.0` |
 | `webExtensions.extensions.jsonviewer.enabled` | Enable JSON Viewer extension | `true` |
-| `webExtensions.extensions.jsonviewer.tag` | JSON Viewer image tag | `json-viewer-1.0.2` |
+| `webExtensions.extensions.jsonviewer.tag` | JSON Viewer image tag | `json-viewer-2.0.0` |
 | `webExtensions.extensions.progressbars.enabled` | Enable Progress Bars extension | `true` |
-| `webExtensions.extensions.progressbars.tag` | Progress Bars image tag | `progress-bars-1.1.0` |
+| `webExtensions.extensions.progressbars.tag` | Progress Bars image tag | `progress-bars-2.0.0` |
 | `webExtensions.extensions.unzip.enabled` | Enable Unzip extension | `true` |
-| `webExtensions.extensions.unzip.tag` | Unzip image tag | `unzip-1.0.4` |
+| `webExtensions.extensions.unzip.tag` | Unzip image tag | `unzip-2.0.0` |
 | `webExtensions.extensions.arcade.enabled` | Enable Arcade extension | `false` |
 | `webExtensions.extensions.arcade.tag` | Arcade image tag | `arcade-2.0.0` |
 | `webExtensions.extensions.calculator.enabled` | Enable Calculator extension | `false` |
