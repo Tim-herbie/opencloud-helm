@@ -72,7 +72,6 @@ jobs:
             BODY="$(printf '%s' "$ENTRY" | cut -d $'\x1f' -f3-)"
 
             TYPE_SOURCE="$SUBJECT"
-            BODY_SOURCE="$BODY"
             LINE=""
             TYPE="other"
             IS_BREAKING=false
@@ -83,12 +82,8 @@ jobs:
               SEEN_PRS["$PR_NUMBER"]=1
               PR_TITLE="$(jq -r 'try (.[0].title // empty) catch empty' <<< "$PR_JSON")"
               PR_URL="$(jq -r 'try (.[0].html_url // empty) catch empty' <<< "$PR_JSON")"
-              PR_BODY="$(jq -r 'try (.[0].body // empty) catch empty' <<< "$PR_JSON")"
 
               if [[ -n "$PR_TITLE" && -n "$PR_URL" ]]; then
-                if [[ -n "$PR_BODY" ]]; then
-                  BODY_SOURCE="$BODY"$'\n\n'"$PR_BODY"
-                fi
                 LINE="- [#${PR_NUMBER}](${PR_URL}) ${PR_TITLE}"
                 PR_LIST+=("$LINE")
               fi
@@ -98,7 +93,7 @@ jobs:
               TYPE="$(echo "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
             fi
 
-            if [[ "$TYPE_SOURCE" == *"!: "* ]] || grep -qi 'BREAKING CHANGE' <<< "$BODY_SOURCE"; then
+            if [[ "$TYPE_SOURCE" == *"!: "* ]] || grep -qi 'BREAKING CHANGE' <<< "$BODY"; then
               IS_BREAKING=true
             fi
 
