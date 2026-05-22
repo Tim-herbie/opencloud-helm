@@ -496,6 +496,12 @@ opencloud:
       storageClass: ""
       # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
       accessMode: ReadWriteOnce
+  # Migration configuration for migrating credentials from legacy config PVC to new secrets
+  migration:
+    # Name of the legacy config PVC to read credentials from.
+    # Defaults to "<fullname>-config" if not set.
+    configPvcClaimName: ""
+  
   # Configuration files
   config:
     theme: "owncloud"
