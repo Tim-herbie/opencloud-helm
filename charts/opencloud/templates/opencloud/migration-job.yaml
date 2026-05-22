@@ -1,0 +1,150 @@
+{{- if .Values.opencloud.enabled }}
+{{- $jobName := printf "%s-credential-migration" (include "opencloud.opencloud.fullname" .) -}}
+{{- $saName := printf "%s-credential-migration" (include "opencloud.opencloud.fullname" .) -}}
+{{- $targetSecret := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) -}}
+{{- $targetDeployment := include "opencloud.opencloud.fullname" . -}}
+{{- $legacyClaim := (.Values.opencloud.migration).configPvcClaimName | default (printf "%s-config" (include "opencloud.opencloud.fullname" .)) -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $saName }}
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opencloud
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "-2"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $saName }}
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opencloud
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "-2"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["{{ $targetSecret }}"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["{{ $targetDeployment }}"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $saName }}
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opencloud
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "-2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $saName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $saName }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $jobName }}
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opencloud
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "opencloud.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: opencloud
+    spec:
+      serviceAccountName: {{ $saName }}
+      restartPolicy: Never
+      containers:
+        - name: migrate-credentials
+          image: docker.io/alpine/k8s:1.31.13
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              CONFIG_FILE="/config/opencloud.yaml"
+
+              IDP_LDAP_BIND_PASSWORD="$(awk '
+                /^idp:[[:space:]]*$/ { in_idp=1; next }
+                in_idp && /^[^[:space:]]/ { in_idp=0 }
+                in_idp && /^[[:space:]]+ldap:[[:space:]]*$/ { in_ldap=1; next }
+                in_ldap && /^[[:space:]]{2}[^[:space:]]/ && $0 !~ /^[[:space:]]+ldap:/ { in_ldap=0 }
+                in_ldap && /^[[:space:]]+bind_password:[[:space:]]*/ {
+                  sub(/^[[:space:]]+bind_password:[[:space:]]*/, "")
+                  gsub(/^"|"$/, "")
+                  print
+                  exit
+                }
+              ' "${CONFIG_FILE}")"
+
+              IDM_SERVICE_PASSWORD="$(awk '
+                /^idm:[[:space:]]*$/ { in_idm=1; next }
+                in_idm && /^[^[:space:]]/ { in_idm=0 }
+                in_idm && /^[[:space:]]+service_user_passwords:[[:space:]]*$/ { in_pw=1; next }
+                in_pw && /^[[:space:]]{2}[^[:space:]]/ && $0 !~ /^[[:space:]]+service_user_passwords:/ { in_pw=0 }
+                in_pw && /^[[:space:]]+idm_password:[[:space:]]*/ {
+                  sub(/^[[:space:]]+idm_password:[[:space:]]*/, "")
+                  gsub(/^"|"$/, "")
+                  print
+                  exit
+                }
+              ' "${CONFIG_FILE}")"
+
+              IDM_REVA_PASSWORD="$(awk '
+                /^idm:[[:space:]]*$/ { in_idm=1; next }
+                in_idm && /^[^[:space:]]/ { in_idm=0 }
+                in_idm && /^[[:space:]]+service_user_passwords:[[:space:]]*$/ { in_pw=1; next }
+                in_pw && /^[[:space:]]{2}[^[:space:]]/ && $0 !~ /^[[:space:]]+service_user_passwords:/ { in_pw=0 }
+                in_pw && /^[[:space:]]+reva_password:[[:space:]]*/ {
+                  sub(/^[[:space:]]+reva_password:[[:space:]]*/, "")
+                  gsub(/^"|"$/, "")
+                  print
+                  exit
+                }
+              ' "${CONFIG_FILE}")"
+
+              [ -n "${IDM_REVA_PASSWORD}" ] || (echo "Missing idm.service_user_passwords.reva_password" && exit 1)
+              [ -n "${IDM_SERVICE_PASSWORD}" ] || (echo "Missing idm.service_user_passwords.idm_password" && exit 1)
+              [ -n "${IDP_LDAP_BIND_PASSWORD}" ] || (echo "Missing idp.ldap.bind_password" && exit 1)
+
+              b64_idm_reva="$(printf '%s' "${IDM_REVA_PASSWORD}" | base64 | tr -d '\n')"
+              b64_idm_service="$(printf '%s' "${IDM_SERVICE_PASSWORD}" | base64 | tr -d '\n')"
+              b64_idp_ldap="$(printf '%s' "${IDP_LDAP_BIND_PASSWORD}" | base64 | tr -d '\n')"
+
+              kubectl -n "{{ .Release.Namespace }}" patch secret "{{ $targetSecret }}" --type='json' -p="[{\"op\":\"add\",\"path\":\"/data/idmRevaServicePassword\",\"value\":\"${b64_idm_reva}\"}]"
+              kubectl -n "{{ .Release.Namespace }}" patch secret "{{ $targetSecret }}" --type='json' -p="[{\"op\":\"add\",\"path\":\"/data/idmServicePassword\",\"value\":\"${b64_idm_service}\"}]"
+              kubectl -n "{{ .Release.Namespace }}" patch secret "{{ $targetSecret }}" --type='json' -p="[{\"op\":\"add\",\"path\":\"/data/idmIdpServicePassword\",\"value\":\"${b64_idp_ldap}\"}]"
+
+              kubectl -n "{{ .Release.Namespace }}" rollout restart deployment "{{ $targetDeployment }}"
+          volumeMounts:
+            - name: config-pvc
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config-pvc
+          persistentVolumeClaim:
+            claimName: {{ $legacyClaim }}
+{{- end }}

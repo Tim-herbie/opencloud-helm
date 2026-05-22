@@ -376,7 +376,32 @@ storageUsersMountID
 
 The chart maps these keys to the correct runtime ENV vars for each OpenCloud service, including per-service LDAP bind passwords (e.g., `USERS_LDAP_BIND_PASSWORD` ← `idmRevaServicePassword`).
 
-### Keycloak Settings
+### Credential Migration Job
+
+When upgrading from an older chart version that stored credentials in a config PVC (e.g., `/config/opencloud.yaml`), a one-time migration job can extract the existing passwords and write them into the `*-init` Secret so that OpenCloud can restart without regenerating credentials.
+
+The job runs as a `post-upgrade` Helm hook. It:
+1. Reads `idp.ldap.bind_password`, `idm.service_user_passwords.idm_password`, and `idm.service_user_passwords.reva_password` from the legacy config file on the PVC.
+2. Patches those values into the init Secret (`opencloud.initSecrets.existingSecret` or the auto-generated `<release>-init`).
+3. Triggers a rolling restart of the OpenCloud deployment.
+
+The job and its RBAC resources (ServiceAccount, Role, RoleBinding) are cleaned up automatically at the start of the **next** `helm upgrade` (`before-hook-creation` delete policy), so they remain available for troubleshooting after each run.
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `opencloud.migration.configPvcClaimName` | Name of the legacy config PVC to read credentials from | `<release>-opencloud-config` |
+
+**Example:**
+
+```yaml
+opencloud:
+  migration:
+    configPvcClaimName: "my-old-opencloud-config"
+```
+
+> **Note:** This job only needs to run once. After a successful migration, the credentials live in the init Secret and the legacy PVC is no longer required.
+
+
 
 By default the chart deploys an internal Keycloak. It can be disabled and replaced with an external OIDC provider.
 
