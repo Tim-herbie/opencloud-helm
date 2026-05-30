@@ -389,6 +389,7 @@ The job and its RBAC resources (ServiceAccount, Role, RoleBinding) are cleaned u
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
+| `opencloud.migration.enabled` | Enable the credential migration job hook | `true` |
 | `opencloud.migration.configPvcClaimName` | Name of the legacy config PVC to read credentials from | `<release>-opencloud-config` |
 
 **Example:**
@@ -396,6 +397,7 @@ The job and its RBAC resources (ServiceAccount, Role, RoleBinding) are cleaned u
 ```yaml
 opencloud:
   migration:
+    enabled: true
     configPvcClaimName: "my-old-opencloud-config"
 ```
 

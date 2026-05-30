@@ -498,6 +498,8 @@ opencloud:
       accessMode: ReadWriteOnce
   # Migration configuration for migrating credentials from legacy config PVC to new secrets
   migration:
+    # Enable credential migration job on chart upgrades.
+    enabled: true
     # Name of the legacy config PVC to read credentials from.
     # Defaults to "<fullname>-config" if not set.
     configPvcClaimName: ""
