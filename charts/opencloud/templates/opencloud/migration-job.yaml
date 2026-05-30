@@ -1,4 +1,4 @@
-{{- if .Values.opencloud.enabled }}
+{{- if and .Values.opencloud.enabled .Values.opencloud.migration.enabled }}
 {{- $jobName := printf "%s-credential-migration" (include "opencloud.opencloud.fullname" .) -}}
 {{- $saName := printf "%s-credential-migration" (include "opencloud.opencloud.fullname" .) -}}
 {{- $targetSecret := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) -}}

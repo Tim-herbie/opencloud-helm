@@ -1,0 +1,22 @@
+suite: Credential Migration Job Tests
+
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/migration-job.yaml
+
+tests:
+  - it: migration job resources are created by default
+    template: opencloud/migration-job.yaml
+    asserts:
+      - hasDocuments:
+          count: 4
+
+  - it: migration job resources are not created when disabled
+    template: opencloud/migration-job.yaml
+    set:
+      opencloud:
+        migration:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
