@@ -1,16 +1,15 @@
-## Release 2.4.2
+## Release 2.4.3
 
-Base: changes since 2.4.1.
+Base: changes since 2.4.2.
 
-OpenCloud version from values.yaml: 7.0.0
+OpenCloud version from values.yaml: 7.1.0
 
 ### Pull Requests
-- [#98](https://github.com/Tim-herbie/opencloud-helm/pull/98) Make credential migration hook configurable via `opencloud.migration.enabled`
-- [#95](https://github.com/Tim-herbie/opencloud-helm/pull/95) chore(deps): update docker.io/library/busybox docker tag to v1.38
-- [#96](https://github.com/Tim-herbie/opencloud-helm/pull/96) chore(deps): update docker.io/apache/tika docker tag to v3.3.1.0
+- [#102](https://github.com/Tim-herbie/opencloud-helm/pull/102) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.1.0
+- [#99](https://github.com/Tim-herbie/opencloud-helm/pull/99) chore(deps): update docker.io/collabora/code docker tag to v25.04.10.3.1
 
 ### Changelog
-## [2.4.2] - 2026-05-31
+## [2.4.3] - 2026-06-02
 
 ### Breaking Changes
 - None
@@ -22,6 +21,5 @@ OpenCloud version from values.yaml: 7.0.0
 - None
 
 ### Chore / Docs / CI / Other
-- [#95](https://github.com/Tim-herbie/opencloud-helm/pull/95) chore(deps): update docker.io/library/busybox docker tag to v1.38
-- [#96](https://github.com/Tim-herbie/opencloud-helm/pull/96) chore(deps): update docker.io/apache/tika docker tag to v3.3.1.0
-- [#98](https://github.com/Tim-herbie/opencloud-helm/pull/98) Make credential migration hook configurable via `opencloud.migration.enabled`
+- [#102](https://github.com/Tim-herbie/opencloud-helm/pull/102) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.1.0
+- [#99](https://github.com/Tim-herbie/opencloud-helm/pull/99) chore(deps): update docker.io/collabora/code docker tag to v25.04.10.3.1
