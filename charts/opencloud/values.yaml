@@ -574,6 +574,19 @@ opencloud:
     decomposed:
       # Maximum number of concurrent operations
       maxConcurrency: 100
+      # Path of storage root directory, default is /var/lib/opencloud/storage
+      rootPath: "/var/lib/opencloud/storage"
+      persistence:
+        # Enable persistence
+        enabled: true
+        # Name of existing PVC to use (overrides all other persistence values)
+        existingClaim: ""
+        # Size of the persistent volume for data
+        size: 30Gi
+        # Storage class
+        storageClass: ""
+        # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
+        accessMode: ReadWriteOnce
     posixfs:
       # The type of the cache store, supported values are: 'memory', 'redis-sentinel', 'nats-js-kv' (default), 'noop'
       idCacheStore: nats-js-kv

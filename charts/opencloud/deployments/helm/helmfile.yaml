@@ -815,15 +815,21 @@ releases:
           oidcIdpInsecure: true
           ocHttpApiInsecure: true
 
-      # --- Storage mode (posixfs — no MinIO) ---
+      # --- Storage mode (decomposed — no MinIO) ---
       - opencloud:
           storage:
-            mode: posixfs
+            mode: decomposed
             s3:
               enabled: false
-            posixfs:
+            decomposed:
+              maxConcurrency: 100
               persistence:
+                size: 30Gi
                 accessMode: ReadWriteMany
+          persistence:
+            data:
+              size: 30Gi
+              accessMode: ReadWriteMany
 
       # --- Secret refs ---
       - secretRefs:
@@ -1002,12 +1008,16 @@ releases:
 # 
 #       - opencloud:
 #           storage:
-#             mode: posixfs
+#             mode: decomposed
 #             s3:
 #               enabled: false
-#             posixfs:
+#             decomposed:
+#               maxConcurrency: 100
 #               persistence:
 #                 accessMode: ReadWriteMany
+#           persistence:
+#             data:
+#               accessMode: ReadWriteMany
 # 
 #       - secretRefs:
 #           ldapSecretRef: ldap-bind-secrets

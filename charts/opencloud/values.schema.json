@@ -179,7 +179,7 @@
           "properties": {
             "systemDriver": { "type": "string", "enum": ["decomposed"] },
             "usersDriver": { "type": "string", "enum": ["", "decomposed", "decomposeds3", "posix"] },
-            "mode": { "type": "string", "enum": ["s3", "posixfs"] },
+            "mode": { "type": "string", "enum": ["s3", "posixfs", "decomposed"] },
             "s3": {
               "type": "object",
               "properties": {
@@ -202,7 +202,17 @@
             "decomposed": {
               "type": "object",
               "properties": {
-                "maxConcurrency": { "type": "integer", "minimum": 1 }
+                "maxConcurrency": { "type": "integer", "minimum": 1 },
+                "rootPath": { "type": "string" },
+                "persistence": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "size": { "type": "string" },
+                    "storageClass": { "type": "string" },
+                    "accessMode": { "type": "string", "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"] }
+                  }
+                }
               }
             },
             "posixfs": {

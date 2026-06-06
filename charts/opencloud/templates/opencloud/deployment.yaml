@@ -15,15 +15,36 @@ spec:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: opencloud
   strategy:
-    {{- if eq .Values.opencloud.storage.posixfs.persistence.accessMode "ReadWriteMany" }}
+    {{- if or (eq .Values.opencloud.storage.mode "posixfs") (eq .Values.opencloud.storage.mode "decomposed") }}
+      {{- if eq .Values.opencloud.storage.mode "posixfs" }}
+        {{- if eq .Values.opencloud.storage.posixfs.persistence.accessMode "ReadWriteMany" }}
     # RWX access mode allows multiple pods to mount the volume simultaneously
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-    {{- else }}
+        {{- else }}
     # RWO access mode only allows one pod to mount at a time, so use Recreate
     type: Recreate
+        {{- end }}
+      {{- else }}
+        {{- if eq .Values.opencloud.storage.decomposed.persistence.accessMode "ReadWriteMany" }}
+    # RWX access mode allows multiple pods to mount the volume simultaneously
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+        {{- else }}
+    # RWO access mode only allows one pod to mount at a time, so use Recreate
+    type: Recreate
+        {{- end }}
+      {{- end }}
+    {{- else }}
+    # S3 mode doesn't use PVCs, so RollingUpdate is safe
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
     {{- end }}
   template:
     metadata:
@@ -475,6 +496,8 @@ spec:
               value: {{ .Values.opencloud.storage.usersDriver | quote }}
             {{- else if eq .Values.opencloud.storage.mode "posixfs" }}
               value: "posix"
+            {{- else if eq .Values.opencloud.storage.mode "decomposed" }}
+              value: "decomposed"
             {{- else }}
               value: "decomposeds3"
             {{- end }}
@@ -486,7 +509,7 @@ spec:
               value: {{ .Values.opencloud.storage.posixfs.rootPath | quote }}
             - name: STORAGE_USERS_ID_CACHE_STORE
               value: {{ .Values.opencloud.storage.posixfs.idCacheStore | quote }}
-            {{- else if eq (or .Values.opencloud.storage.usersDriver "decomposeds3") "decomposed" }}
+            {{- else if eq .Values.opencloud.storage.mode "decomposed" }}
             - name: STORAGE_USERS_OC_MAX_CONCURRENCY
               value: {{ .Values.opencloud.storage.decomposed.maxConcurrency | quote }}
             {{- else }}
@@ -542,6 +565,10 @@ spec:
             - name: posixfs
               mountPath: {{ .Values.opencloud.storage.posixfs.rootPath | default "/var/lib/opencloud/storage" | quote }}
             {{- end }}
+            {{- if and (eq .Values.opencloud.storage.mode "decomposed") .Values.opencloud.storage.decomposed.persistence.enabled }}
+            - name: decomposed
+              mountPath: {{ .Values.opencloud.storage.decomposed.rootPath | default "/var/lib/opencloud/storage" | quote }}
+            {{- end }}
             - name: config-json
               mountPath: /var/lib/opencloud/config.json
               subPath: config.json
@@ -583,6 +610,15 @@ spec:
             claimName: {{ .Values.opencloud.storage.posixfs.persistence.existingClaim | quote }}
             {{- else }}
             claimName: {{ include "opencloud.opencloud.fullname" . }}-posixfs
+            {{- end }}
+        {{- end }}
+        {{- if and (eq .Values.opencloud.storage.mode "decomposed") .Values.opencloud.storage.decomposed.persistence.enabled }}
+        - name: decomposed
+          persistentVolumeClaim:
+            {{- if .Values.opencloud.storage.decomposed.persistence.existingClaim }}
+            claimName: {{ .Values.opencloud.storage.decomposed.persistence.existingClaim | quote }}
+            {{- else }}
+            claimName: {{ include "opencloud.opencloud.fullname" . }}-decomposed
             {{- end }}
         {{- end }}
         - name: config-json
