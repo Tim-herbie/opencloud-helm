@@ -582,6 +582,26 @@ opencloud:
         accessMode: ReadWriteMany
   # affinity: {}
 
+  # =====================================================================
+  # ANTIVIRUS (ClamAV)
+  # =====================================================================
+  
+  # Antivirus scanning configuration
+  # Requires ClamAV to be deployed separately (e.g., via wiremind/clamav chart)
+  antivirus:
+    # Enable antivirus scanning
+    enabled: false
+    # What to do with infected files: "abort" (default), "continue", or "delete"
+    infectedFileHandling: "abort"
+    # Scanner type: "clamav" (default) or "icap"
+    scannerType: "clamav"
+    # ClamAV socket endpoint (when scannerType is "clamav")
+    clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+    # ICAP URL (when scannerType is "icap")
+    icapUrl: ""
+    # ICAP service name (when scannerType is "icap")
+    icapService: "avscan"
+
 # =====================================================================
 # GATEWAY-API HTTPRoute
 # =====================================================================

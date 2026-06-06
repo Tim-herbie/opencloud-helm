@@ -255,6 +255,24 @@ spec:
             - name: NOTIFICATIONS_SMTP_ENCRYPTION
               value: "{{ .Values.opencloud.smtp.encryption }}"
             {{- end }}
+            {{- if .Values.opencloud.antivirus.enabled }}
+            - name: ANTIVIRUS_ENABLED
+              value: "true"
+            - name: ANTIVIRUS_INFECTED_FILE_HANDLING
+              value: {{ .Values.opencloud.antivirus.infectedFileHandling | quote }}
+            - name: ANTIVIRUS_SCANNER_TYPE
+              value: {{ .Values.opencloud.antivirus.scannerType | quote }}
+            {{- if eq .Values.opencloud.antivirus.scannerType "clamav" }}
+            - name: ANTIVIRUS_CLAMAV_SOCKET
+              value: {{ .Values.opencloud.antivirus.clamavSocket | quote }}
+            {{- end }}
+            {{- if eq .Values.opencloud.antivirus.scannerType "icap" }}
+            - name: ANTIVIRUS_ICAP_URL
+              value: {{ .Values.opencloud.antivirus.icapUrl | quote }}
+            - name: ANTIVIRUS_ICAP_SERVICE
+              value: {{ .Values.opencloud.antivirus.icapService | quote }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.oidc.issuerUrl }}
             # IDP specific configuration
             - name: PROXY_AUTOPROVISION_ACCOUNTS
