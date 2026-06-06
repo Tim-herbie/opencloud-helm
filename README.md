@@ -18,7 +18,7 @@ Welcome to the **Opencloud Helm Chart** repository! This repository is intended 
 
 This repository is created to **welcome contributions from the community**. It does not contain official charts from OpenCloud GmbH and is **not officially supported by OpenCloud GmbH**. Instead, these charts are maintained by the open-source community.
 
-OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, MinIO for object storage and Collabora for document editing.
+OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, OpenLDAP for user management, ClamAV for virus scanning, and Collabora for document editing.
 
 ## 🚀 Version table
 
@@ -52,7 +52,7 @@ This includes:
 - Kubernetes 1.33+
 - Helm 3.18.0+
 - PV provisioner support in the underlying infrastructure (if persistence is enabled)
-- External ingress controller (e.g., Traefik) for routing traffic to the services
+- Gateway API compatible ingress controller (e.g., Cilium Gateway) for HTTPS routing
 
 ## 📦 Available Charts
 
@@ -63,9 +63,11 @@ This repository contains the following charts:
 The complete OpenCloud deployment with all components for production use:
 
 - Full microservices architecture
-- Keycloak for authentication
-- MinIO for object storage
+- Keycloak for OIDC authentication
+- OpenLDAP for user directory
+- ClamAV for virus scanning
 - Document editing with Collabora
+- OPA policies for file type restrictions
 
 [View Production Chart Documentation](./charts/opencloud/README.md)
 
@@ -75,13 +77,21 @@ This project is licensed under the **AGPLv3** license. See the [LICENSE](LICENSE
 
 ## ⚡ Quick Start
 
-Follow these steps to quickly deploy OpenCloud using the Helm chart:
+Follow these steps to quickly deploy OpenCloud using Helmfile:
 
-1. **Install the OpenCloud Helm chart:**
-  ```sh
-  helm install opencloud \
-    oci://ghcr.io/tim-herbie/opencloud-helm/opencloud \
-    --version 2.4.3 \
-    --namespace opencloud \
-    --create-namespace
-  ```
+1. **Navigate to the helmfile directory:**
+   ```sh
+   cd charts/opencloud/deployments/helm
+   ```
+
+2. **Deploy the full stack:**
+   ```sh
+   helmfile sync
+   ```
+
+   This deploys Keycloak, OpenLDAP, ClamAV, and OpenCloud with Collabora in their respective namespaces.
+
+3. **Verify the deployment:**
+   ```sh
+   kubectl get pods -A | grep -E "opencloud|keycloak|openldap|clamav"
+   ```

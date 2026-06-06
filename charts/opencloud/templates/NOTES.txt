@@ -27,41 +27,44 @@ Using default credentials in production environments poses significant security 
 
   Keycloak (OIDC Provider):
     - Namespace: keycloak
-    - Port-forward: kubectl port-forward -n keycloak svc/keycloak-keycloakx-http 8080:80
-    - URL: http://localhost:8080
-    - Admin Console: http://localhost:8080/admin
+    - URL: https://keycloak.opencloud.test
+    - Admin Console: https://keycloak.opencloud.test/admin
 {{- end }}
 
   OpenCloud:
     - Namespace: opencloud
-    - Port-forward: kubectl port-forward -n opencloud svc/opencloud-opencloud 9200:9200
-    - URL: http://localhost:9200
+    - URL: https://cloud.opencloud.test
 
   OpenLDAP (phpldapadmin):
     - Namespace: openldap
-    - Port-forward: kubectl port-forward -n openldap svc/openldap-phpldapadmin 6443:80
-    - URL: http://localhost:6443
+    - URL: https://openldap.opencloud.test
 
 =====================================================
   STORAGE
 =====================================================
   - Storage Mode: {{ .Values.opencloud.storage.mode }}
-  - StorageClass: local-path (dynamic provisioning)
-  - PersistentVolumes: bound to control-plane node
+  - StorageClass: ceph-cephfs (RWX)
+  - PersistentVolumes: dynamically provisioned
+
+=====================================================
+  ENABLED FEATURES
+=====================================================
+  ✓ HTTPS with TLS termination (cilium-gateway)
+  ✓ OIDC authentication (Keycloak)
+  ✓ User directory (OpenLDAP)
+  ✓ Virus scanning (ClamAV)
+  ✓ Document editing (Collabora)
+  ✓ OPA policies (file type restrictions)
 
 =====================================================
   IMPORTANT: Production Readiness Checklist
 =====================================================
   [ ] Change all default passwords
-  [ ] Enable TLS (global.tls.enabled: true)
   [ ] Switch Keycloak to PostgreSQL (remove --import-realm, use start --optimized)
-  [ ] Configure proper hostname/ingress (not localhost)
-  [ ] Enable antivirus (clamav) if needed
-  [ ] Enable Collabora/OnlyOffice for document editing
-  [ ] Remove keycloak-config-cli or init jobs
-  [ ] Review OPA policies
   [ ] Configure SMTP for email notifications
   [ ] Set up proper backup strategy for PVs
+  [ ] Review and customize OPA policies for your organization
+  [ ] Configure monitoring and alerting
 
 For more information, please refer to the OpenCloud documentation:
   https://docs.opencloud.eu/
