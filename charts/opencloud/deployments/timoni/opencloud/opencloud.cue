@@ -14,7 +14,7 @@ bundle: {
                 }
                 chart: {
                     name:    "opencloud"
-                    version: "2.4.3"
+                    version: "2.4.4"
                 }
                 sync: {
                     timeout: 10
@@ -158,7 +158,7 @@ bundle: {
         //         }
         //         chart: {
         //             name:    "opencloud"
-        //             version: "2.4.3"
+        //             version: "2.4.4"
         //         }
         //         sync: {
         //             timeout: 10

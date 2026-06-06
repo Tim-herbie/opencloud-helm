@@ -250,7 +250,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.smtp.insecure` | SMTP insecure | `false` |
 | `opencloud.smtp.authentication` | SMTP authentication | `plain` |
 | `opencloud.smtp.encryption` | SMTP encryption | `starttls` |
-| `opencloud.storage.mode` | Choice between s3 and posixfs for user files | `s3` |
+| `opencloud.storage.mode` | Choice between `s3`, `posixfs`, or `decomposed` for user files | `s3` |
 | `opencloud.proxyTls` | Use TLS between proxy and OpenCloud | `false` |
 | `opencloud.gatewayGrpcAddr` | gRPC address for the REVA gateway | `0.0.0.0:9142` |
 | `opencloud.proxyEnableBasicAuth` | Enable basic auth for proxy | `false` |

@@ -34,7 +34,7 @@ OpenCloud is a cloud collaboration platform that provides file sync and share, d
 | 6.1.0            | 2.2.0 |
 | 6.2.0            | 2.3.0 |
 | 7.0.0            | 2.4.0, 2.4.1, 2.4.2 |
-| 7.1.0            | 2.4.3 |
+| 7.1.0            | 2.4.3, 2.4.4 |
 
 
 ## 💡 Contributing
