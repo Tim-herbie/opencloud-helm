@@ -33,7 +33,7 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
 
 This repository is created to **welcome contributions from the community**. It does not contain official charts from OpenCloud GmbH and is **not officially supported by OpenCloud GmbH**. Instead, these charts are maintained by the open-source community.
 
-OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, MinIO for object storage, and options for document editing with Collabora.
+OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for OIDC authentication, OpenLDAP for user directory, ClamAV for virus scanning, and Collabora for document editing.
 
 ## 💬 Community
 
@@ -56,14 +56,24 @@ Please ensure that your PR follows best practices and includes necessary documen
 
 ## Prerequisites
 
-- Kubernetes 1.19+
-- Helm 3.2.0+
+- Kubernetes 1.33+
+- Helm 3.18.0+
 - PV provisioner support in the underlying infrastructure (if persistence is enabled)
-- External ingress controller (e.g., Cilium Gateway API) for routing traffic to the services
+- Gateway API compatible ingress controller (e.g., Cilium Gateway) for HTTPS routing
 
 ## 📦 Installation
 
-To install the chart with the release name `opencloud`:
+To install the full stack using Helmfile:
+
+```bash
+# Navigate to the helmfile directory
+cd charts/opencloud/deployments/helm
+
+# Deploy all components (Keycloak, OpenLDAP, ClamAV, OpenCloud)
+helmfile sync
+```
+
+Alternatively, to install just the OpenCloud chart with Helm:
 
 ```bash
 # Navigate to the chart directory first
@@ -74,19 +84,9 @@ helm install opencloud . \
   --namespace opencloud \
   --create-namespace \
   --set httpRoute.enabled=true \
-  --set httpRoute.gateway.name=opencloud-gateway \
-  --set httpRoute.gateway.namespace=kube-system
-```
-
-Alternatively, from the repository root:
-
-```bash
-helm install opencloud ./charts/opencloud \
-  --namespace opencloud \
-  --create-namespace \
-  --set httpRoute.enabled=true \
-  --set httpRoute.gateway.name=opencloud-gateway \
-  --set httpRoute.gateway.namespace=kube-system
+  --set httpRoute.gateway.name=cilium-gateway \
+  --set httpRoute.gateway.namespace=kube-system \
+  --set httpRoute.gateway.sectionName=opencloud
 ```
 
 ## Architecture
@@ -95,8 +95,8 @@ This Helm chart deploys the following components:
 
 1. **OpenCloud** - Main application (fork of ownCloud Infinite Scale)
 2. **Keycloak** - Authentication provider with OpenID Connect
-3. **PostgreSQL** - Database for Keycloak
-4. **MinIO** - S3-compatible object storage
+3. **OpenLDAP** - User directory service
+4. **ClamAV** - Virus scanning for uploaded files
 5. **Collabora** - Online document editor (CODE - Collabora Online Development Edition)
 6. **Collaboration Service** - WOPI server that connects OpenCloud with document editors
 
