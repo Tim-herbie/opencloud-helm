@@ -522,7 +522,11 @@ opencloud:
   # Storage configuration
   storage:
     systemDriver: "decomposed"
+    # Storage driver for user files: "decomposeds3" (default), "posix", or "decomposed"
+    # If not set, defaults to "decomposeds3" when mode is "s3", or "posix" when mode is "posixfs"
+    usersDriver: ""
     # Storage mode for user files, can be "s3" (default) or "posixfs"
+    # This is a convenience setting that sets usersDriver if usersDriver is not explicitly set
     mode: s3
     # S3 storage configuration
     s3:

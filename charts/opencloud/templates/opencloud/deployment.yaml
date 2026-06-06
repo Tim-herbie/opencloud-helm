@@ -467,9 +467,11 @@ spec:
             - name: PROXY_CSP_CONFIG_FILE_LOCATION
               value: {{ .Values.opencloud.cspConfigFileLocation | quote }}
             # Storage configuration
-            # Always use decomposeds3 for user storage and decomposed for system storage
+            # Use explicit usersDriver if set, otherwise derive from mode
             - name: STORAGE_USERS_DRIVER
-            {{- if eq .Values.opencloud.storage.mode "posixfs" }}
+            {{- if .Values.opencloud.storage.usersDriver }}
+              value: {{ .Values.opencloud.storage.usersDriver | quote }}
+            {{- else if eq .Values.opencloud.storage.mode "posixfs" }}
               value: "posix"
             {{- else }}
               value: "decomposeds3"
