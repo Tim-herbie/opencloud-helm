@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: clamav
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clamav-config
+  namespace: clamav
+data:
+  ###############################################################################
+  # High Availability Configuration
+  ###############################################################################
+  CLAMAV_REPLICA_COUNT: "2"
+  CLAMAV_UPDATE_STRATEGY_TYPE: "RollingUpdate"
+  CLAMAV_UPDATE_STRATEGY_PARTITION: "0"
+  CLAMAV_HPA_ENABLED: "false"
+  CLAMAV_PDB_ENABLED: "true"
+  CLAMAV_PDB_MIN_AVAILABLE: "1"
+  CLAMAV_TOPOLOGY_MAX_SKEW: "1"
+  CLAMAV_TOPOLOGY_KEY: "kubernetes.io/hostname"
+  CLAMAV_TOPOLOGY_UNSATISFIABLE: "ScheduleAnyway"
+
+  ###############################################################################
+  # Persistence Configuration
+  ###############################################################################
+  CLAMAV_PERSISTENCE_ENABLED: "true"
+  CLAMAV_PERSISTENCE_SIZE: "100Mi"
+  CLAMAV_PERSISTENCE_ACCESS_MODES: "ReadWriteMany"
+  CLAMAV_PERSISTENCE_STORAGE_CLASS: ""
+
+  ###############################################################################
+  # Resource Configuration
+  ###############################################################################
+  CLAMAV_RESOURCES_LIMITS_CPU: "1000m"
+  CLAMAV_RESOURCES_LIMITS_MEMORY: "2Gi"
+  CLAMAV_RESOURCES_REQUESTS_CPU: "500m"
+  CLAMAV_RESOURCES_REQUESTS_MEMORY: "1Gi"

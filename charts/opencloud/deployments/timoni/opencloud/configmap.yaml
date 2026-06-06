@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencloud-config
+  namespace: opencloud
+data:
+  ###############################################################################
+  # Global Configuration
+  ###############################################################################
+  EXTERNAL_DOMAIN: "cloud.opencloud.test"
+  OIDC_ISSUER_URI: "https://keycloak.opencloud.test/realms/openCloud"
+  TAG: ""
+
+  ###############################################################################
+  # Ingress / Gateway
+  ###############################################################################
+  INGRESS_ENABLED: "false"
+  INGRESS_CLASS_NAME: "nginx"
+  INGRESS_PROXY_BODY_SIZE: "1024m"
+  GATEWAY_HTTPROUTE_ENABLED: "true"
+
+  ###############################################################################
+  # OIDC / External User Management
+  ###############################################################################
+  OIDC_IDP_INSECURE: "true"
+  OC_HTTP_API_INSECURE: "true"
+  EXTERNAL_USER_MANAGEMENT_ENABLED: "true"
+  EXTERNAL_USER_MANAGEMENT_ADMIN_UUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
+  AUTOPROVISION_ACCOUNTS_ENABLED: "true"
+  AUTOPROVISION_ACCOUNTS_CLAIM_USER_NAME: "sub"
+  OIDC_USER_ID_CLAIM: "sub"
+  OIDC_USER_ID_CLAIM_ATTRIBUTE_MAPPING: "username"
+  OIDC_ROLE_ASSIGNMENT_CLAIM: "roles"
+  WEB_OIDC_WEB_CLIENT_ID: "web"
+
+  ###############################################################################
+  # LDAP Configuration
+  ###############################################################################
+  LDAP_URI: "ldaps://openldap.openldap.svc.cluster.local:636"
+  LDAP_WRITEABLE: "true"
+  LDAP_INSECURE: "true"
+  LDAP_BIND_DN: "cn=admin,dc=opencloud,dc=eu"
+  LDAP_USER_NAME_MATCH: "none"
+  LDAP_USER_SCHEMA_ID: "openCloudUUID"
+  LDAP_GROUP_SCHEMA_ID: "openCloudUUID"
+
+  ###############################################################################
+  # Storage
+  ###############################################################################
+  STORAGE_USERS_BACKEND_DRIVER: "decomposeds3"
+  PERSISTENCE_STORAGE_CLASS_NAME: ""
+  PERSISTENCE_ACCESS_MODES: "ReadWriteOnce"
+
+  ###############################################################################
+  # Collabora
+  ###############################################################################
+  COLLABORA_ENABLED: "true"
+  COLLABORA_URI: "https://collabora.opencloud.test"
+  COLLABORA_DOMAIN: "collabora.opencloud.test"
+  COLLABORA_TAG: "25.04.9.1.1"
+  COLLABORA_ICON_URI: "https://collabora.opencloud.test/favicon.ico"
+  COLLABORA_INSECURE: "true"
+  COLLABORA_DISABLE_PROOF: "false"
+
+  ###############################################################################
+  # Antivirus
+  ###############################################################################
+  ANTIVIRUS_ENABLED: "false"
+  ANTIVIRUS_INFECTED_FILE_HANDLING: "abort"
+  ANTIVIRUS_SCANNER_TYPE: "clamav"
+  ANTIVIRUS_CLAMAV_SOCKET: "tcp://clamav.clamav.svc.cluster.local:3310"
+
+  ###############################################################################
+  # SMTP
+  ###############################################################################
+  EMAIL_NOTIFICATIONS_ENABLED: "false"
+  SMTP_HOST: ""
+  SMTP_PORT: ""
+  SMTP_SENDER: ""
+  SMTP_AUTHENTICATION: "none"
+  SMTP_ENCRYPTION: "ssltls"
+
+  ###############################################################################
+  # Logging
+  ###############################################################################
+  OPENCLOUD_LOGGING_LEVEL: "info"
