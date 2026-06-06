@@ -29,7 +29,7 @@ bundle: {
                             collabora: string @timoni(runtime:string:COLLABORA_DOMAIN)
                         }
                         tls: {
-                            enabled: false
+                            enabled: bool @timoni(runtime:bool:TLS_ENABLED)
                         }
                     }
                     opencloud: {
@@ -37,7 +37,17 @@ bundle: {
                             tag: string @timoni(runtime:string:TAG)
                         }
                         logLevel: string @timoni(runtime:string:OPENCLOUD_LOGGING_LEVEL)
+                        frontendCheckForUpdates: bool @timoni(runtime:bool:FRONTEND_CHECK_FOR_UPDATES)
                         storage: {
+                            mode: string @timoni(runtime:string:STORAGE_MODE)
+                            s3: {
+                                enabled: bool @timoni(runtime:bool:STORAGE_S3_ENABLED)
+                            }
+                            posixfs: {
+                                persistence: {
+                                    accessMode: string @timoni(runtime:string:STORAGE_POSIXFS_ACCESS_MODE)
+                                }
+                            }
                             users: {
                                 driver: string @timoni(runtime:string:STORAGE_USERS_BACKEND_DRIVER)
                             }
@@ -56,6 +66,12 @@ bundle: {
                     }
                     httpRoute: {
                         enabled: bool @timoni(runtime:bool:GATEWAY_HTTPROUTE_ENABLED)
+                        gateway: {
+                            create:    false
+                            name:      string @timoni(runtime:string:GATEWAY_HTTPROUTE_GATEWAY_NAME)
+                            namespace: string @timoni(runtime:string:GATEWAY_HTTPROUTE_GATEWAY_NAMESPACE)
+                            sectionName: string @timoni(runtime:string:GATEWAY_HTTPROUTE_SECTION_NAME)
+                        }
                     }
                     insecure: {
                         oidcIdpInsecure: bool @timoni(runtime:bool:OIDC_IDP_INSECURE)
@@ -111,6 +127,9 @@ bundle: {
                                 authentication: string @timoni(runtime:string:SMTP_AUTHENTICATION)
                                 encryption:     string @timoni(runtime:string:SMTP_ENCRYPTION)
                             }
+                        }
+                        policies: {
+                            enabled: bool @timoni(runtime:bool:OPA_POLICIES_ENABLED)
                         }
                     }
                     collabora: {
