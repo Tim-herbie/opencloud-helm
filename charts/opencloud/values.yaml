@@ -606,6 +606,28 @@ opencloud:
     # ICAP service name (when scannerType is "icap")
     icapService: "avscan"
 
+  # =====================================================================
+  # OPA REGO POLICIES
+  # =====================================================================
+  
+  # OPA Rego policies for file extension and MIME type restrictions
+  policies:
+    # Enable OPA policies
+    enabled: false
+    # List of policy files
+    policies: []
+      # Example:
+      # - fileName: proxy.rego
+      #   content: |
+      #     package proxy
+      #     import future.keywords.if
+      #     import data.utils
+      #     default granted := true
+      #     granted = false if {
+      #         input.request.method == "PUT"
+      #         utils.is_extension_restricted(input.resource.name)
+      #     }
+
 # =====================================================================
 # GATEWAY-API HTTPRoute
 # =====================================================================
@@ -654,3 +676,44 @@ ingress:
   annotations: {}
     # Example:
     # cert-manager.io/cluster-issuer: letsencrypt
+
+# =====================================================================
+# MONITORING
+# =====================================================================
+
+# Prometheus ServiceMonitor configuration
+monitoring:
+  # Enable ServiceMonitor for Prometheus scraping
+  enabled: false
+  # Additional labels for the ServiceMonitor (e.g., for Prometheus selector)
+  labels: {}
+  # Scrape interval (default: 30s)
+  interval: "30s"
+  # Scrape timeout (default: 10s)
+  scrapeTimeout: "10s"
+
+# =====================================================================
+# EXTRA RESOURCES
+# =====================================================================
+
+# Arbitrary extra Kubernetes resources to deploy
+# Each item should be a valid Kubernetes resource definition
+extraResources: []
+  # Example:
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: my-config
+  #   data:
+  #     key: value
+
+# =====================================================================
+# CUSTOM CA CHAIN
+# =====================================================================
+
+# Custom CA certificate for inter-service TLS
+customCA:
+  # Enable custom CA certificate
+  enabled: false
+  # Name of the ConfigMap containing the CA certificate (key: ca.crt)
+  configMapName: ""
