@@ -277,6 +277,8 @@ spec:
             # IDP specific configuration
             - name: PROXY_AUTOPROVISION_ACCOUNTS
               value: {{ .Values.opencloud.proxyAutoprovisionAccounts | quote }}
+            - name: FRONTEND_CHECK_FOR_UPDATES
+              value: {{ .Values.opencloud.frontendCheckForUpdates | quote }}
             # user properties are edited in the idp, so we have to make them readonly
             - name: FRONTEND_READONLY_USER_ATTRIBUTES
               value: {{ .Values.opencloud.frontendReadonlyUserAttributes | quote }}

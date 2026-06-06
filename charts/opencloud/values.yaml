@@ -322,6 +322,8 @@ opencloud:
   proxyAutoprovisionAccounts: true
   # Readonly user attributes in frontend (default: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.accountEnabled,user.appRoleAssignments)
   frontendReadonlyUserAttributes: "user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.accountEnabled,user.appRoleAssignments"
+  # Check for updates in frontend (default: false)
+  frontendCheckForUpdates: false
   # Role assignment driver for proxy (default: oidc)
   proxyRoleAssignmentDriver: "oidc"
   # Rewrite OIDC .well-known endpoint (default: true)
