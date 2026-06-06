@@ -945,177 +945,180 @@ releases:
             enabled: false
 
   # ===========================================================================
-  # OpenCloud 2 (second instance — shares Keycloak, OpenLDAP, ClamAV)
+  # Multi-tenant OpenCloud second instance (uncomment to deploy)
   # ===========================================================================
-  - name: opencloud2
-    namespace: opencloud2
-    chart: ../../
-    values:
-      - global:
-          domain:
-            opencloud: cloud.opencloud2.test
-            oidc: keycloak.opencloud.test
-            minio: minio.opencloud2.test
-            wopi: wopiserver.opencloud2.test
-            collabora: collabora.opencloud2.test
-            companion: companion.opencloud2.test
-          tls:
-            enabled: true
-        opencloud:
-          logLevel: info
-        collabora:
-          enabled: true
-
-      - oidc:
-          issuerUrl: https://keycloak.opencloud.test/realms/openCloud
-          clientId: "web"
-        features:
-          externalUserManagement:
-            enabled: true
-            adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
-            autoprovisionAccounts:
-              enabled: true
-              claimUserName: sub
-            oidc:
-              domain: localhost
-              issuerURI: https://keycloak.opencloud.test/realms/openCloud
-              userIDClaim: sub
-              userIDClaimAttributeMapping: username
-              roleAssignment:
-                claim: roles
-            ldap:
-              writeable: true
-              uri: ldaps://openldap.openldap.svc.cluster.local:636
-              insecure: true
-              bindDN: cn=admin,dc=opencloud,dc=eu
-              user:
-                userNameMatch: none
-                schema:
-                  id: openCloudUUID
-              group:
-                schema:
-                  id: openCloudUUID
-
-      - insecure:
-          oidcIdpInsecure: true
-          ocHttpApiInsecure: true
-
-      - opencloud:
-          storage:
-            mode: posixfs
-            s3:
-              enabled: false
-            posixfs:
-              persistence:
-                accessMode: ReadWriteMany
-
-      - secretRefs:
-          ldapSecretRef: ldap-bind-secrets
-          s3CredentialsSecretRef: s3secret
-
-      - ingress:
-          enabled: false
-          ingressClassName: nginx
-          annotations:
-            nginx.ingress.kubernetes.io/proxy-body-size: 1024m
-        httpRoute:
-          enabled: true
-          gateway:
-            create: false
-            name: cilium-gateway
-            namespace: kube-system
-            port: 80
-            sectionName: opencloud2
-
-      - quotas:
-          roles:
-            'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
-            '2aadd357-682c-406b-8874-293091995fdd': 0
-
-      - features:
-          virusscan:
-            enabled: true
-            infectedFileHandling: "abort"
-            scannerType: "clamav"
-            clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
-
-          emailNotifications:
-            enabled: false
-            smtp:
-              host: ""
-              port: ""
-              sender: ""
-              authentication: none
-              encryption: ssltls
-
-          policies:
-            enabled: true
-            policies:
-              - fileName: proxy.rego
-                content: |
-                  package proxy
-                  import future.keywords.if
-                  import data.utils
-                  default granted := true
-                  granted = false if {
-                      input.request.method == "PUT"
-                      pathPrefixes := ["/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
-                      restricted := pathPrefixes[_]
-                      startswith(input.request.path, restricted)
-                      utils.is_extension_restricted(input.resource.name)
-                  }
-              - fileName: postprocessing.rego
-                content: |
-                  package postprocessing
-                  import future.keywords.if
-                  import data.utils
-                  default granted := true
-                  granted = false if {
-                      utils.is_extension_restricted(input.resource.name)
-                  }
-                  granted = false if {
-                      bytes := opencloud.resource.download(input.resource.url)
-                      mimetype := opencloud.mimetype.detect(bytes)
-                      utils.is_mimetype_restricted(mimetype)
-                  }
-              - fileName: utils.rego
-                content: |
-                  package utils
-                  RESTRICTED_EXTENSIONS := {".exe", ".dll", ".msi", ".scr", ".com", ".pif", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsh"}
-                  RESTRICTED_EXTENSIONS_NO_DOT := {"exe", "dll", "msi", "scr", "com", "pif", "bat", "cmd", "ps1", "vbs", "vbe", "wsh"}
-                  RESTRICTED_MIMETYPES := {"application/x-msdownload", "application/x-dosexec", "application/x-executable", "application/vnd.microsoft.portable-executable", "application/x-msi", "application/x-ms-dos-executable", "application/x-msdos-program", "application/x-bat", "application/bat", "application/x-sh", "application/x-shellscript"}
-                  is_extension_restricted(identifier) {
-                      extension := RESTRICTED_EXTENSIONS[_]
-                      endswith(lower(identifier), extension)
-                  }
-                  is_mimetype_restricted(mimetype) {
-                      RESTRICTED_MIMETYPES[mimetype]
-                  }
-                  is_mimetype_restricted(mimetype) {
-                      extensions := opencloud.mimetype.extensions(mimetype)
-                      ext := extensions[_]
-                      RESTRICTED_EXTENSIONS_NO_DOT[ext]
-                  }
-
-          appsIntegration:
-            enabled: true
-            wopiIntegration:
-              officeSuites:
-                - name: Collabora
-                  product: Collabora
-                  enabled: false
-                  uri: "https://collabora.opencloud2.test"
-                  insecure: true
-                  disableProof: false
-                  iconURI: https://collabora.opencloud2.test/favicon.ico
-                - name: OnlyOffice
-                  product: OnlyOffice
-                  enabled: false
-                  uri: "https://onlyoffice.opencloud2.test"
-                  insecure: true
-                  disableProof: false
-
-      - replicas: 1
-        opencloud:
-          migration:
-            enabled: false
+#   # ===========================================================================
+#   # OpenCloud 2 (second instance — shares Keycloak, OpenLDAP, ClamAV)
+#   # ===========================================================================
+#   - name: opencloud2
+#     namespace: opencloud2
+#     chart: ../../
+#     values:
+#       - global:
+#           domain:
+#             opencloud: cloud.opencloud2.test
+#             oidc: keycloak.opencloud.test
+#             minio: minio.opencloud2.test
+#             wopi: wopiserver.opencloud2.test
+#             collabora: collabora.opencloud2.test
+#             companion: companion.opencloud2.test
+#           tls:
+#             enabled: true
+#         opencloud:
+#           logLevel: info
+#         collabora:
+#           enabled: true
+# 
+#       - oidc:
+#           issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+#           clientId: "web"
+#         features:
+#           externalUserManagement:
+#             enabled: true
+#             adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
+#             autoprovisionAccounts:
+#               enabled: true
+#               claimUserName: sub
+#             oidc:
+#               domain: localhost
+#               issuerURI: https://keycloak.opencloud.test/realms/openCloud
+#               userIDClaim: sub
+#               userIDClaimAttributeMapping: username
+#               roleAssignment:
+#                 claim: roles
+#             ldap:
+#               writeable: true
+#               uri: ldaps://openldap.openldap.svc.cluster.local:636
+#               insecure: true
+#               bindDN: cn=admin,dc=opencloud,dc=eu
+#               user:
+#                 userNameMatch: none
+#                 schema:
+#                   id: openCloudUUID
+#               group:
+#                 schema:
+#                   id: openCloudUUID
+# 
+#       - insecure:
+#           oidcIdpInsecure: true
+#           ocHttpApiInsecure: true
+# 
+#       - opencloud:
+#           storage:
+#             mode: posixfs
+#             s3:
+#               enabled: false
+#             posixfs:
+#               persistence:
+#                 accessMode: ReadWriteMany
+# 
+#       - secretRefs:
+#           ldapSecretRef: ldap-bind-secrets
+#           s3CredentialsSecretRef: s3secret
+# 
+#       - ingress:
+#           enabled: false
+#           ingressClassName: nginx
+#           annotations:
+#             nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+#         httpRoute:
+#           enabled: true
+#           gateway:
+#             create: false
+#             name: cilium-gateway
+#             namespace: kube-system
+#             port: 80
+#             sectionName: opencloud2
+# 
+#       - quotas:
+#           roles:
+#             'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
+#             '2aadd357-682c-406b-8874-293091995fdd': 0
+# 
+#       - features:
+#           virusscan:
+#             enabled: true
+#             infectedFileHandling: "abort"
+#             scannerType: "clamav"
+#             clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+# 
+#           emailNotifications:
+#             enabled: false
+#             smtp:
+#               host: ""
+#               port: ""
+#               sender: ""
+#               authentication: none
+#               encryption: ssltls
+# 
+#           policies:
+#             enabled: true
+#             policies:
+#               - fileName: proxy.rego
+#                 content: |
+#                   package proxy
+#                   import future.keywords.if
+#                   import data.utils
+#                   default granted := true
+#                   granted = false if {
+#                       input.request.method == "PUT"
+#                       pathPrefixes := ["/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
+#                       restricted := pathPrefixes[_]
+#                       startswith(input.request.path, restricted)
+#                       utils.is_extension_restricted(input.resource.name)
+#                   }
+#               - fileName: postprocessing.rego
+#                 content: |
+#                   package postprocessing
+#                   import future.keywords.if
+#                   import data.utils
+#                   default granted := true
+#                   granted = false if {
+#                       utils.is_extension_restricted(input.resource.name)
+#                   }
+#                   granted = false if {
+#                       bytes := opencloud.resource.download(input.resource.url)
+#                       mimetype := opencloud.mimetype.detect(bytes)
+#                       utils.is_mimetype_restricted(mimetype)
+#                   }
+#               - fileName: utils.rego
+#                 content: |
+#                   package utils
+#                   RESTRICTED_EXTENSIONS := {".exe", ".dll", ".msi", ".scr", ".com", ".pif", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsh"}
+#                   RESTRICTED_EXTENSIONS_NO_DOT := {"exe", "dll", "msi", "scr", "com", "pif", "bat", "cmd", "ps1", "vbs", "vbe", "wsh"}
+#                   RESTRICTED_MIMETYPES := {"application/x-msdownload", "application/x-dosexec", "application/x-executable", "application/vnd.microsoft.portable-executable", "application/x-msi", "application/x-ms-dos-executable", "application/x-msdos-program", "application/x-bat", "application/bat", "application/x-sh", "application/x-shellscript"}
+#                   is_extension_restricted(identifier) {
+#                       extension := RESTRICTED_EXTENSIONS[_]
+#                       endswith(lower(identifier), extension)
+#                   }
+#                   is_mimetype_restricted(mimetype) {
+#                       RESTRICTED_MIMETYPES[mimetype]
+#                   }
+#                   is_mimetype_restricted(mimetype) {
+#                       extensions := opencloud.mimetype.extensions(mimetype)
+#                       ext := extensions[_]
+#                       RESTRICTED_EXTENSIONS_NO_DOT[ext]
+#                   }
+# 
+#           appsIntegration:
+#             enabled: true
+#             wopiIntegration:
+#               officeSuites:
+#                 - name: Collabora
+#                   product: Collabora
+#                   enabled: false
+#                   uri: "https://collabora.opencloud2.test"
+#                   insecure: true
+#                   disableProof: false
+#                   iconURI: https://collabora.opencloud2.test/favicon.ico
+#                 - name: OnlyOffice
+#                   product: OnlyOffice
+#                   enabled: false
+#                   uri: "https://onlyoffice.opencloud2.test"
+#                   insecure: true
+#                   disableProof: false
+# 
+#       - replicas: 1
+#         opencloud:
+#           migration:
+#             enabled: false

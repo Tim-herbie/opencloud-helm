@@ -15,14 +15,14 @@ spec:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: opencloud
   strategy:
-    {{- if and (gt (int .Values.opencloud.replicas) 1) .Values.opencloud.persistence.enabled }}
-    # When using multiple replicas with persistence enabled, use RollingUpdate strategy
-    # Note: This may cause issues with PVCs that use ReadWriteOnce access mode
+    {{- if eq .Values.opencloud.storage.posixfs.persistence.accessMode "ReadWriteMany" }}
+    # RWX access mode allows multiple pods to mount the volume simultaneously
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
     {{- else }}
+    # RWO access mode only allows one pod to mount at a time, so use Recreate
     type: Recreate
     {{- end }}
   template:

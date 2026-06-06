@@ -23,7 +23,7 @@ Using default credentials in production environments poses significant security 
   SERVICES DEPLOYED
 =====================================================
 
-{{- if .Values.oidc.issuerUrl }}
+{{- if not .Values.oidc.issuerUrl }}
 
   Keycloak (OIDC Provider):
     - Namespace: keycloak
