@@ -570,6 +570,10 @@ opencloud:
         secretKey: ""
         bucket: ""
         createBucket: true
+    # Decomposed filesystem configuration (when usersDriver is "decomposed")
+    decomposed:
+      # Maximum number of concurrent operations
+      maxConcurrency: 100
     posixfs:
       # The type of the cache store, supported values are: 'memory', 'redis-sentinel', 'nats-js-kv' (default), 'noop'
       idCacheStore: nats-js-kv

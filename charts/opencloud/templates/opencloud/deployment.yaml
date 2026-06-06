@@ -486,6 +486,9 @@ spec:
               value: {{ .Values.opencloud.storage.posixfs.rootPath | quote }}
             - name: STORAGE_USERS_ID_CACHE_STORE
               value: {{ .Values.opencloud.storage.posixfs.idCacheStore | quote }}
+            {{- else if eq (or .Values.opencloud.storage.usersDriver "decomposeds3") "decomposed" }}
+            - name: STORAGE_USERS_OC_MAX_CONCURRENCY
+              value: {{ .Values.opencloud.storage.decomposed.maxConcurrency | quote }}
             {{- else }}
             - name: STORAGE_USERS_DECOMPOSEDS3_ENDPOINT
               value: {{ include "opencloud.s3.user.endpoint" . }}
