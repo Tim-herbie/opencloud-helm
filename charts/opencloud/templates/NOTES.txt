@@ -46,6 +46,19 @@ Using default credentials in production environments poses significant security 
   - StorageClass: ceph-cephfs (RWX)
   - PersistentVolumes: dynamically provisioned
 
+{{- if eq .Values.opencloud.storage.mode "posixfs" }}
+
+  WARNING: CephFS + posixfs Backup Compatibility
+  -----------------------------------------------
+  When using posixfs with CephFS, snapshot/clone operations
+  may not work correctly in some Ceph versions. This can
+  cause backup tools (Velero, Kasten) to fail.
+
+  If you rely on PVC-level backups, consider switching to
+  the "decomposed" storage driver instead:
+    opencloud.storage.mode: decomposed
+{{- end }}
+
 =====================================================
   ENABLED FEATURES
 =====================================================

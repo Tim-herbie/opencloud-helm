@@ -327,17 +327,29 @@ The following options allow setting up a POSIX-compatible filesystem (such as NF
 
 **Note:** When using `posixfs` mode, ensure that the underlying storage supports the required access mode (e.g., `ReadWriteMany` for multiple replicas). The underlying filesystem must support `flock` and `xattrs` so for NFS the minimum version is 4.2.
 
-### NATS Messaging Configuration
+> **Warning: CephFS and Backup Compatibility**
+>
+> When using `posixfs` with **CephFS** as the underlying storage, be aware that CephFS snapshot and clone operations may not work correctly in some Ceph versions. This can cause backup tools (e.g., Velero, Kasten) to fail when trying to snapshot the PVC.
+>
+> If you rely on PVC-level backups, consider using the **`decomposed`** storage driver instead. The `decomposed` driver stores metadata on the PVC and is more compatible with CephFS snapshot/clone operations.
+>
+> Alternatively, verify that your Ceph version supports CephFS snapshots properly before relying on PVC-level backups with `posixfs`.
 
-| Parameter  | Description | Default |
-| ---------- | ----------- | ------- |
-| `opencloud.nats.external.enabled` | Use an external NATS server (required for high availability) | `false` |
-| `opencloud.nats.external.endpoint` | Endpoint of the external NATS server | `nats.opencloud-nats.svc.cluster.local:4222` |
-| `opencloud.nats.external.cluster` | NATS cluster name | `opencloud-cluster` |
-| `opencloud.nats.external.tls.enabled` | Enable TLS for communication with NATS | `false` |
-| `opencloud.nats.external.tls.certTrusted` | Set to `false` if the external NATS server's certificate is not trusted by default (e.g. self-signed) | `true` |
-| `opencloud.nats.external.tls.insecure` | Disable certificate validation (not recommended for production) | `false` |
-| `opencloud.nats.external.tls.caSecretName` | Name of the Kubernetes Secret containing the CA certificate (only required if `certTrusted` is `false`) | `opencloud-nats-ca` |
+### OpenCloud Decomposed Storage Settings
+
+The `decomposed` storage driver stores all metadata and blobs on a PVC (no S3 required). It is a good alternative to `posixfs` when using CephFS, as it is more compatible with CephFS snapshot/clone operations.
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `opencloud.storage.decomposed.maxConcurrency` | Maximum number of concurrent operations | `100` |
+| `opencloud.storage.decomposed.rootPath` | Path of storage root directory in openCloud pod | `/var/lib/opencloud/storage` |
+| `opencloud.storage.decomposed.persistence.enabled` | Enable persistence for decomposed storage | `true` |
+| `opencloud.storage.decomposed.persistence.existingClaim` | Name of existing PVC instead of the settings below | `""` |
+| `opencloud.storage.decomposed.persistence.size` | Size of the decomposed persistent volume | `30Gi` |
+| `opencloud.storage.decomposed.persistence.storageClass` | Storage class for decomposed volume | `""` |
+| `opencloud.storage.decomposed.persistence.accessMode` | Access mode for decomposed volume | `ReadWriteOnce` |
+
+### NATS Messaging Configuration
 
 > 💡 The secret referenced by `caSecretName` **must contain a key named `ca.crt`** with the root CA certificate used to verify the external NATS server.
 > Example:
