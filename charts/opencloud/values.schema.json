@@ -199,6 +199,12 @@
                 }
               }
             },
+            "decomposed": {
+              "type": "object",
+              "properties": {
+                "maxConcurrency": { "type": "integer", "minimum": 1 }
+              }
+            },
             "posixfs": {
               "type": "object",
               "properties": {
