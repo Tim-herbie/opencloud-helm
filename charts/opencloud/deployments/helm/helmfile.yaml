@@ -1,0 +1,647 @@
+# helmfile.yaml for OpenCloud Full Deployment (TARGET: opencloud-helm monolithic)
+# Based on SOURCE helmfile.yaml (helm/charts/opencloud-microservices/deployments/helm/helmfile.yaml)
+# Adapted for TARGET monolithic chart with separate Keycloak, OpenLDAP, and ClamAV charts.
+#
+# Usage:
+#   helmfile sync          # Deploy full stack
+#   helmfile apply         # Deploy with diff preview
+#   helmfile destroy       # Remove all releases
+
+# --- Repositories ---
+repositories:
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+  - name: osixia
+    url: https://charts.osixia.io
+  - name: wiremind
+    url: https://wiremind.github.io/wiremind-helm-charts
+
+# --- Releases ---
+releases:
+
+  # ===========================================================================
+  # Shared Secrets (OIDC + LDAP + S3 credentials)
+  # ===========================================================================
+  - name: opencloud-secrets
+    namespace: opencloud
+    chart: stable/raw
+    version: "0.1.0"
+    installed: true
+    values:
+      - resources:
+          # OIDC client credentials (shared between Keycloak realm and OpenCloud)
+          - apiVersion: v1
+            kind: Secret
+            metadata:
+              name: opencloud-oidc-credentials
+              namespace: opencloud
+            type: Opaque
+            stringData:
+              client-id: "web"
+              client-secret: "opencloud-secret-key"
+          # LDAP bind password for OpenCloud to connect to OpenLDAP
+          - apiVersion: v1
+            kind: Secret
+            metadata:
+              name: ldap-bind-secrets
+              namespace: opencloud
+            type: Opaque
+            stringData:
+              reva-ldap-bind-password: admin
+          # S3 credentials for decomposeds3 storage backend
+          - apiVersion: v1
+            kind: Secret
+            metadata:
+              name: s3secret
+              namespace: opencloud
+            type: Opaque
+            stringData:
+              accessKey: opencloud
+              secretKey: opencloud-secret-key
+
+  # ===========================================================================
+  # Keycloak (bitnami/keycloak v24.3.0) — External OIDC Provider
+  # ===========================================================================
+  - name: keycloak
+    namespace: opencloud
+    chart: bitnami/keycloak
+    version: "24.3.0"
+    needs:
+      - opencloud/opencloud-secrets
+    values:
+      - auth:
+          adminUser: admin
+          adminPassword: admin
+        postgresql:
+          enabled: true
+          auth:
+            postgresPassword: keycloak
+            username: keycloak
+            password: keycloak
+            database: keycloak
+        extraEnvVars:
+          - name: KC_HOSTNAME
+            value: keycloak.opencloud.test
+          - name: KC_PROXY
+            value: edge
+          - name: KEYCLOAK_EXTRA_ARGS
+            value: "-Dkeycloak.import=/opt/bitnami/keycloak/data/import/opencloud-realm.json"
+        extraVolumes:
+          - name: realm-config
+            configMap:
+              name: keycloak-realm-config
+        extraVolumeMounts:
+          - name: realm-config
+            mountPath: /opt/bitnami/keycloak/data/import
+        ingress:
+          enabled: true
+          hostname: keycloak.opencloud.test
+        extraDeploy:
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: keycloak-realm-config
+              namespace: opencloud
+            data:
+              opencloud-realm.json: |
+                {
+                  "realm": "openCloud",
+                  "enabled": true,
+                  "clients": [
+                    {
+                      "clientId": "web",
+                      "name": "OpenCloud Web",
+                      "enabled": true,
+                      "publicClient": true,
+                      "redirectUris": [
+                        "http://cloud.opencloud.test/*",
+                        "https://cloud.opencloud.test/*"
+                      ],
+                      "webOrigins": [
+                        "http://cloud.opencloud.test",
+                        "https://cloud.opencloud.test",
+                        "+"
+                      ],
+                      "protocolMappers": [
+                        {
+                          "name": "groups",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-group-membership-mapper",
+                          "config": {
+                            "claim.name": "groups",
+                            "full.path": "false",
+                            "id.token.claim": "true",
+                            "access.token.claim": "true"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "clientId": "OpenCloudDesktop",
+                      "name": "OpenCloud Desktop",
+                      "enabled": true,
+                      "publicClient": true,
+                      "redirectUris": ["http://127.0.0.1:*", "http://localhost:*"]
+                    },
+                    {
+                      "clientId": "OpenCloudAndroid",
+                      "name": "OpenCloud Android",
+                      "enabled": true,
+                      "publicClient": true,
+                      "redirectUris": ["oc://android.opencloud.eu"]
+                    },
+                    {
+                      "clientId": "OpenCloudIOS",
+                      "name": "OpenCloud iOS",
+                      "enabled": true,
+                      "publicClient": true,
+                      "redirectUris": ["oc://ios.opencloud.eu"]
+                    }
+                  ],
+                  "roles": {
+                    "realm": [
+                      { "name": "opencloudAdmin", "description": "OpenCloud Admin" },
+                      { "name": "opencloudSpaceAdmin", "description": "OpenCloud Space Admin" },
+                      { "name": "opencloudUser", "description": "OpenCloud User" },
+                      { "name": "opencloudGuest", "description": "OpenCloud Guest" }
+                    ]
+                  },
+                  "users": [
+                    {
+                      "username": "admin",
+                      "enabled": true,
+                      "firstName": "Admin",
+                      "lastName": "Admin",
+                      "email": "admin@opencloud.test",
+                      "realmRoles": ["opencloudAdmin", "default-roles-opencloud"],
+                      "credentials": [{ "type": "password", "value": "admin", "temporary": false }]
+                    },
+                    {
+                      "username": "alan",
+                      "enabled": true,
+                      "firstName": "Alan",
+                      "lastName": "Turing",
+                      "email": "alan@opencloud.test",
+                      "realmRoles": ["opencloudUser", "default-roles-opencloud"],
+                      "credentials": [{ "type": "password", "value": "demo", "temporary": false }]
+                    },
+                    {
+                      "username": "mary",
+                      "enabled": true,
+                      "firstName": "Mary",
+                      "lastName": "Kenneth Keller",
+                      "email": "mary@opencloud.test",
+                      "realmRoles": ["opencloudUser", "default-roles-opencloud"],
+                      "credentials": [{ "type": "password", "value": "demo", "temporary": false }]
+                    },
+                    {
+                      "username": "margaret",
+                      "enabled": true,
+                      "firstName": "Margaret",
+                      "lastName": "Hamilton",
+                      "email": "margaret@opencloud.test",
+                      "realmRoles": ["opencloudUser", "default-roles-opencloud"],
+                      "credentials": [{ "type": "password", "value": "demo", "temporary": false }]
+                    },
+                    {
+                      "username": "dennis",
+                      "enabled": true,
+                      "firstName": "Dennis",
+                      "lastName": "Ritchie",
+                      "email": "dennis@opencloud.test",
+                      "realmRoles": ["opencloudUser", "default-roles-opencloud"],
+                      "credentials": [{ "type": "password", "value": "demo", "temporary": false }]
+                    },
+                    {
+                      "username": "lynn",
+                      "enabled": true,
+                      "firstName": "Lynn",
+                      "lastName": "Conway",
+                      "email": "lynn@opencloud.test",
+                      "realmRoles": ["opencloudUser", "default-roles-opencloud"],
+                      "credentials": [{ "type": "password", "value": "demo", "temporary": false }]
+                    }
+                  ]
+                }
+
+  # ===========================================================================
+  # OpenLDAP (osixia/openldap) — External User Directory
+  # ===========================================================================
+  - name: openldap
+    namespace: openldap
+    chart: osixia/openldap
+    version: "0.1.0"
+    labels:
+      ci-lint-skip: true
+    values:
+      - replicaCount: 1
+        image:
+          repository: osixia/openldap
+          tag: "2.6.10-alpha"
+        openldap:
+          bootstrap:
+            organization: "openCloud"
+            suffix: "dc=opencloud,dc=eu"
+            schemas:
+              - core.ldif
+              - cosine.ldif
+              - inetorgperson.ldif
+              - rfc2307bis.ldif
+            config:
+              rootDnPrefix: "cn=admin"
+            database:
+              rootDnPrefix: "cn=admin"
+              maxSize: "10737418240"
+            memberof:
+              enabled: true
+              groupObjectClass: groupOfNames
+              memberAttribute: member
+              memberOfAttribute: memberOf
+        bootstrapCustomDataLdifVolume:
+          configMap:
+            name: openldap-custom-ldif
+        customSchemasVolume:
+          configMap:
+            name: openldap-custom-schemas
+        persistence:
+          enabled: true
+          accessModes:
+            - ReadWriteOnce
+          conf:
+            size: 1Gi
+          data:
+            size: 8Gi
+          backups:
+            size: 8Gi
+        extraDeploy:
+          # Custom LDIF: root + users + groups (from SOURCE helmfile lines 420-523)
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: openldap-custom-ldif
+              namespace: openldap
+            data:
+              01_root.ldif: |-
+                dn: dc=opencloud,dc=eu
+                objectClass: organization
+                objectClass: dcObject
+                dc: opencloud
+                o: openCloud
+
+                dn: ou=users,dc=opencloud,dc=eu
+                objectClass: organizationalUnit
+                ou: users
+
+                dn: cn=admin,dc=opencloud,dc=eu
+                objectClass: inetOrgPerson
+                objectClass: person
+                cn: admin
+                sn: admin
+                uid: ldapadmin
+
+                dn: ou=groups,dc=opencloud,dc=eu
+                objectClass: organizationalUnit
+                ou: groups
+
+                dn: ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: organizationalUnit
+                ou: custom
+              02_users.ldif: |-
+                dn: uid=alan,ou=users,dc=opencloud,dc=eu
+                objectClass: inetOrgPerson
+                cn: Alan Turing
+                sn: Turing
+                uid: alan
+                mail: alan@opencloud.test
+
+                dn: uid=mary,ou=users,dc=opencloud,dc=eu
+                objectClass: inetOrgPerson
+                cn: Mary Kenneth Keller
+                sn: Kenneth Keller
+                uid: mary
+                mail: mary@opencloud.test
+
+                dn: uid=margaret,ou=users,dc=opencloud,dc=eu
+                objectClass: inetOrgPerson
+                cn: Margaret Hamilton
+                sn: Hamilton
+                uid: margaret
+                mail: margaret@opencloud.test
+
+                dn: uid=dennis,ou=users,dc=opencloud,dc=eu
+                objectClass: inetOrgPerson
+                cn: Dennis Ritchie
+                sn: Ritchie
+                uid: dennis
+                mail: dennis@opencloud.test
+
+                dn: uid=lynn,ou=users,dc=opencloud,dc=eu
+                objectClass: inetOrgPerson
+                cn: Lynn Conway
+                sn: Conway
+                uid: lynn
+                mail: lynn@opencloud.test
+
+                dn: uid=admin,ou=users,dc=opencloud,dc=eu
+                objectClass: inetOrgPerson
+                cn: Admin
+                sn: Admin
+                uid: admin
+                mail: admin@opencloud.test
+              03_groups.ldif: |-
+                dn: cn=users,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                objectClass: top
+                cn: users
+                description: Users
+                member: uid=alan,ou=users,dc=opencloud,dc=eu
+                member: uid=mary,ou=users,dc=opencloud,dc=eu
+                member: uid=margaret,ou=users,dc=opencloud,dc=eu
+                member: uid=dennis,ou=users,dc=opencloud,dc=eu
+                member: uid=lynn,ou=users,dc=opencloud,dc=eu
+                member: uid=admin,ou=users,dc=opencloud,dc=eu
+
+                dn: cn=chess-lovers,ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                cn: chess-lovers
+                description: Chess lovers
+                member: uid=alan,ou=users,dc=opencloud,dc=eu
+
+                dn: cn=machine-lovers,ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                cn: machine-lovers
+                description: Machine Lovers
+                member: uid=alan,ou=users,dc=opencloud,dc=eu
+
+                dn: cn=bible-readers,ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                cn: bible-readers
+                description: Bible readers
+                member: uid=mary,ou=users,dc=opencloud,dc=eu
+
+                dn: cn=apollos,ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                cn: apollos
+                description: Contributors to the Apollo mission
+                member: uid=margaret,ou=users,dc=opencloud,dc=eu
+
+                dn: cn=unix-lovers,ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                cn: unix-lovers
+                description: Unix lovers
+                member: uid=dennis,ou=users,dc=opencloud,dc=eu
+
+                dn: cn=basic-haters,ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                cn: basic-haters
+                description: Haters of the Basic programming language
+                member: uid=dennis,ou=users,dc=opencloud,dc=eu
+
+                dn: cn=vlsi-lovers,ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                cn: vlsi-lovers
+                description: Lovers of VLSI microchip design
+                member: uid=lynn,ou=users,dc=opencloud,dc=eu
+
+                dn: cn=programmers,ou=custom,ou=groups,dc=opencloud,dc=eu
+                objectClass: groupOfNames
+                cn: programmers
+                description: Computer Programmers
+                member: uid=alan,ou=users,dc=opencloud,dc=eu
+                member: uid=margaret,ou=users,dc=opencloud,dc=eu
+                member: uid=dennis,ou=users,dc=opencloud,dc=eu
+                member: uid=lynn,ou=users,dc=opencloud,dc=eu
+          # OpenCloud custom schema (from SOURCE helmfile lines 525-564)
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: openldap-custom-schemas
+              namespace: openldap
+            data:
+              10_opencloud_schema.ldif: |-
+                dn: cn=opencloud,cn=schema,cn=config
+                objectClass: olcSchemaConfig
+                cn: opencloud
+                olcObjectIdentifier: openCloudOid 1.3.6.1.4.1.63016
+                olcAttributeTypes: ( openCloudOid:1.1.1 NAME 'openCloudUUID'
+                  DESC 'A non-reassignable and persistent account ID)'
+                  EQUALITY uuidMatch
+                  SUBSTR caseIgnoreSubstringsMatch
+                  SYNTAX 1.3.6.1.1.16.1 SINGLE-VALUE )
+                olcAttributeTypes: ( openCloudOid:1.1.2 NAME 'openCloudExternalIdentity'
+                  DESC 'A triple representing objectIdentity'
+                  EQUALITY caseIgnoreMatch
+                  SUBSTR caseIgnoreSubstringsMatch
+                  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+                olcAttributeTypes: ( openCloudOid:1.1.3 NAME 'openCloudUserEnabled'
+                  DESC 'Boolean indicating if user is enabled'
+                  EQUALITY booleanMatch
+                  SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 SINGLE-VALUE)
+                olcAttributeTypes: ( openCloudOid:1.1.4 NAME 'openCloudUserType'
+                  DESC 'User type (Member or Guest)'
+                  EQUALITY caseIgnoreMatch
+                  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+                olcAttributeTypes: ( openCloudOid:1.1.5 NAME 'openCloudLastSignInTimestamp'
+                  DESC 'Timestamp of last sign-in'
+                  EQUALITY generalizedTimeMatch
+                  ORDERING generalizedTimeOrderingMatch
+                  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 SINGLE-VALUE )
+                olcObjectClasses: ( openCloudOid:1.2.1 NAME 'openCloudObject'
+                  DESC 'OpenCloud base objectclass'
+                  AUXILIARY
+                  MAY ( openCloudUUID ) )
+                olcObjectClasses: ( openCloudOid:1.2.2 NAME 'openCloudUser'
+                  DESC 'OpenCloud User objectclass'
+                  SUP openCloudObject
+                  AUXILIARY
+                  MAY ( openCloudExternalIdentity $ openCloudUserEnabled $ openCloudUserType $ openCloudLastSignInTimestamp) )
+
+  # ===========================================================================
+  # ClamAV (wiremind/clamav) — Antivirus Scanner
+  # ===========================================================================
+  - name: clamav
+    namespace: clamav
+    chart: wiremind/clamav
+    version: "3.7.1"
+    values:
+      - replicaCount: 2
+        resources:
+          limits:
+            cpu: "6"
+            memory: 8Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+
+  # ===========================================================================
+  # OpenCloud (monolithic chart — TARGET)
+  # Full configuration based on SOURCE helmfile.yaml
+  # ===========================================================================
+  - name: opencloud
+    namespace: opencloud
+    chart: ../../
+    needs:
+      - opencloud/keycloak
+      - opencloud/opencloud-secrets
+    values:
+      # --- General Settings (SOURCE lines 21-23) ---
+      - global:
+          domain:
+            opencloud: cloud.opencloud.test
+            oidc: keycloak.opencloud.test
+            minio: minio.opencloud.test
+            wopi: wopiserver.opencloud.test
+            collabora: collabora.opencloud.test
+            companion: companion.opencloud.test
+          tls:
+            enabled: false
+        opencloud:
+          logLevel: info
+
+      # --- OIDC / External User Management (SOURCE lines 69-93) ---
+      - oidc:
+          enabled: false
+          external:
+            issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+            domain: keycloak.opencloud.test
+        features:
+          externalUserManagement:
+            enabled: true
+            adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
+            autoprovisionAccounts:
+              enabled: true
+              claimUserName: sub
+            oidc:
+              domain: keycloak.opencloud.test
+              issuerURI: https://keycloak.opencloud.test/realms/openCloud
+              userIDClaim: sub
+              userIDClaimAttributeMapping: username
+              roleAssignment:
+                claim: roles
+            ldap:
+              writeable: true
+              uri: ldaps://openldap.openldap.svc.cluster.local:636
+              insecure: true
+              bindDN: cn=admin,dc=opencloud,dc=eu
+              user:
+                userNameMatch: none
+                schema:
+                  id: openCloudUUID
+              group:
+                schema:
+                  id: openCloudUUID
+
+      # --- Insecure settings (SOURCE lines 59-61) ---
+      - insecure:
+          oidcIdpInsecure: true
+          ocHttpApiInsecure: true
+
+      # --- Secret refs (SOURCE lines 62-64) ---
+      - secretRefs:
+          ldapSecretRef: ldap-bind-secrets
+          s3CredentialsSecretRef: s3secret
+
+      # --- Networking (SOURCE lines 54-67) ---
+      - ingress:
+          enabled: false
+          ingressClassName: nginx
+          annotations:
+            nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+        httpRoute:
+          enabled: true
+
+      # --- Quotas (SOURCE lines 94-99) ---
+      - quotas:
+          roles:
+            'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
+            '2aadd357-682c-406b-8874-293091995fdd': 0
+
+      # --- Antivirus (SOURCE lines 100-104) ---
+      - features:
+          virusscan:
+            enabled: false
+            infectedFileHandling: "abort"
+            scannerType: "clamav"
+            clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+
+      # --- Email/SMTP (SOURCE lines 105-112) ---
+          emailNotifications:
+            enabled: false
+            smtp:
+              host: ""
+              port: ""
+              sender: ""
+              authentication: none
+              encryption: ssltls
+
+      # --- OPA Policies (SOURCE lines 113-218) ---
+          policies:
+            enabled: false
+            policies:
+              - fileName: proxy.rego
+                content: |
+                  package proxy
+                  import future.keywords.if
+                  import data.utils
+                  default granted := true
+                  granted = false if {
+                      input.request.method == "PUT"
+                      pathPrefixes := ["/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
+                      restricted := pathPrefixes[_]
+                      startswith(input.request.path, restricted)
+                      utils.is_extension_restricted(input.resource.name)
+                  }
+              - fileName: postprocessing.rego
+                content: |
+                  package postprocessing
+                  import future.keywords.if
+                  import data.utils
+                  default granted := true
+                  granted = false if {
+                      utils.is_extension_restricted(input.resource.name)
+                  }
+                  granted = false if {
+                      bytes := opencloud.resource.download(input.resource.url)
+                      mimetype := opencloud.mimetype.detect(bytes)
+                      utils.is_mimetype_restricted(mimetype)
+                  }
+              - fileName: utils.rego
+                content: |
+                  package utils
+                  RESTRICTED_EXTENSIONS := {".exe", ".dll", ".msi", ".scr", ".com", ".pif", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsh"}
+                  RESTRICTED_EXTENSIONS_NO_DOT := {"exe", "dll", "msi", "scr", "com", "pif", "bat", "cmd", "ps1", "vbs", "vbe", "wsh"}
+                  RESTRICTED_MIMETYPES := {"application/x-msdownload", "application/x-dosexec", "application/x-executable", "application/vnd.microsoft.portable-executable", "application/x-msi", "application/x-ms-dos-executable", "application/x-msdos-program", "application/x-bat", "application/bat", "application/x-sh", "application/x-shellscript"}
+                  is_extension_restricted(identifier) {
+                      extension := RESTRICTED_EXTENSIONS[_]
+                      endswith(lower(identifier), extension)
+                  }
+                  is_mimetype_restricted(mimetype) {
+                      RESTRICTED_MIMETYPES[mimetype]
+                  }
+                  is_mimetype_restricted(mimetype) {
+                      extensions := opencloud.mimetype.extensions(mimetype)
+                      ext := extensions[_]
+                      RESTRICTED_EXTENSIONS_NO_DOT[ext]
+                  }
+
+      # --- Apps Integration / WOPI (SOURCE lines 219-248) ---
+          appsIntegration:
+            enabled: true
+            wopiIntegration:
+              officeSuites:
+                - name: Collabora
+                  product: Collabora
+                  enabled: true
+                  uri: "https://collabora.opencloud.test"
+                  insecure: true
+                  disableProof: false
+                  iconURI: https://collabora.opencloud.test/favicon.ico
+                - name: OnlyOffice
+                  product: OnlyOffice
+                  enabled: false
+                  uri: "https://onlyoffice.opencloud.test"
+                  insecure: true
+                  disableProof: false
+
+      # --- Replicas ---
+      - replicas: 1
