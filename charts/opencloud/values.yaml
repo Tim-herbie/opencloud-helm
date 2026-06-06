@@ -78,43 +78,36 @@ busybox:
 # =====================================================================
 
 # OIDC (OpenID Connect) settings for identity and access management
-# OpenCloud requires an OIDC provider for authentication. You can either:
-# 1. Use the built-in Keycloak instance (oidc.enabled: true)
-# 2. Use an external OIDC provider (oidc.enabled: false and configure oidc.external)
-#    Supports any OIDC-compliant provider (Keycloak, Auth0, Okta, Azure AD, etc.)
+# OpenCloud requires an OIDC provider for authentication.
+# Deploy Keycloak separately (e.g., via bitnami/keycloak chart in helmfile)
+# and configure the external OIDC settings below.
+# Supports any OIDC-compliant provider (Keycloak, Auth0, Okta, Azure AD, etc.)
 oidc:
-  # Enable built-in Keycloak instance
-  # When enabled, deploys a pre-configured Keycloak instance with OpenCloud realm
-  # When disabled, you must provide external OIDC provider configuration below
-  enabled: true
+  # OIDC Issuer URL (required)
+  # This is the base URL of your OIDC provider's authorization server
+  # Examples:
+  #   Keycloak: https://keycloak.example.com/realms/openCloud
+  #   Auth0: https://your-tenant.auth0.com
+  #   Okta: https://your-org.okta.com/oauth2/default
+  #   Azure AD: https://login.microsoftonline.com/{tenant-id}/v2.0
+  #   Google: https://accounts.google.com
+  issuerUrl: ""
   
-  # Keycloak image settings
-  image:
-    # Keycloak image registry
-    registry: quay.io
-    # Keycloak image repository
-    repository: keycloak/keycloak
-    # Keycloak image tag
-    tag: "26.6.2"
-    # Image pull policy
-    pullPolicy: IfNotPresent
+  # OIDC Client ID (required)
+  # The client ID registered in your OIDC provider for OpenCloud
+  clientId: "web"
   
-  # Number of Keycloak replicas
-  replicas: 1
+  # Account Management URL (optional)
+  # URL where users can manage their accounts (profile, password, etc.)
+  # If not set, OpenCloud will attempt to construct this from the issuerUrl
+  # Examples:
+  #   Keycloak: https://keycloak.example.com/realms/openCloud/account
+  #   Auth0: https://your-tenant.auth0.com/u/login
+  #   Okta: https://your-org.okta.com/enduser/settings
+  accountUrl: ""
 
-  # Use existing secret for keycloak credentials (Note: secretKeyName must be adminUser and adminPassword)
-  existingSecret: ""
-
-  # Admin user
-  # ignored if oidc.existingSecret is set
-  adminUser: admin
-
-  # Admin password
-  # ignored if oidc.existingSecret is set
-  adminPassword: admin
-
-  # Keycloak realm
-  realm: "openCloud"
+  # OIDC scope for web client
+  scope: "openid profile email groups roles"
 
   # CORS settings for cross-origin requests
   cors:
@@ -134,95 +127,6 @@ oidc:
     allowCredentials: "true"
     # Max age in seconds
     maxAge: "3600"
-  
-  # Resources
-  resources: {}
-
-  # External OIDC Provider Configuration
-  # Used when oidc.enabled is false
-  # Supports any OIDC-compliant provider (Keycloak, Auth0, Okta, Azure AD, Google, etc.)
-  external:
-    # OIDC Issuer URL (required when using external OIDC)
-    # This is the base URL of your OIDC provider's authorization server
-    # Examples:
-    #   Keycloak: https://keycloak.example.com/realms/openCloud
-    #   Auth0: https://your-tenant.auth0.com
-    #   Okta: https://your-org.okta.com/oauth2/default
-    #   Azure AD: https://login.microsoftonline.com/{tenant-id}/v2.0
-    #   Google: https://accounts.google.com
-    issuerUrl: ""
-    
-    # OIDC Client ID (required when using external OIDC)
-    # The client ID registered in your OIDC provider for OpenCloud
-    clientId: "web"
-    
-    # Account Management URL (optional)
-    # URL where users can manage their accounts (profile, password, etc.)
-    # If not set, OpenCloud will attempt to construct this from the issuerUrl
-    # Examples:
-    #   Keycloak: https://keycloak.example.com/realms/openCloud/account
-    #   Auth0: https://your-tenant.auth0.com/u/login
-    #   Okta: https://your-org.okta.com/enduser/settings
-    accountUrl: ""
-
-# PostgreSQL settings for Keycloak (only used when oidc.enabled is true)
-postgres:
-  # Enable PostgreSQL (set to false when using external OIDC / external OIDC provider database)
-  enabled: true
-  # PostgreSQL image settings
-  image:
-    # PostgreSQL image registry
-    registry: docker.io
-    # PostgreSQL image repository
-    repository: postgres
-    # PostgreSQL image tag - using latest stable (18) with bookworm (Debian) base for reliability
-    tag: "18-bookworm"
-    # Image pull policy
-    pullPolicy: IfNotPresent
-
-  # Database name
-  database: keycloak
-
-  # Use existing secret for postgres credentials (Note: secretKeyName must be username and password)
-  existingSecret: ""
-
-  # Database user
-  # ignored if postgres.existingSecret is set
-  user: keycloak
-
-  # Database password
-  # ignored if postgres.existingSecret is set
-  password: keycloak
-
-  # Resources allocation
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-  # Persistence configuration
-  persistence:
-    enabled: true
-    # Name of existing PVC to use (overrides all other persistence values)
-    existingClaim: ""
-    # Size of the persistent volume
-    size: 1Gi
-    # Storage class
-    storageClass: ""
-    # Access mode
-    accessMode: ReadWriteOnce
-
-  # External PostgreSQL configuration
-  # Used when postgres.enabled is false but oidc.enabled is true.
-  # Allows Keycloak to connect to an external PostgreSQL database
-  # (e.g., managed by an operator like CloudNativePG).
-  external:
-    # Hostname or service name of the external PostgreSQL instance
-    host: ""
-    # Port of the external PostgreSQL instance
-    port: 5432
 
 
 # =====================================================================

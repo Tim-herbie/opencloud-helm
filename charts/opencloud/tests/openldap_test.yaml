@@ -5,18 +5,16 @@ templates:
   - opencloud/config-json-configmap.yaml
   - opencloud/configmap.yaml
   - opencloud/web-extensions-init.yaml
-  - keycloak/deployment.yaml
 
 tests:
-  # --- External OIDC (Keycloak) Configuration ---
+  # --- External OIDC Configuration ---
 
-  - it: should set OC_OIDC_ISSUER when external OIDC issuer URL is configured
+  - it: should set OC_OIDC_ISSUER when issuerUrl is configured
     template: opencloud/deployment.yaml
     set:
       oidc:
-        enabled: false
-        external:
-          issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -24,13 +22,12 @@ tests:
             name: OC_OIDC_ISSUER
             value: "https://keycloak.opencloud.test/realms/openCloud"
 
-  - it: should set WEB_OIDC_METADATA_URL from external issuer URL
+  - it: should set WEB_OIDC_METADATA_URL from issuerUrl
     template: opencloud/deployment.yaml
     set:
       oidc:
-        enabled: false
-        external:
-          issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -38,25 +35,45 @@ tests:
             name: WEB_OIDC_METADATA_URL
             value: "https://keycloak.opencloud.test/realms/openCloud/.well-known/openid-configuration"
 
-  - it: should NOT create Keycloak deployment when oidc.enabled is false
-    template: keycloak/deployment.yaml
+  - it: should set WEB_OIDC_CLIENT_ID from clientId
+    template: opencloud/deployment.yaml
     set:
       oidc:
-        enabled: false
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
     asserts:
-      - hasDocuments:
-          count: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEB_OIDC_CLIENT_ID
+            value: "web"
 
-  - it: should create Keycloak deployment when oidc.enabled is true
-    template: keycloak/deployment.yaml
+  - it: should set WEB_OPTION_ACCOUNT_EDIT_LINK_HREF from issuerUrl
+    template: opencloud/deployment.yaml
     set:
       oidc:
-        enabled: true
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
     asserts:
-      - hasDocuments:
-          count: 1
-      - isKind:
-          of: Deployment
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEB_OPTION_ACCOUNT_EDIT_LINK_HREF
+            value: "https://keycloak.opencloud.test/realms/openCloud/account"
+
+  - it: should use custom accountUrl when provided
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
+        accountUrl: https://custom.example.com/account
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEB_OPTION_ACCOUNT_EDIT_LINK_HREF
+            value: "https://custom.example.com/account"
 
   # --- LDAP Bind Secret References ---
   # NOTE: These tests document a gap that will be fixed in Phase 1, Task 1.0

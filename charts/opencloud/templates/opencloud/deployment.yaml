@@ -255,7 +255,7 @@ spec:
             - name: NOTIFICATIONS_SMTP_ENCRYPTION
               value: "{{ .Values.opencloud.smtp.encryption }}"
             {{- end }}
-            {{- if or .Values.oidc.enabled .Values.oidc.external.issuerUrl }}
+            {{- if .Values.oidc.issuerUrl }}
             # IDP specific configuration
             - name: PROXY_AUTOPROVISION_ACCOUNTS
               value: {{ .Values.opencloud.proxyAutoprovisionAccounts | quote }}

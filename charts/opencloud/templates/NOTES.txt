@@ -9,10 +9,8 @@ To learn more about the release, try:
 
 IMPORTANT: This is a development deployment. For production use, you MUST change the following default credentials:
 
-1. Keycloak Admin: adminUser: admin, adminPassword: admin
-2. OpenCloud Admin: adminPassword: admin
-3. PostgreSQL: user: keycloak, password: keycloak
-4. MinIO: rootUser: opencloud, rootPassword: opencloud-secret-key
+1. OpenCloud Admin: adminPassword: admin
+2. MinIO: rootUser: opencloud, rootPassword: opencloud-secret-key
 
 Using default credentials in production environments poses significant security risks.
 
@@ -26,17 +24,9 @@ The following services have been deployed:
    - S3 Storage: {{- if .Values.opencloud.storage.s3.external.endpoint }}{{ .Values.opencloud.storage.s3.external.endpoint }}{{- else if .Values.opencloud.storage.s3.enabled }}MinIO ({{ include "opencloud.minio.fullname" . }}){{- else }}Not configured{{- end }}
    - S3 Bucket: {{- if .Values.opencloud.storage.s3.external.endpoint }}{{ .Values.opencloud.storage.s3.external.bucket }}{{- else if .Values.opencloud.storage.s3.enabled }}{{ .Values.opencloud.storage.s3.bucketName }}{{- else }}Not configured{{- end }}
 
-{{- if .Values.oidc.enabled }}
-2. Keycloak (Authentication):
-   - Service: {{ include "opencloud.keycloak.fullname" . }}
-   - Port: 8080
-   - Username: {{ .Values.oidc.adminUser }}
-   - Password: {{ .Values.oidc.adminPassword }}
-{{- else }}
 2. External OIDC Provider:
-   - Issuer: {{ .Values.oidc.external.issuerUrl }}
-   - Client ID: {{ .Values.oidc.external.clientId }}
-{{- end }}
+   - Issuer: {{ .Values.oidc.issuerUrl }}
+   - Client ID: {{ .Values.oidc.clientId }}
 
 {{- if .Values.opencloud.storage.s3.enabled }}
 3. MinIO (Object Storage):
@@ -55,15 +45,12 @@ The following services have been deployed:
 {{- end }}
 
 {{- if .Values.httpRoute.enabled }}
-IMPORTANT: This chart includes HTTPRoute resources that route traffic to the OpenCloud, Keycloak, and MinIO services.
+IMPORTANT: This chart includes HTTPRoute resources that route traffic to the OpenCloud and MinIO services.
 All HTTPRoutes are configured to use the Gateway named "{{ .Values.httpRoute.gateway.name }}" in the
 {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }} namespace.
 
 Make sure the Gateway exists and is properly configured to accept traffic for the following domains:
 - OpenCloud: {{ include "opencloud.domain" . }} (Service: {{ include "opencloud.opencloud.fullname" . }}, Port: 9200)
-{{- if .Values.oidc.enabled }}
-- Keycloak: {{ include "opencloud.keycloak.domain" . }} (Service: {{ include "opencloud.keycloak.fullname" . }}, Port: 8080)
-{{- end }}
 {{- if .Values.opencloud.storage.s3.enabled }}
 - MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
 {{- end }}
@@ -74,9 +61,6 @@ to expose these services externally.
 
 Example domains for your ingress configuration:
 - OpenCloud: {{ include "opencloud.domain" . }} (Service: {{ include "opencloud.opencloud.fullname" . }}, Port: 9200)
-{{- if .Values.oidc.enabled }}
-- Keycloak: {{ include "opencloud.keycloak.domain" . }} (Service: {{ include "opencloud.keycloak.fullname" . }}, Port: 8080)
-{{- end }}
 {{- if .Values.opencloud.storage.s3.enabled }}
 - MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
 {{- end }}
