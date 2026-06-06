@@ -1,0 +1,137 @@
+suite: OpenLDAP / External OIDC Integration Tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/web-extensions-init.yaml
+  - keycloak/deployment.yaml
+
+tests:
+  # --- External OIDC (Keycloak) Configuration ---
+
+  - it: should set OC_OIDC_ISSUER when external OIDC issuer URL is configured
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        enabled: false
+        external:
+          issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_OIDC_ISSUER
+            value: "https://keycloak.opencloud.test/realms/openCloud"
+
+  - it: should set WEB_OIDC_METADATA_URL from external issuer URL
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        enabled: false
+        external:
+          issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEB_OIDC_METADATA_URL
+            value: "https://keycloak.opencloud.test/realms/openCloud/.well-known/openid-configuration"
+
+  - it: should NOT create Keycloak deployment when oidc.enabled is false
+    template: keycloak/deployment.yaml
+    set:
+      oidc:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create Keycloak deployment when oidc.enabled is true
+    template: keycloak/deployment.yaml
+    set:
+      oidc:
+        enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+
+  # --- LDAP Bind Secret References ---
+  # NOTE: These tests document a gap that will be fixed in Phase 1, Task 1.0
+  # Currently the chart uses internal IDM secrets for LDAP bind passwords.
+  # After removing integrated Keycloak and adding external LDAP support,
+  # these tests should pass with the external ldap-bind-secrets reference.
+
+  - it: should use internal IDM secrets for LDAP bind passwords by default
+    template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: USERS_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-init
+                key: idmRevaServicePassword
+
+  - it: should use internal IDM secrets for GRAPH_LDAP_BIND_PASSWORD by default
+    template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GRAPH_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-init
+                key: idmServicePassword
+
+  # --- S3 Credentials Secret References ---
+
+  - it: should reference s3secret for S3 credentials when decomposeds3 is used
+    template: opencloud/deployment.yaml
+    set:
+      secretRefs:
+        s3CredentialsSecretRef: s3secret
+      opencloud:
+        storage:
+          users:
+            driver: decomposeds3
+    asserts:
+      - hasDocuments:
+          count: 1
+
+  # --- External User Management ---
+
+  - it: should configure external user management with admin UUID
+    template: opencloud/deployment.yaml
+    set:
+      features:
+        externalUserManagement:
+          enabled: true
+          adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
+    asserts:
+      - hasDocuments:
+          count: 1
+
+  - it: should configure LDAP connection for external user management
+    template: opencloud/deployment.yaml
+    set:
+      features:
+        externalUserManagement:
+          enabled: true
+          ldap:
+            uri: ldaps://openldap.openldap.svc.cluster.local:636
+            insecure: true
+            bindDN: cn=admin,dc=opencloud,dc=eu
+            user:
+              schema:
+                id: openCloudUUID
+            group:
+              schema:
+                id: openCloudUUID
+    asserts:
+      - hasDocuments:
+          count: 1
