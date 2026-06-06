@@ -1,6 +1,5 @@
-# helmfile.yaml for OpenCloud Full Deployment (TARGET: opencloud-helm monolithic)
+# helmfile.yaml for OpenCloud Full Deployment
 # Based on SOURCE helmfile.yaml (helm/charts/opencloud-microservices/deployments/helm/helmfile.yaml)
-# Adapted for TARGET monolithic chart with separate Keycloak, OpenLDAP, and ClamAV charts.
 #
 # Usage:
 #   helmfile sync          # Deploy full stack
@@ -11,99 +10,131 @@
 repositories:
   - name: bitnami
     url: https://charts.bitnami.com/bitnami
-  - name: osixia
-    url: https://charts.osixia.io
+  # - name: stable  # No longer needed — secrets created via kubectl
+  #   url: https://charts.helm.sh/stable
+  # - name: osixia  # COMMENTED OUT — switch to osixia later if needed
+  #   url: https://charts.osixia.io
+  - name: openldap
+    url: https://jp-gouin.github.io/helm-openldap/
   - name: wiremind
     url: https://wiremind.github.io/wiremind-helm-charts
+  - name: codecentric
+    url: https://codecentric.github.io/helm-charts
 
 # --- Releases ---
 releases:
 
   # ===========================================================================
-  # Shared Secrets (OIDC + LDAP + S3 credentials)
-  # ===========================================================================
-  - name: opencloud-secrets
-    namespace: opencloud
-    chart: stable/raw
-    version: "0.1.0"
-    installed: true
-    values:
-      - resources:
-          # OIDC client credentials (shared between Keycloak realm and OpenCloud)
-          - apiVersion: v1
-            kind: Secret
-            metadata:
-              name: opencloud-oidc-credentials
-              namespace: opencloud
-            type: Opaque
-            stringData:
-              client-id: "web"
-              client-secret: "opencloud-secret-key"
-          # LDAP bind password for OpenCloud to connect to OpenLDAP
-          - apiVersion: v1
-            kind: Secret
-            metadata:
-              name: ldap-bind-secrets
-              namespace: opencloud
-            type: Opaque
-            stringData:
-              reva-ldap-bind-password: admin
-          # S3 credentials for decomposeds3 storage backend
-          - apiVersion: v1
-            kind: Secret
-            metadata:
-              name: s3secret
-              namespace: opencloud
-            type: Opaque
-            stringData:
-              accessKey: opencloud
-              secretKey: opencloud-secret-key
-
-  # ===========================================================================
-  # Keycloak (bitnami/keycloak v24.3.0) — External OIDC Provider
+  # Keycloak (codecentric/keycloakx) — External OIDC Provider
+  # Uses official quay.io/keycloak/keycloak image
   # ===========================================================================
   - name: keycloak
-    namespace: opencloud
-    chart: bitnami/keycloak
-    version: "24.3.0"
-    needs:
-      - opencloud/opencloud-secrets
+    namespace: keycloak
+    chart: codecentric/keycloakx
+    version: "7.2.0"
     values:
-      - auth:
-          adminUser: admin
-          adminPassword: admin
-        postgresql:
-          enabled: true
-          auth:
-            postgresPassword: keycloak
-            username: keycloak
-            password: keycloak
-            database: keycloak
-        extraEnvVars:
+      - replicas: 1
+        command:
+          - "/opt/keycloak/bin/kc.sh"
+          - "start-dev"
+          - "--http-port=8080"
+          - "--hostname-strict=false"
+          - "--health-enabled=true"
+          - "--import-realm"
+        extraEnv: |
+          - name: KC_BOOTSTRAP_ADMIN_USERNAME
+            value: admin
+          - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+            value: admin
           - name: KC_HOSTNAME
-            value: keycloak.opencloud.test
+            value: https://keycloak.opencloud.test
           - name: KC_PROXY
             value: edge
-          - name: KEYCLOAK_EXTRA_ARGS
-            value: "-Dkeycloak.import=/opt/bitnami/keycloak/data/import/opencloud-realm.json"
-        extraVolumes:
+          - name: JAVA_OPTS_APPEND
+            value: >-
+              -Djgroups.dns.query={{ include "keycloak.fullname" . }}-headless
+        http:
+          relativePath: "/"
+        service:
+          type: ClusterIP
+          httpPort: 80
+        startupProbe: |
+          httpGet:
+            path: /health/started
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 60
+        readinessProbe: |
+          httpGet:
+            path: /health/ready
+            port: 9000
+          periodSeconds: 10
+          failureThreshold: 12
+        livenessProbe: |
+          httpGet:
+            path: /health/live
+            port: 9000
+          periodSeconds: 10
+          failureThreshold: 12
+        extraVolumeMounts: |
+          - name: realm-config
+            mountPath: /opt/keycloak/data/import
+            readOnly: true
+        extraVolumes: |
           - name: realm-config
             configMap:
               name: keycloak-realm-config
-        extraVolumeMounts:
-          - name: realm-config
-            mountPath: /opt/bitnami/keycloak/data/import
-        ingress:
-          enabled: true
-          hostname: keycloak.opencloud.test
-        extraDeploy:
-          - apiVersion: v1
+        extraManifests:
+          - |
+            apiVersion: gateway.networking.k8s.io/v1beta1
+            kind: HTTPRoute
+            metadata:
+              name: keycloak-http-redirect
+              namespace: {{ .Release.Namespace }}
+            spec:
+              parentRefs:
+                - name: cilium-gateway
+                  namespace: kube-system
+                  sectionName: opencloud-keycloak-http
+              hostnames:
+                - "keycloak.opencloud.test"
+              rules:
+                - filters:
+                    - type: RequestRedirect
+                      requestRedirect:
+                        scheme: https
+                        hostname: keycloak.opencloud.test
+                        statusCode: 301
+          - |
+            apiVersion: gateway.networking.k8s.io/v1beta1
+            kind: HTTPRoute
+            metadata:
+              name: keycloak-httproute
+              namespace: {{ .Release.Namespace }}
+            spec:
+              parentRefs:
+                - name: cilium-gateway
+                  namespace: kube-system
+                  sectionName: opencloud-keycloak-https
+              hostnames:
+                - "keycloak.opencloud.test"
+              rules:
+                - matches:
+                    - path:
+                        type: PathPrefix
+                        value: /
+                  backendRefs:
+                    - name: keycloak-keycloakx-http
+                      port: 80
+          - |
+            apiVersion: v1
             kind: ConfigMap
             metadata:
               name: keycloak-realm-config
-              namespace: opencloud
+              namespace: {{ .Release.Namespace }}
             data:
-              opencloud-realm.json: |
+              openCloud-realm.json: |
                 {
                   "realm": "openCloud",
                   "enabled": true,
@@ -114,11 +145,11 @@ releases:
                       "enabled": true,
                       "publicClient": true,
                       "redirectUris": [
-                        "http://cloud.opencloud.test/*",
-                        "https://cloud.opencloud.test/*"
+                        "https://cloud.opencloud.test/",
+                        "https://cloud.opencloud.test/oidc-callback.html",
+                        "https://cloud.opencloud.test/oidc-silent-redirect.html"
                       ],
                       "webOrigins": [
-                        "http://cloud.opencloud.test",
                         "https://cloud.opencloud.test",
                         "+"
                       ],
@@ -221,240 +252,486 @@ releases:
                       "realmRoles": ["opencloudUser", "default-roles-opencloud"],
                       "credentials": [{ "type": "password", "value": "demo", "temporary": false }]
                     }
-                  ]
+                  ],
+                  "clientScopes": [
+                    {
+                      "name": "email",
+                      "description": "OpenID Connect built-in scope: email",
+                      "protocol": "openid-connect",
+                      "attributes": {
+                        "include.in.token.scope": "true",
+                        "display.on.consent.screen": "true",
+                        "consent.screen.text": "${emailScopeConsentText}"
+                      },
+                      "protocolMappers": [
+                        {
+                          "name": "email",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-usermodel-attribute-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "introspection.token.claim": "true",
+                            "userinfo.token.claim": "true",
+                            "user.attribute": "email",
+                            "id.token.claim": "true",
+                            "access.token.claim": "true",
+                            "claim.name": "email",
+                            "jsonType.label": "String"
+                          }
+                        },
+                        {
+                          "name": "email verified",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-usermodel-property-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "introspection.token.claim": "true",
+                            "userinfo.token.claim": "true",
+                            "user.attribute": "emailVerified",
+                            "id.token.claim": "true",
+                            "access.token.claim": "true",
+                            "claim.name": "email_verified",
+                            "jsonType.label": "boolean"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "profile",
+                      "description": "OpenID Connect built-in scope: profile",
+                      "protocol": "openid-connect",
+                      "attributes": {
+                        "include.in.token.scope": "true",
+                        "display.on.consent.screen": "true",
+                        "consent.screen.text": "${profileScopeConsentText}"
+                      },
+                      "protocolMappers": [
+                        {
+                          "name": "username",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-usermodel-attribute-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "introspection.token.claim": "true",
+                            "userinfo.token.claim": "true",
+                            "user.attribute": "username",
+                            "id.token.claim": "true",
+                            "access.token.claim": "true",
+                            "claim.name": "preferred_username",
+                            "jsonType.label": "String"
+                          }
+                        },
+                        {
+                          "name": "full name",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-full-name-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "id.token.claim": "true",
+                            "introspection.token.claim": "true",
+                            "access.token.claim": "true",
+                            "userinfo.token.claim": "true"
+                          }
+                        },
+                        {
+                          "name": "family name",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-usermodel-attribute-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "introspection.token.claim": "true",
+                            "userinfo.token.claim": "true",
+                            "user.attribute": "lastName",
+                            "id.token.claim": "true",
+                            "access.token.claim": "true",
+                            "claim.name": "family_name",
+                            "jsonType.label": "String"
+                          }
+                        },
+                        {
+                          "name": "given name",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-usermodel-attribute-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "introspection.token.claim": "true",
+                            "userinfo.token.claim": "true",
+                            "user.attribute": "firstName",
+                            "id.token.claim": "true",
+                            "access.token.claim": "true",
+                            "claim.name": "given_name",
+                            "jsonType.label": "String"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "roles",
+                      "description": "OpenID Connect scope for add user roles to the access token",
+                      "protocol": "openid-connect",
+                      "attributes": {
+                        "include.in.token.scope": "false",
+                        "display.on.consent.screen": "true",
+                        "consent.screen.text": "${rolesScopeConsentText}"
+                      },
+                      "protocolMappers": [
+                        {
+                          "name": "realm roles",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "introspection.token.claim": "true",
+                            "multivalued": "true",
+                            "userinfo.token.claim": "true",
+                            "id.token.claim": "true",
+                            "lightweight.claim": "false",
+                            "access.token.claim": "true",
+                            "claim.name": "roles",
+                            "jsonType.label": "String"
+                          }
+                        },
+                        {
+                          "name": "audience resolve",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-audience-resolve-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "introspection.token.claim": "true",
+                            "access.token.claim": "true"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "web-origins",
+                      "description": "OpenID Connect scope for add allowed web origins to the access token",
+                      "protocol": "openid-connect",
+                      "attributes": {
+                        "include.in.token.scope": "false",
+                        "display.on.consent.screen": "false",
+                        "consent.screen.text": ""
+                      },
+                      "protocolMappers": [
+                        {
+                          "name": "allowed web origins",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-allowed-origins-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "introspection.token.claim": "true",
+                            "access.token.claim": "true"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "acr",
+                      "description": "OpenID Connect scope for add acr (authentication context class reference) to the token",
+                      "protocol": "openid-connect",
+                      "attributes": {
+                        "include.in.token.scope": "false",
+                        "display.on.consent.screen": "false"
+                      },
+                      "protocolMappers": [
+                        {
+                          "name": "acr loa level",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-acr-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "id.token.claim": "true",
+                            "introspection.token.claim": "true",
+                            "access.token.claim": "true",
+                            "userinfo.token.claim": "true"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "basic",
+                      "description": "OpenID Connect scope for add all basic claims to the token",
+                      "protocol": "openid-connect",
+                      "attributes": {
+                        "include.in.token.scope": "false",
+                        "display.on.consent.screen": "false"
+                      },
+                      "protocolMappers": [
+                        {
+                          "name": "auth_time",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "user.session.note": "AUTH_TIME",
+                            "introspection.token.claim": "true",
+                            "userinfo.token.claim": "true",
+                            "id.token.claim": "true",
+                            "access.token.claim": "true",
+                            "claim.name": "auth_time",
+                            "jsonType.label": "long"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "role_list",
+                      "description": "SAML role list",
+                      "protocol": "saml",
+                      "attributes": {
+                        "consent.screen.text": "${samlRoleListScopeConsentText}",
+                        "display.on.consent.screen": "true"
+                      },
+                      "protocolMappers": [
+                        {
+                          "name": "role list",
+                          "protocol": "saml",
+                          "protocolMapper": "saml-role-list-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "single": "false",
+                            "attribute.nameformat": "Basic",
+                            "attribute.name": "Role"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "groups",
+                      "description": "OpenID Connect scope for add user groups to the access token",
+                      "protocol": "openid-connect",
+                      "attributes": {
+                        "include.in.token.scope": "false",
+                        "display.on.consent.screen": "true",
+                        "gui.order": "",
+                        "consent.screen.text": ""
+                      },
+                      "protocolMappers": [
+                        {
+                          "name": "groups",
+                          "protocol": "openid-connect",
+                          "protocolMapper": "oidc-group-membership-mapper",
+                          "consentRequired": false,
+                          "config": {
+                            "full.path": "false",
+                            "introspection.token.claim": "true",
+                            "userinfo.token.claim": "true",
+                            "multivalued": "true",
+                            "id.token.claim": "true",
+                            "lightweight.claim": "false",
+                            "access.token.claim": "true",
+                            "claim.name": "groups"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "defaultDefaultClientScopes": ["role_list", "profile", "email", "roles", "web-origins", "acr", "basic", "groups"]
                 }
 
   # ===========================================================================
-  # OpenLDAP (osixia/openldap) — External User Directory
+  # OpenLDAP (jp-gouin/openldap-stack-ha) — External User Directory
   # ===========================================================================
   - name: openldap
     namespace: openldap
-    chart: osixia/openldap
-    version: "0.1.0"
+    chart: openldap/openldap-stack-ha
+    version: "4.3.3"
     labels:
       ci-lint-skip: true
     values:
+      - ltb-passwd:
+          enabled: false
+      - replication:
+          enabled: false
       - replicaCount: 1
-        image:
-          repository: osixia/openldap
-          tag: "2.6.10-alpha"
-        openldap:
-          bootstrap:
-            organization: "openCloud"
-            suffix: "dc=opencloud,dc=eu"
-            schemas:
-              - core.ldif
-              - cosine.ldif
-              - inetorgperson.ldif
-              - rfc2307bis.ldif
-            config:
-              rootDnPrefix: "cn=admin"
-            database:
-              rootDnPrefix: "cn=admin"
-              maxSize: "10737418240"
-            memberof:
-              enabled: true
-              groupObjectClass: groupOfNames
-              memberAttribute: member
-              memberOfAttribute: memberOf
-        bootstrapCustomDataLdifVolume:
-          configMap:
-            name: openldap-custom-ldif
-        customSchemasVolume:
-          configMap:
-            name: openldap-custom-schemas
-        persistence:
-          enabled: true
-          accessModes:
-            - ReadWriteOnce
-          conf:
-            size: 1Gi
-          data:
-            size: 8Gi
-          backups:
-            size: 8Gi
-        extraDeploy:
-          # Custom LDIF: root + users + groups (from SOURCE helmfile lines 420-523)
-          - apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: openldap-custom-ldif
-              namespace: openldap
-            data:
-              01_root.ldif: |-
-                dn: dc=opencloud,dc=eu
-                objectClass: organization
-                objectClass: dcObject
-                dc: opencloud
-                o: openCloud
+      - global:
+          ldapDomain: "opencloud.eu"
+          adminPassword: admin
+          configPassword: config
+      - customLdifFiles:
+          set_logging.ldif: |-
+            dn: cn=config
+            changetype: modify
+            replace: olcLogLevel
+            olcLogLevel: stats sync
+          opencloud_root.ldif: |-
+            dn: dc=opencloud,dc=eu
+            objectClass: organization
+            objectClass: dcObject
+            dc: opencloud
+            o: openCloud
 
-                dn: ou=users,dc=opencloud,dc=eu
-                objectClass: organizationalUnit
-                ou: users
+            dn: ou=users,dc=opencloud,dc=eu
+            objectClass: organizationalUnit
+            ou: users
 
-                dn: cn=admin,dc=opencloud,dc=eu
-                objectClass: inetOrgPerson
-                objectClass: person
-                cn: admin
-                sn: admin
-                uid: ldapadmin
+            dn: cn=admin,dc=opencloud,dc=eu
+            objectClass: inetOrgPerson
+            objectClass: person
+            cn: admin
+            sn: admin
+            uid: ldapadmin
 
-                dn: ou=groups,dc=opencloud,dc=eu
-                objectClass: organizationalUnit
-                ou: groups
+            dn: ou=groups,dc=opencloud,dc=eu
+            objectClass: organizationalUnit
+            ou: groups
 
-                dn: ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: organizationalUnit
-                ou: custom
-              02_users.ldif: |-
-                dn: uid=alan,ou=users,dc=opencloud,dc=eu
-                objectClass: inetOrgPerson
-                cn: Alan Turing
-                sn: Turing
-                uid: alan
-                mail: alan@opencloud.test
+            dn: ou=custom,ou=groups,dc=opencloud,dc=eu
+            objectClass: organizationalUnit
+            ou: custom
+          users.ldif: |-
+            dn: uid=alan,ou=users,dc=opencloud,dc=eu
+            objectClass: inetOrgPerson
+            cn: Alan Turing
+            sn: Turing
+            uid: alan
+            mail: alan@opencloud.test
 
-                dn: uid=mary,ou=users,dc=opencloud,dc=eu
-                objectClass: inetOrgPerson
-                cn: Mary Kenneth Keller
-                sn: Kenneth Keller
-                uid: mary
-                mail: mary@opencloud.test
+            dn: uid=mary,ou=users,dc=opencloud,dc=eu
+            objectClass: inetOrgPerson
+            cn: Mary Kenneth Keller
+            sn: Kenneth Keller
+            uid: mary
+            mail: mary@opencloud.test
 
-                dn: uid=margaret,ou=users,dc=opencloud,dc=eu
-                objectClass: inetOrgPerson
-                cn: Margaret Hamilton
-                sn: Hamilton
-                uid: margaret
-                mail: margaret@opencloud.test
+            dn: uid=margaret,ou=users,dc=opencloud,dc=eu
+            objectClass: inetOrgPerson
+            cn: Margaret Hamilton
+            sn: Hamilton
+            uid: margaret
+            mail: margaret@opencloud.test
 
-                dn: uid=dennis,ou=users,dc=opencloud,dc=eu
-                objectClass: inetOrgPerson
-                cn: Dennis Ritchie
-                sn: Ritchie
-                uid: dennis
-                mail: dennis@opencloud.test
+            dn: uid=dennis,ou=users,dc=opencloud,dc=eu
+            objectClass: inetOrgPerson
+            cn: Dennis Ritchie
+            sn: Ritchie
+            uid: dennis
+            mail: dennis@opencloud.test
 
-                dn: uid=lynn,ou=users,dc=opencloud,dc=eu
-                objectClass: inetOrgPerson
-                cn: Lynn Conway
-                sn: Conway
-                uid: lynn
-                mail: lynn@opencloud.test
+            dn: uid=lynn,ou=users,dc=opencloud,dc=eu
+            objectClass: inetOrgPerson
+            cn: Lynn Conway
+            sn: Conway
+            uid: lynn
+            mail: lynn@opencloud.test
 
-                dn: uid=admin,ou=users,dc=opencloud,dc=eu
-                objectClass: inetOrgPerson
-                cn: Admin
-                sn: Admin
-                uid: admin
-                mail: admin@opencloud.test
-              03_groups.ldif: |-
-                dn: cn=users,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                objectClass: top
-                cn: users
-                description: Users
-                member: uid=alan,ou=users,dc=opencloud,dc=eu
-                member: uid=mary,ou=users,dc=opencloud,dc=eu
-                member: uid=margaret,ou=users,dc=opencloud,dc=eu
-                member: uid=dennis,ou=users,dc=opencloud,dc=eu
-                member: uid=lynn,ou=users,dc=opencloud,dc=eu
-                member: uid=admin,ou=users,dc=opencloud,dc=eu
+            dn: uid=admin,ou=users,dc=opencloud,dc=eu
+            objectClass: inetOrgPerson
+            cn: Admin
+            sn: Admin
+            uid: admin
+            mail: admin@opencloud.test
+          groups.ldif: |-
+            dn: cn=users,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: users
+            description: Users
+            member: uid=alan,ou=users,dc=opencloud,dc=eu
+            member: uid=mary,ou=users,dc=opencloud,dc=eu
+            member: uid=margaret,ou=users,dc=opencloud,dc=eu
+            member: uid=dennis,ou=users,dc=opencloud,dc=eu
+            member: uid=lynn,ou=users,dc=opencloud,dc=eu
+            member: uid=admin,ou=users,dc=opencloud,dc=eu
 
-                dn: cn=chess-lovers,ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                cn: chess-lovers
-                description: Chess lovers
-                member: uid=alan,ou=users,dc=opencloud,dc=eu
+            dn: cn=chess-lovers,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: chess-lovers
+            description: Chess lovers
+            member: uid=alan,ou=users,dc=opencloud,dc=eu
 
-                dn: cn=machine-lovers,ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                cn: machine-lovers
-                description: Machine Lovers
-                member: uid=alan,ou=users,dc=opencloud,dc=eu
+            dn: cn=machine-lovers,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: machine-lovers
+            description: Machine Lovers
+            member: uid=alan,ou=users,dc=opencloud,dc=eu
 
-                dn: cn=bible-readers,ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                cn: bible-readers
-                description: Bible readers
-                member: uid=mary,ou=users,dc=opencloud,dc=eu
+            dn: cn=bible-readers,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: bible-readers
+            description: Bible readers
+            member: uid=mary,ou=users,dc=opencloud,dc=eu
 
-                dn: cn=apollos,ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                cn: apollos
-                description: Contributors to the Apollo mission
-                member: uid=margaret,ou=users,dc=opencloud,dc=eu
+            dn: cn=apollos,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: apollos
+            description: Contributors to the Appollo mission
+            member: uid=margaret,ou=users,dc=opencloud,dc=eu
 
-                dn: cn=unix-lovers,ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                cn: unix-lovers
-                description: Unix lovers
-                member: uid=dennis,ou=users,dc=opencloud,dc=eu
+            dn: cn=unix-lovers,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: unix-lovers
+            description: Unix lovers
+            member: uid=dennis,ou=users,dc=opencloud,dc=eu
 
-                dn: cn=basic-haters,ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                cn: basic-haters
-                description: Haters of the Basic programming language
-                member: uid=dennis,ou=users,dc=opencloud,dc=eu
+            dn: cn=basic-haters,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: basic-haters
+            description: Haters of the Basic programming language
+            member: uid=dennis,ou=users,dc=opencloud,dc=eu
 
-                dn: cn=vlsi-lovers,ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                cn: vlsi-lovers
-                description: Lovers of VLSI microchip design
-                member: uid=lynn,ou=users,dc=opencloud,dc=eu
+            dn: cn=vlsi-lovers,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: vlsi-lovers
+            description: Lovers of VLSI microchip design
+            member: uid=lynn,ou=users,dc=opencloud,dc=eu
 
-                dn: cn=programmers,ou=custom,ou=groups,dc=opencloud,dc=eu
-                objectClass: groupOfNames
-                cn: programmers
-                description: Computer Programmers
-                member: uid=alan,ou=users,dc=opencloud,dc=eu
-                member: uid=margaret,ou=users,dc=opencloud,dc=eu
-                member: uid=dennis,ou=users,dc=opencloud,dc=eu
-                member: uid=lynn,ou=users,dc=opencloud,dc=eu
-          # OpenCloud custom schema (from SOURCE helmfile lines 525-564)
-          - apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: openldap-custom-schemas
-              namespace: openldap
-            data:
-              10_opencloud_schema.ldif: |-
-                dn: cn=opencloud,cn=schema,cn=config
-                objectClass: olcSchemaConfig
-                cn: opencloud
-                olcObjectIdentifier: openCloudOid 1.3.6.1.4.1.63016
-                olcAttributeTypes: ( openCloudOid:1.1.1 NAME 'openCloudUUID'
-                  DESC 'A non-reassignable and persistent account ID)'
-                  EQUALITY uuidMatch
-                  SUBSTR caseIgnoreSubstringsMatch
-                  SYNTAX 1.3.6.1.1.16.1 SINGLE-VALUE )
-                olcAttributeTypes: ( openCloudOid:1.1.2 NAME 'openCloudExternalIdentity'
-                  DESC 'A triple representing objectIdentity'
-                  EQUALITY caseIgnoreMatch
-                  SUBSTR caseIgnoreSubstringsMatch
-                  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
-                olcAttributeTypes: ( openCloudOid:1.1.3 NAME 'openCloudUserEnabled'
-                  DESC 'Boolean indicating if user is enabled'
-                  EQUALITY booleanMatch
-                  SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 SINGLE-VALUE)
-                olcAttributeTypes: ( openCloudOid:1.1.4 NAME 'openCloudUserType'
-                  DESC 'User type (Member or Guest)'
-                  EQUALITY caseIgnoreMatch
-                  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
-                olcAttributeTypes: ( openCloudOid:1.1.5 NAME 'openCloudLastSignInTimestamp'
-                  DESC 'Timestamp of last sign-in'
-                  EQUALITY generalizedTimeMatch
-                  ORDERING generalizedTimeOrderingMatch
-                  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 SINGLE-VALUE )
-                olcObjectClasses: ( openCloudOid:1.2.1 NAME 'openCloudObject'
-                  DESC 'OpenCloud base objectclass'
-                  AUXILIARY
-                  MAY ( openCloudUUID ) )
-                olcObjectClasses: ( openCloudOid:1.2.2 NAME 'openCloudUser'
-                  DESC 'OpenCloud User objectclass'
-                  SUP openCloudObject
-                  AUXILIARY
-                  MAY ( openCloudExternalIdentity $ openCloudUserEnabled $ openCloudUserType $ openCloudLastSignInTimestamp) )
+            dn: cn=programmers,ou=groups,dc=opencloud,dc=eu
+            objectClass: groupOfNames
+            objectClass: top
+            cn: programmers
+            description: Computer Programmers
+            member: uid=alan,ou=users,dc=opencloud,dc=eu
+            member: uid=margaret,ou=users,dc=opencloud,dc=eu
+            member: uid=dennis,ou=users,dc=opencloud,dc=eu
+            member: uid=lynn,ou=users,dc=opencloud,dc=eu
+      - customSchemaFiles:
+          10_opencloud_schema.ldif: |-
+            # This LDIF files describes the OpenCloud schema
+            dn: cn=opencloud,cn=schema,cn=config
+            objectClass: olcSchemaConfig
+            cn: opencloud
+            olcObjectIdentifier: openCloudOid 1.3.6.1.4.1.63016
+            #   openCloudOid:1.1 for AttributeTypes and openCloudOid:1.2 for ObjectClasses
+            olcAttributeTypes: ( openCloudOid:1.1.1 NAME 'openCloudUUID'
+              DESC 'A non-reassignable and persistent account ID)'
+              EQUALITY uuidMatch
+              SUBSTR caseIgnoreSubstringsMatch
+              SYNTAX 1.3.6.1.1.16.1 SINGLE-VALUE )
+            olcAttributeTypes: ( openCloudOid:1.1.2 NAME 'openCloudExternalIdentity'
+              DESC 'A triple separated by "$" representing the objectIdentity resource type of the Graph API ( signInType $ issuer $ issuerAssignedId )'
+              EQUALITY caseIgnoreMatch
+              SUBSTR caseIgnoreSubstringsMatch
+              SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+            olcAttributeTypes: ( openCloudOid:1.1.3 NAME 'openCloudUserEnabled'
+              DESC 'A boolean value indicating if the user is enabled'
+              EQUALITY booleanMatch
+              SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 SINGLE-VALUE)
+            olcAttributeTypes: ( openCloudOid:1.1.4 NAME 'openCloudUserType'
+              DESC 'User type (e.g. Member or Guest)'
+              EQUALITY caseIgnoreMatch
+              SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+            olcAttributeTypes: ( openCloudOid:1.1.5 NAME 'openCloudLastSignInTimestamp'
+              DESC 'The timestamp of the last sign-in'
+              EQUALITY generalizedTimeMatch
+              ORDERING generalizedTimeOrderingMatch
+              SYNTAX  1.3.6.1.4.1.1466.115.121.1.24 SINGLE-VALUE )
+            olcObjectClasses: ( openCloudOid:1.2.1 NAME 'openCloudObject'
+              DESC 'OpenCloud base objectclass'
+              AUXILIARY
+              MAY ( openCloudUUID ) )
+            olcObjectClasses: ( openCloudOid:1.2.2 NAME 'openCloudUser'
+              DESC 'OpenCloud User objectclass'
+              SUP openCloudObject
+              AUXILIARY
+              MAY ( openCloudExternalIdentity $ openCloudUserEnabled $ openCloudUserType $ openCloudLastSignInTimestamp) )
 
   # ===========================================================================
   # ClamAV (wiremind/clamav) — Antivirus Scanner
@@ -463,6 +740,7 @@ releases:
     namespace: clamav
     chart: wiremind/clamav
     version: "3.7.1"
+    installed: true
     values:
       - replicaCount: 2
         resources:
@@ -474,15 +752,14 @@ releases:
             memory: 2Gi
 
   # ===========================================================================
-  # OpenCloud (monolithic chart — TARGET)
+  # OpenCloud
   # Full configuration based on SOURCE helmfile.yaml
   # ===========================================================================
   - name: opencloud
     namespace: opencloud
     chart: ../../
     needs:
-      - opencloud/keycloak
-      - opencloud/opencloud-secrets
+      - keycloak/keycloak
     values:
       # --- General Settings (SOURCE lines 21-23) ---
       - global:
@@ -494,16 +771,16 @@ releases:
             collabora: collabora.opencloud.test
             companion: companion.opencloud.test
           tls:
-            enabled: false
+            enabled: true
         opencloud:
           logLevel: info
+        collabora:
+          enabled: true
 
       # --- OIDC / External User Management (SOURCE lines 69-93) ---
       - oidc:
-          enabled: false
-          external:
-            issuerUrl: https://keycloak.opencloud.test/realms/openCloud
-            domain: keycloak.opencloud.test
+          issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+          clientId: "web"
         features:
           externalUserManagement:
             enabled: true
@@ -512,7 +789,7 @@ releases:
               enabled: true
               claimUserName: sub
             oidc:
-              domain: keycloak.opencloud.test
+              domain: localhost
               issuerURI: https://keycloak.opencloud.test/realms/openCloud
               userIDClaim: sub
               userIDClaimAttributeMapping: username
@@ -536,6 +813,16 @@ releases:
           oidcIdpInsecure: true
           ocHttpApiInsecure: true
 
+      # --- Storage mode (posixfs — no MinIO) ---
+      - opencloud:
+          storage:
+            mode: posixfs
+            s3:
+              enabled: false
+            posixfs:
+              persistence:
+                accessMode: ReadWriteMany
+
       # --- Secret refs (SOURCE lines 62-64) ---
       - secretRefs:
           ldapSecretRef: ldap-bind-secrets
@@ -549,6 +836,12 @@ releases:
             nginx.ingress.kubernetes.io/proxy-body-size: 1024m
         httpRoute:
           enabled: true
+          gateway:
+            create: false
+            name: cilium-gateway
+            namespace: kube-system
+            port: 80
+            sectionName: opencloud
 
       # --- Quotas (SOURCE lines 94-99) ---
       - quotas:
@@ -559,7 +852,7 @@ releases:
       # --- Antivirus (SOURCE lines 100-104) ---
       - features:
           virusscan:
-            enabled: false
+            enabled: true
             infectedFileHandling: "abort"
             scannerType: "clamav"
             clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
@@ -576,7 +869,7 @@ releases:
 
       # --- OPA Policies (SOURCE lines 113-218) ---
           policies:
-            enabled: false
+            enabled: true
             policies:
               - fileName: proxy.rego
                 content: |
@@ -631,7 +924,7 @@ releases:
               officeSuites:
                 - name: Collabora
                   product: Collabora
-                  enabled: true
+                  enabled: false
                   uri: "https://collabora.opencloud.test"
                   insecure: true
                   disableProof: false
@@ -645,3 +938,6 @@ releases:
 
       # --- Replicas ---
       - replicas: 1
+        opencloud:
+          migration:
+            enabled: false

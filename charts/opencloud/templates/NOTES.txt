@@ -7,64 +7,61 @@ To learn more about the release, try:
   $ helm status {{ .Release.Name }}
   $ helm get all {{ .Release.Name }}
 
-IMPORTANT: This is a development deployment. For production use, you MUST change the following default credentials:
+=====================================================
+  DEVELOPMENT DEPLOYMENT - DO NOT USE IN PRODUCTION
+=====================================================
 
-1. OpenCloud Admin: adminPassword: admin
-2. MinIO: rootUser: opencloud, rootPassword: opencloud-secret-key
+Default credentials that MUST be changed for production:
+
+  1. OpenCloud Admin:  admin / admin
+  2. Keycloak Admin:   admin / admin (realm: openCloud)
+  3. OpenLDAP Admin:   cn=admin,dc=opencloud,dc=eu / admin
 
 Using default credentials in production environments poses significant security risks.
 
-The following services have been deployed:
+=====================================================
+  SERVICES DEPLOYED
+=====================================================
 
-1. OpenCloud (Main Application):
-   - Service: {{ include "opencloud.opencloud.fullname" . }}
-   - Port: 9200
-   - Storage Driver: decomposeds3
-   - System Storage Driver: decomposed
-   - S3 Storage: {{- if .Values.opencloud.storage.s3.external.endpoint }}{{ .Values.opencloud.storage.s3.external.endpoint }}{{- else if .Values.opencloud.storage.s3.enabled }}MinIO ({{ include "opencloud.minio.fullname" . }}){{- else }}Not configured{{- end }}
-   - S3 Bucket: {{- if .Values.opencloud.storage.s3.external.endpoint }}{{ .Values.opencloud.storage.s3.external.bucket }}{{- else if .Values.opencloud.storage.s3.enabled }}{{ .Values.opencloud.storage.s3.bucketName }}{{- else }}Not configured{{- end }}
+{{- if .Values.oidc.issuerUrl }}
 
-2. External OIDC Provider:
-   - Issuer: {{ .Values.oidc.issuerUrl }}
-   - Client ID: {{ .Values.oidc.clientId }}
-
-{{- if .Values.opencloud.storage.s3.enabled }}
-3. MinIO (Object Storage):
-   - Service: {{ include "opencloud.minio.fullname" . }}
-   - API Port: 9000
-   - Console Port: 9001
-   - Username: {{ .Values.opencloud.storage.s3.rootUser }}
-   - Password: {{ .Values.opencloud.storage.s3.rootPassword }}
+  Keycloak (OIDC Provider):
+    - Namespace: keycloak
+    - Port-forward: kubectl port-forward -n keycloak svc/keycloak-keycloakx-http 8080:80
+    - URL: http://localhost:8080
+    - Admin Console: http://localhost:8080/admin
 {{- end }}
 
-{{- if or .Values.collabora.enabled .Values.collabora.external.enabled}}
-4. Collabora Collaboration Service:
-   - Service: {{ include "opencloud.fullname" . }}-collaboration
-   - HTTP Port: 9300
-   - gRPC Port: 9301
-{{- end }}
+  OpenCloud:
+    - Namespace: opencloud
+    - Port-forward: kubectl port-forward -n opencloud svc/opencloud-opencloud 9200:9200
+    - URL: http://localhost:9200
 
-{{- if .Values.httpRoute.enabled }}
-IMPORTANT: This chart includes HTTPRoute resources that route traffic to the OpenCloud and MinIO services.
-All HTTPRoutes are configured to use the Gateway named "{{ .Values.httpRoute.gateway.name }}" in the
-{{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }} namespace.
+  OpenLDAP (phpldapadmin):
+    - Namespace: openldap
+    - Port-forward: kubectl port-forward -n openldap svc/openldap-phpldapadmin 6443:80
+    - URL: http://localhost:6443
 
-Make sure the Gateway exists and is properly configured to accept traffic for the following domains:
-- OpenCloud: {{ include "opencloud.domain" . }} (Service: {{ include "opencloud.opencloud.fullname" . }}, Port: 9200)
-{{- if .Values.opencloud.storage.s3.enabled }}
-- MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
-{{- end }}
+=====================================================
+  STORAGE
+=====================================================
+  - Storage Mode: {{ .Values.opencloud.storage.mode }}
+  - StorageClass: local-path (dynamic provisioning)
+  - PersistentVolumes: bound to control-plane node
 
-{{- else }}
-IMPORTANT: The HTTPRoutes are disabled. You need to configure your own ingress controller
-to expose these services externally.
-
-Example domains for your ingress configuration:
-- OpenCloud: {{ include "opencloud.domain" . }} (Service: {{ include "opencloud.opencloud.fullname" . }}, Port: 9200)
-{{- if .Values.opencloud.storage.s3.enabled }}
-- MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
-{{- end }}
-{{- end }}
+=====================================================
+  IMPORTANT: Production Readiness Checklist
+=====================================================
+  [ ] Change all default passwords
+  [ ] Enable TLS (global.tls.enabled: true)
+  [ ] Switch Keycloak to PostgreSQL (remove --import-realm, use start --optimized)
+  [ ] Configure proper hostname/ingress (not localhost)
+  [ ] Enable antivirus (clamav) if needed
+  [ ] Enable Collabora/OnlyOffice for document editing
+  [ ] Remove keycloak-config-cli or init jobs
+  [ ] Review OPA policies
+  [ ] Configure SMTP for email notifications
+  [ ] Set up proper backup strategy for PVs
 
 For more information, please refer to the OpenCloud documentation:
   https://docs.opencloud.eu/

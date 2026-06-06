@@ -39,7 +39,12 @@ spec:
                 --o:ssl.ssl_verification={{ .Values.collabora.ssl.verification }} \
                 --o:ssl.termination=true \
                 --o:welcome.enable=false \
-                --o:net.frame_ancestors={{ include "opencloud.domain" . }}
+                --o:update.enable=false \
+                --o:net.frame_ancestors={{ include "opencloud.domain" . }} \
+                --o:security.capabilities=false \
+                --o:child_root_path=/tmp/coolwsd-child-roots \
+                --o:cache_files.path=/tmp/coolwsd-cache \
+                --o:logging.disable_server_audit=true
             - name: username
               valueFrom:
                 secretKeyRef:
@@ -77,7 +82,23 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 10
           securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
             capabilities:
-              add:
-                - MKNOD
+              drop:
+                - ALL
+          volumeMounts:
+            - name: coolwsd-child-roots
+              mountPath: /tmp/coolwsd-child-roots
+            - name: coolwsd-cache
+              mountPath: /tmp/coolwsd-cache
+      volumes:
+        - name: coolwsd-child-roots
+          emptyDir: {}
+        - name: coolwsd-cache
+          emptyDir: {}
 {{- end }}

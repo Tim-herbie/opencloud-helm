@@ -403,7 +403,7 @@ opencloud:
   # Migration configuration for migrating credentials from legacy config PVC to new secrets
   migration:
     # Enable credential migration job on chart upgrades.
-    enabled: true
+    enabled: false
     # Name of the legacy config PVC to read credentials from.
     # Defaults to "<fullname>-config" if not set.
     configPvcClaimName: ""
@@ -583,7 +583,7 @@ opencloud:
         # Storage class
         storageClass: ""
         # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
-        accessMode: ReadWriteMany
+        accessMode: ReadWriteOnce
   # affinity: {}
 
   # =====================================================================
@@ -652,6 +652,8 @@ httpRoute:
     namespace: ""
     # Gateway section name (applies to all routes). If set to a non-empty value, this overrides the default component-specific section names (e.g., opencloud-https) for all routes. If left empty, the defaults are used.
     sectionName: ""
+    # Gateway HTTP section name for redirect routes. If set to a non-empty value, this overrides the default component-specific HTTP section names (e.g., opencloud-proxy-http) for redirect routes. If left empty, the defaults are used.
+    httpSectionName: ""
     # Gateway annotations
     annotations:
     # Gateway annotations

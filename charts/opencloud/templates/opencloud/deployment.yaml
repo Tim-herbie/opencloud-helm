@@ -170,7 +170,7 @@ spec:
           env:
             # OpenCloud URL
             - name: OC_URL
-              value: "https://{{ include "opencloud.domain" . }}"
+              value: "{{ if .Values.global.tls.enabled }}https{{ else }}http{{ end }}://{{ include "opencloud.domain" . }}"
             # Available roles
             - name: GRAPH_AVAILABLE_ROLES
               value: {{ .Values.opencloud.graphAvailableRoles | quote }}

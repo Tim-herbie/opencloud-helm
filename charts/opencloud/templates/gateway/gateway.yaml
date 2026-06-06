@@ -17,51 +17,35 @@ spec:
       {{- toYaml . | nindent 4 }}
   {{- end }}
   listeners:
-    {{- if .Values.global.tls.enabled }}
-    - name: opencloud-https
-    {{- else }}
     - name: opencloud-http
-    {{- end }}
-      {{- if .Values.global.tls.enabled }}
-      protocol: HTTPS
-      {{- else }}
       protocol: HTTP
-      {{- end }}
       port: {{ .Values.httpRoute.gateway.port }}
       hostname: {{ .Values.global.domain.opencloud | quote }}
-      {{- if .Values.global.tls.enabled }}
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.global.tls.secretName }}
-            namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- end }}
       allowedRoutes:
         namespaces:
           from: Selector
           selector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-    {{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
-    {{- if .Values.global.tls.enabled }}
-    - name: minio-https
-    {{- else }}
-    - name: minio-http
-    {{- end }}
-      {{- if .Values.global.tls.enabled }}
-      protocol: HTTPS
-      {{- else }}
+    - name: keycloak-http
       protocol: HTTP
-      {{- end }}
+      port: {{ .Values.httpRoute.gateway.port }}
+      hostname: {{ .Values.global.domain.oidc | quote }}
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: wopi-http
+      protocol: HTTP
+      port: {{ .Values.httpRoute.gateway.port }}
+      hostname: {{ .Values.global.domain.wopi | quote }}
+      allowedRoutes:
+        namespaces:
+          from: All
+    {{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
+    - name: minio-http
+      protocol: HTTP
       port: {{ .Values.httpRoute.gateway.port }}
       hostname: {{ .Values.global.domain.minio | quote }}
-      {{- if .Values.global.tls.enabled }}
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.global.tls.secretName }}
-            namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- end }}
       allowedRoutes:
         namespaces:
           from: Selector
@@ -70,25 +54,10 @@ spec:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
     {{- end }}
     {{- if .Values.collabora.enabled }}
-    {{- if .Values.global.tls.enabled }}
-    - name: collabora-https
-    {{- else }}
     - name: collabora-http
-    {{- end }}
-      {{- if .Values.global.tls.enabled }}
-      protocol: HTTPS
-      {{- else }}
       protocol: HTTP
-      {{- end }}
       port: {{ .Values.httpRoute.gateway.port }}
       hostname: {{ .Values.global.domain.collabora | quote }}
-      {{- if .Values.global.tls.enabled }}
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.global.tls.secretName }}
-            namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- end }}
       allowedRoutes:
         namespaces:
           from: Selector
