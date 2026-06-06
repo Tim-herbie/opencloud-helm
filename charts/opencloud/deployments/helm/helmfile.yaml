@@ -147,10 +147,14 @@ releases:
                       "redirectUris": [
                         "https://cloud.opencloud.test/",
                         "https://cloud.opencloud.test/oidc-callback.html",
-                        "https://cloud.opencloud.test/oidc-silent-redirect.html"
+                        "https://cloud.opencloud.test/oidc-silent-redirect.html",
+                        "https://cloud.opencloud2.test/",
+                        "https://cloud.opencloud2.test/oidc-callback.html",
+                        "https://cloud.opencloud2.test/oidc-silent-redirect.html"
                       ],
                       "webOrigins": [
                         "https://cloud.opencloud.test",
+                        "https://cloud.opencloud2.test",
                         "+"
                       ],
                       "protocolMappers": [
@@ -758,10 +762,8 @@ releases:
   - name: opencloud
     namespace: opencloud
     chart: ../../
-    needs:
-      - keycloak/keycloak
     values:
-      # --- General Settings (SOURCE lines 21-23) ---
+      # --- General Settings ---
       - global:
           domain:
             opencloud: cloud.opencloud.test
@@ -777,7 +779,7 @@ releases:
         collabora:
           enabled: true
 
-      # --- OIDC / External User Management (SOURCE lines 69-93) ---
+      # --- OIDC / External User Management ---
       - oidc:
           issuerUrl: https://keycloak.opencloud.test/realms/openCloud
           clientId: "web"
@@ -808,7 +810,7 @@ releases:
                 schema:
                   id: openCloudUUID
 
-      # --- Insecure settings (SOURCE lines 59-61) ---
+      # --- Insecure settings ---
       - insecure:
           oidcIdpInsecure: true
           ocHttpApiInsecure: true
@@ -823,12 +825,12 @@ releases:
               persistence:
                 accessMode: ReadWriteMany
 
-      # --- Secret refs (SOURCE lines 62-64) ---
+      # --- Secret refs ---
       - secretRefs:
           ldapSecretRef: ldap-bind-secrets
           s3CredentialsSecretRef: s3secret
 
-      # --- Networking (SOURCE lines 54-67) ---
+      # --- Networking ---
       - ingress:
           enabled: false
           ingressClassName: nginx
@@ -843,13 +845,13 @@ releases:
             port: 80
             sectionName: opencloud
 
-      # --- Quotas (SOURCE lines 94-99) ---
+      # --- Quotas ---
       - quotas:
           roles:
             'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
             '2aadd357-682c-406b-8874-293091995fdd': 0
 
-      # --- Antivirus (SOURCE lines 100-104) ---
+      # --- Antivirus ---
       - features:
           virusscan:
             enabled: true
@@ -857,7 +859,7 @@ releases:
             scannerType: "clamav"
             clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
 
-      # --- Email/SMTP (SOURCE lines 105-112) ---
+      # --- Email/SMTP ---
           emailNotifications:
             enabled: false
             smtp:
@@ -867,7 +869,7 @@ releases:
               authentication: none
               encryption: ssltls
 
-      # --- OPA Policies (SOURCE lines 113-218) ---
+      # --- OPA Policies ---
           policies:
             enabled: true
             policies:
@@ -917,7 +919,7 @@ releases:
                       RESTRICTED_EXTENSIONS_NO_DOT[ext]
                   }
 
-      # --- Apps Integration / WOPI (SOURCE lines 219-248) ---
+      # --- Apps Integration / WOPI ---
           appsIntegration:
             enabled: true
             wopiIntegration:
@@ -937,6 +939,182 @@ releases:
                   disableProof: false
 
       # --- Replicas ---
+      - replicas: 1
+        opencloud:
+          migration:
+            enabled: false
+
+  # ===========================================================================
+  # OpenCloud 2 (second instance — shares Keycloak, OpenLDAP, ClamAV)
+  # ===========================================================================
+  - name: opencloud2
+    namespace: opencloud2
+    chart: ../../
+    values:
+      - global:
+          domain:
+            opencloud: cloud.opencloud2.test
+            oidc: keycloak.opencloud.test
+            minio: minio.opencloud2.test
+            wopi: wopiserver.opencloud2.test
+            collabora: collabora.opencloud2.test
+            companion: companion.opencloud2.test
+          tls:
+            enabled: true
+        opencloud:
+          logLevel: info
+        collabora:
+          enabled: true
+
+      - oidc:
+          issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+          clientId: "web"
+        features:
+          externalUserManagement:
+            enabled: true
+            adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
+            autoprovisionAccounts:
+              enabled: true
+              claimUserName: sub
+            oidc:
+              domain: localhost
+              issuerURI: https://keycloak.opencloud.test/realms/openCloud
+              userIDClaim: sub
+              userIDClaimAttributeMapping: username
+              roleAssignment:
+                claim: roles
+            ldap:
+              writeable: true
+              uri: ldaps://openldap.openldap.svc.cluster.local:636
+              insecure: true
+              bindDN: cn=admin,dc=opencloud,dc=eu
+              user:
+                userNameMatch: none
+                schema:
+                  id: openCloudUUID
+              group:
+                schema:
+                  id: openCloudUUID
+
+      - insecure:
+          oidcIdpInsecure: true
+          ocHttpApiInsecure: true
+
+      - opencloud:
+          storage:
+            mode: posixfs
+            s3:
+              enabled: false
+            posixfs:
+              persistence:
+                accessMode: ReadWriteMany
+
+      - secretRefs:
+          ldapSecretRef: ldap-bind-secrets
+          s3CredentialsSecretRef: s3secret
+
+      - ingress:
+          enabled: false
+          ingressClassName: nginx
+          annotations:
+            nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+        httpRoute:
+          enabled: true
+          gateway:
+            create: false
+            name: cilium-gateway
+            namespace: kube-system
+            port: 80
+            sectionName: opencloud2
+
+      - quotas:
+          roles:
+            'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
+            '2aadd357-682c-406b-8874-293091995fdd': 0
+
+      - features:
+          virusscan:
+            enabled: true
+            infectedFileHandling: "abort"
+            scannerType: "clamav"
+            clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+
+          emailNotifications:
+            enabled: false
+            smtp:
+              host: ""
+              port: ""
+              sender: ""
+              authentication: none
+              encryption: ssltls
+
+          policies:
+            enabled: true
+            policies:
+              - fileName: proxy.rego
+                content: |
+                  package proxy
+                  import future.keywords.if
+                  import data.utils
+                  default granted := true
+                  granted = false if {
+                      input.request.method == "PUT"
+                      pathPrefixes := ["/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
+                      restricted := pathPrefixes[_]
+                      startswith(input.request.path, restricted)
+                      utils.is_extension_restricted(input.resource.name)
+                  }
+              - fileName: postprocessing.rego
+                content: |
+                  package postprocessing
+                  import future.keywords.if
+                  import data.utils
+                  default granted := true
+                  granted = false if {
+                      utils.is_extension_restricted(input.resource.name)
+                  }
+                  granted = false if {
+                      bytes := opencloud.resource.download(input.resource.url)
+                      mimetype := opencloud.mimetype.detect(bytes)
+                      utils.is_mimetype_restricted(mimetype)
+                  }
+              - fileName: utils.rego
+                content: |
+                  package utils
+                  RESTRICTED_EXTENSIONS := {".exe", ".dll", ".msi", ".scr", ".com", ".pif", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsh"}
+                  RESTRICTED_EXTENSIONS_NO_DOT := {"exe", "dll", "msi", "scr", "com", "pif", "bat", "cmd", "ps1", "vbs", "vbe", "wsh"}
+                  RESTRICTED_MIMETYPES := {"application/x-msdownload", "application/x-dosexec", "application/x-executable", "application/vnd.microsoft.portable-executable", "application/x-msi", "application/x-ms-dos-executable", "application/x-msdos-program", "application/x-bat", "application/bat", "application/x-sh", "application/x-shellscript"}
+                  is_extension_restricted(identifier) {
+                      extension := RESTRICTED_EXTENSIONS[_]
+                      endswith(lower(identifier), extension)
+                  }
+                  is_mimetype_restricted(mimetype) {
+                      RESTRICTED_MIMETYPES[mimetype]
+                  }
+                  is_mimetype_restricted(mimetype) {
+                      extensions := opencloud.mimetype.extensions(mimetype)
+                      ext := extensions[_]
+                      RESTRICTED_EXTENSIONS_NO_DOT[ext]
+                  }
+
+          appsIntegration:
+            enabled: true
+            wopiIntegration:
+              officeSuites:
+                - name: Collabora
+                  product: Collabora
+                  enabled: false
+                  uri: "https://collabora.opencloud2.test"
+                  insecure: true
+                  disableProof: false
+                  iconURI: https://collabora.opencloud2.test/favicon.ico
+                - name: OnlyOffice
+                  product: OnlyOffice
+                  enabled: false
+                  uri: "https://onlyoffice.opencloud2.test"
+                  insecure: true
+                  disableProof: false
+
       - replicas: 1
         opencloud:
           migration:
