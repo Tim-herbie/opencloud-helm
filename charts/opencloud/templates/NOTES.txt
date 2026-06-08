@@ -73,11 +73,44 @@ Using default credentials in production environments poses significant security 
   IMPORTANT: Production Readiness Checklist
 =====================================================
   [ ] Change all default passwords
+  [ ] Change OpenLDAP admin password:
+      - Update openldap.adminPassword in helmfile
+      - Update opencloud.ldap.adminPassword in helmfile (must match)
+      - Run: helmfile sync
   [ ] Switch Keycloak to PostgreSQL (remove --import-realm, use start --optimized)
   [ ] Configure SMTP for email notifications
   [ ] Set up proper backup strategy for PVs
   [ ] Review and customize OPA policies for your organization
   [ ] Configure monitoring and alerting
+
+=====================================================
+  SECURITY: Insecure Options to Disable in Production
+=====================================================
+The following insecure options are currently ENABLED for development
+and MUST be disabled (set to false) in production:
+
+{{- if .Values.oidc }}
+  - oidc.oidcIdpInsecure: {{ .Values.oidc.oidcIdpInsecure }}
+    (Disables TLS certificate validation for OIDC provider)
+{{- end }}
+
+{{- if .Values.opencloud }}
+  - opencloud.ocHttpApiInsecure: {{ .Values.opencloud.ocHttpApiInsecure }}
+    (Disables TLS certificate validation for OpenCloud HTTP APIs)
+{{- end }}
+
+{{- if and .Values.opencloud .Values.opencloud.ldap }}
+  - opencloud.ldap.insecure: {{ .Values.opencloud.ldap.insecure }}
+    (Disables TLS certificate validation for LDAP connections)
+{{- end }}
+
+{{- if and .Values.features .Values.features.appsIntegration .Values.features.appsIntegration.wopiIntegration .Values.features.appsIntegration.wopiIntegration.officeSuites }}
+  - collabora.insecure: {{ index .Values.features.appsIntegration.wopiIntegration.officeSuites 0 "insecure" }}
+    (Disables TLS certificate validation for Collabora)
+
+  - collabora.disableProof: {{ index .Values.features.appsIntegration.wopiIntegration.officeSuites 0 "disableProof" }}
+    (Disables WOPI proof key verification)
+{{- end }}
 
 For more information, please refer to the OpenCloud documentation:
   https://docs.opencloud.eu/

@@ -106,6 +106,10 @@ oidc:
   #   Okta: https://your-org.okta.com/enduser/settings
   accountUrl: ""
 
+  # Disable TLS certificate validation for OIDC provider connections
+  # WARNING: Should be disabled in production
+  oidcIdpInsecure: false
+
   # OIDC scope for web client
   scope: "openid profile email groups roles"
 
@@ -155,6 +159,20 @@ tika:
     limits:
       cpu: 1000m
       memory: 3Gi
+  # Probe settings for health checks
+  probes:
+    liveness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    readiness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
 
 # Web Extensions settings
 webExtensions:
@@ -342,6 +360,26 @@ opencloud:
   proxyRoleAssignmentOidcClaim: "roles"
   # OIDC access token verify method (default: jwt)
   proxyOidcAccessTokenVerifyMethod: "jwt"
+  # LDAP server write enabled (default: true)
+  ldapServerWriteEnabled: true
+  # LDAP configuration (used when externalUserManagement is enabled)
+  ldap:
+    uri: "ldaps://openldap.openldap.svc.cluster.local:636"
+    insecure: true
+    bindDN: "cn=admin,dc=opencloud,dc=eu"
+    adminPassword: "admin"  # Must match OpenLDAP adminPassword
+    # Name of the secret containing LDAP bind password (key: reva-ldap-bind-password)
+    # If not set, defaults to <release-name>-opencloud-ldap
+    secretRef: ""
+    user:
+      baseDN: "ou=users,dc=opencloud,dc=eu"
+    group:
+      baseDN: "ou=groups,dc=opencloud,dc=eu"
+      createBaseDN: "ou=custom,ou=groups,dc=opencloud,dc=eu"
+  # Graph LDAP refint enabled (default: true)
+  graphLdapRefintEnabled: true
+  # Frontend full text search enabled (default: true)
+  frontendFullTextSearchEnabled: true
   # OIDC scope for web (default: openid profile email groups roles)
   oidc:
     scope: "openid profile email groups roles"
@@ -360,6 +398,10 @@ opencloud:
   logPretty: false
   # Insecure mode (for self-signed certificates)
   insecure: true
+  
+  # Disable TLS certificate validation for OpenCloud HTTP API connections
+  # WARNING: Should be disabled in production
+  ocHttpApiInsecure: false
   
   # Use existing secret for opencloud admin credentials (Note: secretKeyName must be adminPassword)
   existingSecret: ""

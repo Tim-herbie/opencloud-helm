@@ -331,6 +331,28 @@ spec:
               value: {{ printf "%s/.well-known/openid-configuration" (include "opencloud.oidc.issuer" .) | quote }}
             - name: WEB_OIDC_SCOPE
               value: {{ .Values.opencloud.oidc.scope | quote }}
+            - name: OC_LDAP_SERVER_WRITE_ENABLED
+              value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
+            - name: GRAPH_LDAP_SERVER_WRITE_ENABLED
+              value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
+            - name: FRONTEND_LDAP_SERVER_WRITE_ENABLED
+              value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
+            - name: OC_LDAP_URI
+              value: {{ .Values.opencloud.ldap.uri | quote }}
+            - name: OC_LDAP_INSECURE
+              value: {{ .Values.opencloud.ldap.insecure | quote }}
+            - name: OC_LDAP_BIND_DN
+              value: {{ .Values.opencloud.ldap.bindDN | quote }}
+            - name: OC_LDAP_USER_BASE_DN
+              value: {{ .Values.opencloud.ldap.user.baseDN | quote }}
+            - name: OC_LDAP_GROUP_BASE_DN
+              value: {{ .Values.opencloud.ldap.group.baseDN | quote }}
+            - name: GRAPH_LDAP_GROUP_CREATE_BASE_DN
+              value: {{ .Values.opencloud.ldap.group.createBaseDN | quote }}
+            - name: GRAPH_LDAP_REFINT_ENABLED
+              value: {{ .Values.opencloud.graphLdapRefintEnabled | quote }}
+            - name: FRONTEND_FULL_TEXT_SEARCH_ENABLED
+              value: {{ .Values.opencloud.frontendFullTextSearchEnabled | quote }}
             {{- end }}
             {{- /* Runtime secrets — injected directly, no opencloud init needed */ -}}
             {{- $initSecretName := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) }}
@@ -423,28 +445,28 @@ spec:
             - name: USERS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmRevaServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: reva-ldap-bind-password
             - name: GROUPS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmRevaServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: reva-ldap-bind-password
             - name: AUTH_BASIC_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmRevaServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: reva-ldap-bind-password
             - name: IDP_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmIdpServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: reva-ldap-bind-password
             - name: GRAPH_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: graph-ldap-bind-password
             - name: IDM_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
