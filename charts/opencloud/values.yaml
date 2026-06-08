@@ -376,11 +376,22 @@ opencloud:
     secretRef: ""
     user:
       baseDN: "ou=users,dc=opencloud,dc=eu"
+      schema:
+        id: "opencloudUUID"
     group:
       baseDN: "ou=groups,dc=opencloud,dc=eu"
       createBaseDN: "ou=custom,ou=groups,dc=opencloud,dc=eu"
+      schema:
+        id: "opencloudUUID"
+    disableUserMechanism: "attribute"
   # Graph LDAP refint enabled (default: true)
   graphLdapRefintEnabled: true
+  # Graph LDAP server UUID (default: false for external IdP)
+  graphLdapServerUuid: "false"
+  # Settings setup default assignments (default: false)
+  settingsSetupDefaultAssignments: "false"
+  # Proxy autoprovision claim username (default: sub)
+  proxyAutoprovisionClaimUsername: "sub"
   # Frontend full text search enabled (default: true)
   frontendFullTextSearchEnabled: true
   # OIDC scope for web (default: openid profile email groups roles)
