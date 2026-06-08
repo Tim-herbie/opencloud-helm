@@ -235,18 +235,22 @@ spec:
               value: {{ .Values.opencloud.sharingPublicShareMustHavePassword | quote }}
             - name: OC_PASSWORD_POLICY_BANNED_PASSWORDS_LIST
               value: {{ .Values.opencloud.passwordPolicyBannedPasswordsList | quote }}
+            # Gateway: disable CreateHome on login (external IdP handles home creation)
+            - name: GATEWAY_DISABLE_HOME_CREATION_ON_LOGIN
+              value: "true"
             # Search settings
             - name: SEARCH_EXTRACTOR_TYPE
               value: {{ .Values.opencloud.searchExtractorType | quote }}
             - name: SEARCH_EXTRACTOR_TIKA_TIKA_URL
               value: "http://{{ include "opencloud.tika.fullname" . }}:9998"
+            # Must be false — Go default is true, which makes search subscribe to UploadReady
+            # instead of FileUploaded. With sync uploads, FileUploaded is the correct event.
+            - name: OC_ASYNC_UPLOADS
+              value: "false"
             {{- with .Values.opencloud.searchExtractorSizeLimit }}
             - name: SEARCH_CONTENT_EXTRACTION_SIZE_LIMIT
               value: {{ int64 . | quote }}
             {{- end }}
-            # Async uploads for large files
-            - name: OC_ASYNC_UPLOADS
-              value: "true"
             # Performance settings
             - name: OC_GRPC_MAX_RECEIVED_MESSAGE_SIZE
               value: {{ .Values.opencloud.grpcMaxReceivedMessageSize | quote }}

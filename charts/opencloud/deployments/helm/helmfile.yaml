@@ -2744,6 +2744,11 @@ releases:
           migration:
             enabled: false
 
+      # --- Secret References ---
+      - secretRefs:
+          ldapSecretRef: ldap-bind-secrets
+          s3CredentialsSecretRef: s3secret
+
       # --- Extra Resources (Secrets) ---
       # IMPORTANT: Change these passwords in production!
       - extraResources:
@@ -2753,7 +2758,7 @@ releases:
             metadata:
               name: ldap-bind-secrets
             stringData:
-              reva-ldap-bind-password: admin
+              graph-ldap-bind-password: admin
             ---
             apiVersion: v1
             kind: Secret
