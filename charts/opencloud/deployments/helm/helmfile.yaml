@@ -2758,6 +2758,7 @@ releases:
             metadata:
               name: ldap-bind-secrets
             stringData:
+              reva-ldap-bind-password: admin
               graph-ldap-bind-password: admin
             ---
             apiVersion: v1
