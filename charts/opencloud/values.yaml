@@ -334,6 +334,9 @@ opencloud:
   passwordPolicyBannedPasswordsList: "banned-password-list.txt"
   # Search extractor type (default: tika)
   searchExtractorType: "tika"
+  # Search content extraction size limit in bytes (default: empty = uses OpenCloud default)
+  # Example: 104857600 for 100MB
+  searchExtractorSizeLimit: ""
   # Max gRPC received message size (default: 102400000)
   grpcMaxReceivedMessageSize: "102400000"
   # Autoprovision accounts via proxy (default: true)

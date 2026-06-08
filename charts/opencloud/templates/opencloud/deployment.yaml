@@ -240,6 +240,13 @@ spec:
               value: {{ .Values.opencloud.searchExtractorType | quote }}
             - name: SEARCH_EXTRACTOR_TIKA_TIKA_URL
               value: "http://{{ include "opencloud.tika.fullname" . }}:9998"
+            {{- with .Values.opencloud.searchExtractorSizeLimit }}
+            - name: SEARCH_CONTENT_EXTRACTION_SIZE_LIMIT
+              value: {{ int64 . | quote }}
+            {{- end }}
+            # Async uploads for large files
+            - name: OC_ASYNC_UPLOADS
+              value: "true"
             # Performance settings
             - name: OC_GRPC_MAX_RECEIVED_MESSAGE_SIZE
               value: {{ .Values.opencloud.grpcMaxReceivedMessageSize | quote }}
@@ -507,6 +514,13 @@ spec:
             # Changing .Values.opencloud.nats.port in this mode is unsupported and may lead to port mismatches.
             - name: NATS_NATS_PORT
               value: {{ .Values.opencloud.nats.port | quote }}
+            # Use internal NATS for events, cache, and persistent store
+            - name: OC_EVENTS_ENDPOINT
+              value: {{ .Values.opencloud.nats.internalEndpoint | quote }}
+            - name: OC_CACHE_STORE_NODES
+              value: {{ .Values.opencloud.nats.internalEndpoint | quote }}
+            - name: OC_PERSISTENT_STORE_NODES
+              value: {{ .Values.opencloud.nats.internalEndpoint | quote }}
             {{- end }}
             # CSP configuration
             - name: PROXY_CSP_CONFIG_FILE_LOCATION

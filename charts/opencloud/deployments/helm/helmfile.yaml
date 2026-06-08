@@ -134,6 +134,7 @@ releases:
               name: keycloak-realm-config
               namespace: {{ .Release.Namespace }}
             data:
+              openCloud-realm.json: |-
                 {
                   "id" : "openCloud",
                   "realm" : "openCloud",
