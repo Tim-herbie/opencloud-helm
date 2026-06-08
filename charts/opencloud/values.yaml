@@ -157,8 +157,8 @@ tika:
       cpu: 100m
       memory: 1Gi
     limits:
-      cpu: 1000m
-      memory: 3Gi
+      cpu: 4
+      memory: 10Gi
   # Probe settings for health checks
   probes:
     liveness:
@@ -261,8 +261,8 @@ collabora:
       cpu: 100m
       memory: 256Mi
     limits:
-      cpu: 1
-      memory: 1Gi
+      cpu: 4
+      memory: 10Gi
 
   # External Collabora service configuration
   # Use these settings when Collabora runs outside this chart (can be another k8s service
@@ -295,7 +295,7 @@ collaboration:
       cpu: 100m
       memory: 256Mi
     limits:
-      cpu: 5000m
+      cpu: 4
       memory: 10Gi
 
   # Additional environment variables for the collaboration service
@@ -444,7 +444,8 @@ opencloud:
       cpu: 128m
       memory: 128Mi
     limits:
-      memory: 20Gi
+      cpu: 4
+      memory: 10Gi
   # Persistence configuration
   persistence:
     data:

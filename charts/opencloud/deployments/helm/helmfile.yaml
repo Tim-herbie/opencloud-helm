@@ -2630,6 +2630,40 @@ releases:
               size: 30Gi
               accessMode: ReadWriteMany
 
+      # --- Resources ---
+      - opencloud:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 1Gi
+            limits:
+              cpu: 4
+              memory: 10Gi
+        collabora:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 4
+              memory: 10Gi
+        collaboration:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 4
+              memory: 10Gi
+        tika:
+          resources:
+            requests:
+              cpu: 128m
+              memory: 128Mi
+            limits:
+              cpu: 4
+              memory: 10Gi
+
       # --- Networking ---
       - ingress:
           enabled: false
