@@ -34,7 +34,8 @@ OpenCloud is a cloud collaboration platform that provides file sync and share, d
 | 6.1.0            | 2.2.0 |
 | 6.2.0            | 2.3.0 |
 | 7.0.0            | 2.4.0, 2.4.1, 2.4.2 |
-| 7.1.0            | 2.4.3, 2.4.4 |
+| 7.1.0            | 2.4.3 |
+| 7.2.0            | 2.4.4 |
 
 
 ## 💡 Contributing
@@ -77,21 +78,13 @@ This project is licensed under the **AGPLv3** license. See the [LICENSE](LICENSE
 
 ## ⚡ Quick Start
 
-Follow these steps to quickly deploy OpenCloud using Helmfile:
+Follow these steps to quickly deploy OpenCloud using the Helm chart:
 
-1. **Navigate to the helmfile directory:**
-   ```sh
-   cd charts/opencloud/deployments/helm
-   ```
-
-2. **Deploy the full stack:**
-   ```sh
-   helmfile sync
-   ```
-
-   This deploys Keycloak, OpenLDAP, ClamAV, and OpenCloud with Collabora in their respective namespaces.
-
-3. **Verify the deployment:**
-   ```sh
-   kubectl get pods -A | grep -E "opencloud|keycloak|openldap|clamav"
-   ```
+1. **Install the OpenCloud Helm chart:**
+  ```sh
+  helm install opencloud \
+    oci://ghcr.io/tim-herbie/opencloud-helm/opencloud \
+    --version 2.4.4 \
+    --namespace opencloud \
+    --create-namespace
+  ```

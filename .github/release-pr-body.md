@@ -1,15 +1,17 @@
-## Release 2.4.3
+## Release 2.4.4
 
-Base: changes since 2.4.2.
+Base: changes since 2.4.3.
 
-OpenCloud version from values.yaml: 7.1.0
+OpenCloud version from values.yaml: 7.2.0
 
 ### Pull Requests
-- [#102](https://github.com/Tim-herbie/opencloud-helm/pull/102) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.1.0
-- [#99](https://github.com/Tim-herbie/opencloud-helm/pull/99) chore(deps): update docker.io/collabora/code docker tag to v25.04.10.3.1
+- [#108](https://github.com/Tim-herbie/opencloud-helm/pull/108) chore(deps): update actions/checkout action to v7
+- [#104](https://github.com/Tim-herbie/opencloud-helm/pull/104) chore(deps): update docker.io/collabora/code docker tag to v26
+- [#105](https://github.com/Tim-herbie/opencloud-helm/pull/105) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.6.3
+- [#109](https://github.com/Tim-herbie/opencloud-helm/pull/109) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.2.0
 
 ### Changelog
-## [2.4.3] - 2026-06-02
+## [2.4.4] - 2026-06-25
 
 ### Breaking Changes
 - None
@@ -21,5 +23,7 @@ OpenCloud version from values.yaml: 7.1.0
 - None
 
 ### Chore / Docs / CI / Other
-- [#102](https://github.com/Tim-herbie/opencloud-helm/pull/102) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.1.0
-- [#99](https://github.com/Tim-herbie/opencloud-helm/pull/99) chore(deps): update docker.io/collabora/code docker tag to v25.04.10.3.1
+- [#108](https://github.com/Tim-herbie/opencloud-helm/pull/108) chore(deps): update actions/checkout action to v7
+- [#104](https://github.com/Tim-herbie/opencloud-helm/pull/104) chore(deps): update docker.io/collabora/code docker tag to v26
+- [#105](https://github.com/Tim-herbie/opencloud-helm/pull/105) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.6.3
+- [#109](https://github.com/Tim-herbie/opencloud-helm/pull/109) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.2.0
