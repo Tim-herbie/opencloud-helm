@@ -16,6 +16,25 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### Chore / Docs / CI / Other
+- [#103](https://github.com/Tim-herbie/opencloud-helm/pull/103) chore(release): v2.4.4
+- [#108](https://github.com/Tim-herbie/opencloud-helm/pull/108) chore(deps): update actions/checkout action to v7
+- [#104](https://github.com/Tim-herbie/opencloud-helm/pull/104) chore(deps): update docker.io/collabora/code docker tag to v26
+- [#105](https://github.com/Tim-herbie/opencloud-helm/pull/105) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.6.3
+- [#109](https://github.com/Tim-herbie/opencloud-helm/pull/109) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.2.0
+
+
+## [2.4.4] - 2026-06-25
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- None
+
+### Chore / Docs / CI / Other
 - [#108](https://github.com/Tim-herbie/opencloud-helm/pull/108) chore(deps): update actions/checkout action to v7
 - [#104](https://github.com/Tim-herbie/opencloud-helm/pull/104) chore(deps): update docker.io/collabora/code docker tag to v26
 - [#105](https://github.com/Tim-herbie/opencloud-helm/pull/105) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.6.3
