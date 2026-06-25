@@ -34,9 +34,9 @@
     "oidc": {
       "type": "object",
       "properties": {
-        "issuerUrl": { "type": "string", "format": "uri" },
+        "issuerUrl": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
         "clientId": { "type": "string" },
-        "accountUrl": { "type": "string", "format": "uri" },
+        "accountUrl": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
         "scope": { "type": "string" },
         "cors": {
           "type": "object",
@@ -79,7 +79,7 @@
               "type": "object",
               "properties": {
                 "domain": { "type": "string" },
-                "issuerURI": { "type": "string", "format": "uri" },
+                "issuerURI": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
                 "userIDClaim": { "type": "string" },
                 "userIDClaimAttributeMapping": { "type": "string" },
                 "roleAssignment": {
@@ -94,7 +94,7 @@
               "type": "object",
               "properties": {
                 "writeable": { "type": "boolean" },
-                "uri": { "type": "string", "format": "uri" },
+                "uri": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
                 "insecure": { "type": "boolean" },
                 "bindDN": { "type": "string" },
                 "user": {
@@ -131,7 +131,7 @@
             "infectedFileHandling": { "type": "string", "enum": ["abort", "continue", "delete"] },
             "scannerType": { "type": "string", "enum": ["clamav", "icap"] },
             "clamavSocket": { "type": "string" },
-            "icapUrl": { "type": "string", "format": "uri" },
+            "icapUrl": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
             "icapService": { "type": "string" }
           }
         },
@@ -170,7 +170,7 @@
             "infectedFileHandling": { "type": "string", "enum": ["abort", "continue", "delete"] },
             "scannerType": { "type": "string", "enum": ["clamav", "icap"] },
             "clamavSocket": { "type": "string" },
-            "icapUrl": { "type": "string", "format": "uri" },
+            "icapUrl": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
             "icapService": { "type": "string" }
           }
         },

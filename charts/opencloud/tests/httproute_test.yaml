@@ -7,7 +7,7 @@ tests:
       httpRoute.enabled: true
     asserts:
       - hasDocuments:
-          count: 1
+          count: 2
       - isKind:
           of: HTTPRoute
 
@@ -18,7 +18,7 @@ tests:
       collabora.enabled: true
     asserts:
       - hasDocuments:
-          count: 1
+          count: 2
       - isKind:
           of: HTTPRoute
 
@@ -29,7 +29,7 @@ tests:
       collaboration.enabled: true
     asserts:
       - hasDocuments:
-          count: 1
+          count: 2
       - isKind:
           of: HTTPRoute
 

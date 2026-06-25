@@ -148,7 +148,7 @@ tika:
     # Tika image repository
     repository: apache/tika
     # Tika image tag
-    tag: "3.3.1.0-full"
+    tag: "latest-full"
     # Image pull policy
     pullPolicy: IfNotPresent
   # Resources allocation

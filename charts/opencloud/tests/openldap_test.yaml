@@ -76,12 +76,12 @@ tests:
             value: "https://custom.example.com/account"
 
   # --- LDAP Bind Secret References ---
-  # NOTE: These tests document a gap that will be fixed in Phase 1, Task 1.0
-  # Currently the chart uses internal IDM secrets for LDAP bind passwords.
-  # After removing integrated Keycloak and adding external LDAP support,
-  # these tests should pass with the external ldap-bind-secrets reference.
+  # The chart now defaults to an external LDAP bind secret named
+  # <release>-opencloud-opencloud-ldap (overridable via opencloud.ldap.secretRef).
+  # The USERS/GROUPS/AUTH_BASIC/IDP LDAP bind passwords share the
+  # reva-ldap-bind-password key; GRAPH uses graph-ldap-bind-password.
 
-  - it: should use internal IDM secrets for LDAP bind passwords by default
+  - it: should reference the default LDAP bind secret for LDAP bind passwords by default
     template: opencloud/deployment.yaml
     asserts:
       - contains:
@@ -90,10 +90,10 @@ tests:
             name: USERS_LDAP_BIND_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: RELEASE-NAME-opencloud-opencloud-init
-                key: idmRevaServicePassword
+                name: RELEASE-NAME-opencloud-opencloud-ldap
+                key: reva-ldap-bind-password
 
-  - it: should use internal IDM secrets for GRAPH_LDAP_BIND_PASSWORD by default
+  - it: should use graph-ldap-bind-password key for GRAPH_LDAP_BIND_PASSWORD by default
     template: opencloud/deployment.yaml
     asserts:
       - contains:
@@ -102,8 +102,8 @@ tests:
             name: GRAPH_LDAP_BIND_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: RELEASE-NAME-opencloud-opencloud-init
-                key: idmServicePassword
+                name: RELEASE-NAME-opencloud-opencloud-ldap
+                key: graph-ldap-bind-password
 
   # --- S3 Credentials Secret References ---
 
