@@ -105,10 +105,8 @@ spec:
     # secretRefs:
     #   s3CredentialsSecretRef: s3secret  # only needed when storage.mode = s3
     oidc:
-      enabled: false
-      external:
-        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
-        domain: keycloak.opencloud.test
+      issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      clientId: web
     features:
       externalUserManagement:
         enabled: true
