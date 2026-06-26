@@ -7,18 +7,7 @@ tests:
       httpRoute.enabled: true
     asserts:
       - hasDocuments:
-          count: 1
-      - isKind:
-          of: HTTPRoute
-
-  - it: Keycloak HTTPRoute is created when httpRoute and oidc are enabled
-    template: keycloak/httproute.yaml
-    set:
-      httpRoute.enabled: true
-      oidc.enabled: true
-    asserts:
-      - hasDocuments:
-          count: 1
+          count: 2
       - isKind:
           of: HTTPRoute
 
@@ -29,7 +18,7 @@ tests:
       collabora.enabled: true
     asserts:
       - hasDocuments:
-          count: 1
+          count: 2
       - isKind:
           of: HTTPRoute
 
@@ -40,7 +29,7 @@ tests:
       collaboration.enabled: true
     asserts:
       - hasDocuments:
-          count: 1
+          count: 2
       - isKind:
           of: HTTPRoute
 

@@ -78,43 +78,40 @@ busybox:
 # =====================================================================
 
 # OIDC (OpenID Connect) settings for identity and access management
-# OpenCloud requires an OIDC provider for authentication. You can either:
-# 1. Use the built-in Keycloak instance (oidc.enabled: true)
-# 2. Use an external OIDC provider (oidc.enabled: false and configure oidc.external)
-#    Supports any OIDC-compliant provider (Keycloak, Auth0, Okta, Azure AD, etc.)
+# OpenCloud requires an OIDC provider for authentication.
+# Deploy Keycloak separately (e.g., via bitnami/keycloak chart in helmfile)
+# and configure the external OIDC settings below.
+# Supports any OIDC-compliant provider (Keycloak, Auth0, Okta, Azure AD, etc.)
 oidc:
-  # Enable built-in Keycloak instance
-  # When enabled, deploys a pre-configured Keycloak instance with OpenCloud realm
-  # When disabled, you must provide external OIDC provider configuration below
-  enabled: true
+  # OIDC Issuer URL (required)
+  # This is the base URL of your OIDC provider's authorization server
+  # Examples:
+  #   Keycloak: https://keycloak.example.com/realms/openCloud
+  #   Auth0: https://your-tenant.auth0.com
+  #   Okta: https://your-org.okta.com/oauth2/default
+  #   Azure AD: https://login.microsoftonline.com/{tenant-id}/v2.0
+  #   Google: https://accounts.google.com
+  issuerUrl: ""
   
-  # Keycloak image settings
-  image:
-    # Keycloak image registry
-    registry: quay.io
-    # Keycloak image repository
-    repository: keycloak/keycloak
-    # Keycloak image tag
-    tag: "26.6.3"
-    # Image pull policy
-    pullPolicy: IfNotPresent
+  # OIDC Client ID (required)
+  # The client ID registered in your OIDC provider for OpenCloud
+  clientId: "web"
   
-  # Number of Keycloak replicas
-  replicas: 1
+  # Account Management URL (optional)
+  # URL where users can manage their accounts (profile, password, etc.)
+  # If not set, OpenCloud will attempt to construct this from the issuerUrl
+  # Examples:
+  #   Keycloak: https://keycloak.example.com/realms/openCloud/account
+  #   Auth0: https://your-tenant.auth0.com/u/login
+  #   Okta: https://your-org.okta.com/enduser/settings
+  accountUrl: ""
 
-  # Use existing secret for keycloak credentials (Note: secretKeyName must be adminUser and adminPassword)
-  existingSecret: ""
+  # Disable TLS certificate validation for OIDC provider connections
+  # WARNING: Should be disabled in production
+  oidcIdpInsecure: false
 
-  # Admin user
-  # ignored if oidc.existingSecret is set
-  adminUser: admin
-
-  # Admin password
-  # ignored if oidc.existingSecret is set
-  adminPassword: admin
-
-  # Keycloak realm
-  realm: "openCloud"
+  # OIDC scope for web client
+  scope: "openid profile email groups roles"
 
   # CORS settings for cross-origin requests
   cors:
@@ -134,95 +131,6 @@ oidc:
     allowCredentials: "true"
     # Max age in seconds
     maxAge: "3600"
-  
-  # Resources
-  resources: {}
-
-  # External OIDC Provider Configuration
-  # Used when oidc.enabled is false
-  # Supports any OIDC-compliant provider (Keycloak, Auth0, Okta, Azure AD, Google, etc.)
-  external:
-    # OIDC Issuer URL (required when using external OIDC)
-    # This is the base URL of your OIDC provider's authorization server
-    # Examples:
-    #   Keycloak: https://keycloak.example.com/realms/openCloud
-    #   Auth0: https://your-tenant.auth0.com
-    #   Okta: https://your-org.okta.com/oauth2/default
-    #   Azure AD: https://login.microsoftonline.com/{tenant-id}/v2.0
-    #   Google: https://accounts.google.com
-    issuerUrl: ""
-    
-    # OIDC Client ID (required when using external OIDC)
-    # The client ID registered in your OIDC provider for OpenCloud
-    clientId: "web"
-    
-    # Account Management URL (optional)
-    # URL where users can manage their accounts (profile, password, etc.)
-    # If not set, OpenCloud will attempt to construct this from the issuerUrl
-    # Examples:
-    #   Keycloak: https://keycloak.example.com/realms/openCloud/account
-    #   Auth0: https://your-tenant.auth0.com/u/login
-    #   Okta: https://your-org.okta.com/enduser/settings
-    accountUrl: ""
-
-# PostgreSQL settings for Keycloak (only used when oidc.enabled is true)
-postgres:
-  # Enable PostgreSQL (set to false when using external OIDC / external OIDC provider database)
-  enabled: true
-  # PostgreSQL image settings
-  image:
-    # PostgreSQL image registry
-    registry: docker.io
-    # PostgreSQL image repository
-    repository: postgres
-    # PostgreSQL image tag - using latest stable (18) with bookworm (Debian) base for reliability
-    tag: "18-bookworm"
-    # Image pull policy
-    pullPolicy: IfNotPresent
-
-  # Database name
-  database: keycloak
-
-  # Use existing secret for postgres credentials (Note: secretKeyName must be username and password)
-  existingSecret: ""
-
-  # Database user
-  # ignored if postgres.existingSecret is set
-  user: keycloak
-
-  # Database password
-  # ignored if postgres.existingSecret is set
-  password: keycloak
-
-  # Resources allocation
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-  # Persistence configuration
-  persistence:
-    enabled: true
-    # Name of existing PVC to use (overrides all other persistence values)
-    existingClaim: ""
-    # Size of the persistent volume
-    size: 1Gi
-    # Storage class
-    storageClass: ""
-    # Access mode
-    accessMode: ReadWriteOnce
-
-  # External PostgreSQL configuration
-  # Used when postgres.enabled is false but oidc.enabled is true.
-  # Allows Keycloak to connect to an external PostgreSQL database
-  # (e.g., managed by an operator like CloudNativePG).
-  external:
-    # Hostname or service name of the external PostgreSQL instance
-    host: ""
-    # Port of the external PostgreSQL instance
-    port: 5432
 
 
 # =====================================================================
@@ -240,7 +148,7 @@ tika:
     # Tika image repository
     repository: apache/tika
     # Tika image tag
-    tag: "3.3.1.0-full"
+    tag: "latest-full"
     # Image pull policy
     pullPolicy: IfNotPresent
   # Resources allocation
@@ -249,8 +157,22 @@ tika:
       cpu: 100m
       memory: 1Gi
     limits:
-      cpu: 1000m
-      memory: 3Gi
+      cpu: 4
+      memory: 10Gi
+  # Probe settings for health checks
+  probes:
+    liveness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    readiness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
 
 # Web Extensions settings
 webExtensions:
@@ -339,8 +261,8 @@ collabora:
       cpu: 100m
       memory: 256Mi
     limits:
-      cpu: 1
-      memory: 1Gi
+      cpu: 4
+      memory: 10Gi
 
   # External Collabora service configuration
   # Use these settings when Collabora runs outside this chart (can be another k8s service
@@ -373,7 +295,7 @@ collaboration:
       cpu: 100m
       memory: 256Mi
     limits:
-      cpu: 5000m
+      cpu: 4
       memory: 10Gi
 
   # Additional environment variables for the collaboration service
@@ -412,12 +334,17 @@ opencloud:
   passwordPolicyBannedPasswordsList: "banned-password-list.txt"
   # Search extractor type (default: tika)
   searchExtractorType: "tika"
+  # Search content extraction size limit in bytes (default: empty = uses OpenCloud default)
+  # Example: 104857600 for 100MB
+  searchExtractorSizeLimit: ""
   # Max gRPC received message size (default: 102400000)
   grpcMaxReceivedMessageSize: "102400000"
   # Autoprovision accounts via proxy (default: true)
   proxyAutoprovisionAccounts: true
   # Readonly user attributes in frontend (default: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.accountEnabled,user.appRoleAssignments)
   frontendReadonlyUserAttributes: "user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.accountEnabled,user.appRoleAssignments"
+  # Check for updates in frontend (default: false)
+  frontendCheckForUpdates: false
   # Role assignment driver for proxy (default: oidc)
   proxyRoleAssignmentDriver: "oidc"
   # Rewrite OIDC .well-known endpoint (default: true)
@@ -436,6 +363,37 @@ opencloud:
   proxyRoleAssignmentOidcClaim: "roles"
   # OIDC access token verify method (default: jwt)
   proxyOidcAccessTokenVerifyMethod: "jwt"
+  # LDAP server write enabled (default: true)
+  ldapServerWriteEnabled: true
+  # LDAP configuration (used when externalUserManagement is enabled)
+  ldap:
+    uri: "ldaps://openldap.openldap.svc.cluster.local:636"
+    insecure: true
+    bindDN: "cn=admin,dc=opencloud,dc=eu"
+    adminPassword: "admin"  # Must match OpenLDAP adminPassword
+    # Name of the secret containing LDAP bind password (key: reva-ldap-bind-password)
+    # If not set, defaults to <release-name>-opencloud-ldap
+    secretRef: ""
+    user:
+      baseDN: "ou=users,dc=opencloud,dc=eu"
+      schema:
+        id: "opencloudUUID"
+    group:
+      baseDN: "ou=groups,dc=opencloud,dc=eu"
+      createBaseDN: "ou=custom,ou=groups,dc=opencloud,dc=eu"
+      schema:
+        id: "opencloudUUID"
+    disableUserMechanism: "attribute"
+  # Graph LDAP refint enabled (default: true)
+  graphLdapRefintEnabled: true
+  # Graph LDAP server UUID (default: false for external IdP)
+  graphLdapServerUuid: "false"
+  # Settings setup default assignments (default: false)
+  settingsSetupDefaultAssignments: "false"
+  # Proxy autoprovision claim username (default: sub)
+  proxyAutoprovisionClaimUsername: "sub"
+  # Frontend full text search enabled (default: true)
+  frontendFullTextSearchEnabled: true
   # OIDC scope for web (default: openid profile email groups roles)
   oidc:
     scope: "openid profile email groups roles"
@@ -454,6 +412,10 @@ opencloud:
   logPretty: false
   # Insecure mode (for self-signed certificates)
   insecure: true
+  
+  # Disable TLS certificate validation for OpenCloud HTTP API connections
+  # WARNING: Should be disabled in production
+  ocHttpApiInsecure: false
   
   # Use existing secret for opencloud admin credentials (Note: secretKeyName must be adminPassword)
   existingSecret: ""
@@ -482,7 +444,8 @@ opencloud:
       cpu: 128m
       memory: 128Mi
     limits:
-      memory: 20Gi
+      cpu: 4
+      memory: 10Gi
   # Persistence configuration
   persistence:
     data:
@@ -499,7 +462,7 @@ opencloud:
   # Migration configuration for migrating credentials from legacy config PVC to new secrets
   migration:
     # Enable credential migration job on chart upgrades.
-    enabled: true
+    enabled: false
     # Name of the legacy config PVC to read credentials from.
     # Defaults to "<fullname>-config" if not set.
     configPvcClaimName: ""
@@ -618,7 +581,11 @@ opencloud:
   # Storage configuration
   storage:
     systemDriver: "decomposed"
+    # Storage driver for user files: "decomposeds3" (default), "posix", or "decomposed"
+    # If not set, defaults to "decomposeds3" when mode is "s3", or "posix" when mode is "posixfs"
+    usersDriver: ""
     # Storage mode for user files, can be "s3" (default) or "posixfs"
+    # This is a convenience setting that sets usersDriver if usersDriver is not explicitly set
     mode: s3
     # S3 storage configuration
     s3:
@@ -660,6 +627,23 @@ opencloud:
         secretKey: ""
         bucket: ""
         createBucket: true
+    # Decomposed filesystem configuration (when usersDriver is "decomposed")
+    decomposed:
+      # Maximum number of concurrent operations
+      maxConcurrency: 100
+      # Path of storage root directory, default is /var/lib/opencloud/storage
+      rootPath: "/var/lib/opencloud/storage"
+      persistence:
+        # Enable persistence
+        enabled: true
+        # Name of existing PVC to use (overrides all other persistence values)
+        existingClaim: ""
+        # Size of the persistent volume for data
+        size: 30Gi
+        # Storage class
+        storageClass: ""
+        # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
+        accessMode: ReadWriteOnce
     posixfs:
       # The type of the cache store, supported values are: 'memory', 'redis-sentinel', 'nats-js-kv' (default), 'noop'
       idCacheStore: nats-js-kv
@@ -675,8 +659,50 @@ opencloud:
         # Storage class
         storageClass: ""
         # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
-        accessMode: ReadWriteMany
+        accessMode: ReadWriteOnce
   # affinity: {}
+
+  # =====================================================================
+  # ANTIVIRUS (ClamAV)
+  # =====================================================================
+  
+  # Antivirus scanning configuration
+  # Requires ClamAV to be deployed separately (e.g., via wiremind/clamav chart)
+  antivirus:
+    # Enable antivirus scanning
+    enabled: false
+    # What to do with infected files: "abort" (default), "continue", or "delete"
+    infectedFileHandling: "abort"
+    # Scanner type: "clamav" (default) or "icap"
+    scannerType: "clamav"
+    # ClamAV socket endpoint (when scannerType is "clamav")
+    clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+    # ICAP URL (when scannerType is "icap")
+    icapUrl: ""
+    # ICAP service name (when scannerType is "icap")
+    icapService: "avscan"
+
+  # =====================================================================
+  # OPA REGO POLICIES
+  # =====================================================================
+  
+  # OPA Rego policies for file extension and MIME type restrictions
+  policies:
+    # Enable OPA policies
+    enabled: false
+    # List of policy files
+    policies: []
+      # Example:
+      # - fileName: proxy.rego
+      #   content: |
+      #     package proxy
+      #     import future.keywords.if
+      #     import data.utils
+      #     default granted := true
+      #     granted = false if {
+      #         input.request.method == "PUT"
+      #         utils.is_extension_restricted(input.resource.name)
+      #     }
 
 # =====================================================================
 # GATEWAY-API HTTPRoute
@@ -702,6 +728,8 @@ httpRoute:
     namespace: ""
     # Gateway section name (applies to all routes). If set to a non-empty value, this overrides the default component-specific section names (e.g., opencloud-https) for all routes. If left empty, the defaults are used.
     sectionName: ""
+    # Gateway HTTP section name for redirect routes. If set to a non-empty value, this overrides the default component-specific HTTP section names (e.g., opencloud-proxy-http) for redirect routes. If left empty, the defaults are used.
+    httpSectionName: ""
     # Gateway annotations
     annotations:
     # Gateway annotations
@@ -726,3 +754,44 @@ ingress:
   annotations: {}
     # Example:
     # cert-manager.io/cluster-issuer: letsencrypt
+
+# =====================================================================
+# MONITORING
+# =====================================================================
+
+# Prometheus ServiceMonitor configuration
+monitoring:
+  # Enable ServiceMonitor for Prometheus scraping
+  enabled: false
+  # Additional labels for the ServiceMonitor (e.g., for Prometheus selector)
+  labels: {}
+  # Scrape interval (default: 30s)
+  interval: "30s"
+  # Scrape timeout (default: 10s)
+  scrapeTimeout: "10s"
+
+# =====================================================================
+# EXTRA RESOURCES
+# =====================================================================
+
+# Arbitrary extra Kubernetes resources to deploy
+# Each item should be a valid Kubernetes resource definition
+extraResources: []
+  # Example:
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: my-config
+  #   data:
+  #     key: value
+
+# =====================================================================
+# CUSTOM CA CHAIN
+# =====================================================================
+
+# Custom CA certificate for inter-service TLS
+customCA:
+  # Enable custom CA certificate
+  enabled: false
+  # Name of the ConfigMap containing the CA certificate (key: ca.crt)
+  configMapName: ""

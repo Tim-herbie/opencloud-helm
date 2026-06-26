@@ -2,6 +2,29 @@
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
+  name: {{ include "opencloud.fullname" . }}-http-redirect
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.httpRoute.gateway.name }}
+      namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+      {{- with .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ . }}-proxy-http
+      {{- end }}
+  hostnames:
+    - {{ include "opencloud.domain" . | quote }}
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            hostname: {{ include "opencloud.domain" . }}
+            statusCode: 301
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
   name: {{ include "opencloud.fullname" . }}-httproute
   labels:
     {{- include "opencloud.labels" . | nindent 4 }}
@@ -10,7 +33,7 @@ spec:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
       {{- with .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ . }}
+      sectionName: {{ . }}-proxy-https
       {{- end }}
   hostnames:
     - {{ include "opencloud.domain" . | quote }}

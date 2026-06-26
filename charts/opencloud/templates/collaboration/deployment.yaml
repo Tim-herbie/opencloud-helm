@@ -65,6 +65,8 @@ spec:
             {{- else }}
             - name: MICRO_REGISTRY_ADDRESS
               value: "{{ include "opencloud.opencloud.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:9233"
+            - name: OC_EVENTS_ENDPOINT
+              value: "{{ include "opencloud.opencloud.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:9233"
             {{- end }}
             {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             - name: COLLABORATION_WOPI_SRC
@@ -113,6 +115,12 @@ spec:
             - name: grpc
               containerPort: 9301
               protocol: TCP
+          startupProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
           livenessProbe:
             {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             exec:
@@ -122,9 +130,9 @@ spec:
               - curl --silent --fail http://{{ include "opencloud.fullname" . }}-opencloud:9200/app/list | grep '"product_name":"Collabora"'
             {{- end }}
             timeoutSeconds: 10
-            initialDelaySeconds: 200
-            periodSeconds: 5
-            failureThreshold: 1
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.collaboration.resources | nindent 12 }}
 {{- end }}

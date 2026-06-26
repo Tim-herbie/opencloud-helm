@@ -7,6 +7,10 @@ templates:
 tests:
   - it: migration job resources are created by default
     template: opencloud/migration-job.yaml
+    set:
+      opencloud:
+        migration:
+          enabled: true
     asserts:
       - hasDocuments:
           count: 4
