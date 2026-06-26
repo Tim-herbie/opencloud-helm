@@ -1,0 +1,338 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: OCIRepository
+metadata:
+  name: bitnami-postgresql
+  namespace: keycloak
+spec:
+  interval: 15m
+  url: oci://registry-1.docker.io/bitnamicharts/postgresql
+  ref:
+    semver: ">=16.0.0"
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: keycloak-postgresql
+  namespace: keycloak
+spec:
+  interval: 15m
+  timeout: 10m
+  chartRef:
+    kind: OCIRepository
+    name: bitnami-postgresql
+    namespace: keycloak
+  releaseName: keycloak-postgresql
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    auth:
+      postgresPassword: keycloak
+      username: keycloak
+      password: keycloak
+      database: keycloak
+    primary:
+      persistence:
+        enabled: true
+        size: 8Gi
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: codecentric
+  namespace: keycloak
+spec:
+  interval: 15m
+  url: https://codecentric.github.io/helm-charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  interval: 15m
+  timeout: 10m
+  chart:
+    spec:
+      chart: keycloakx
+      version: "7.2.0"
+      sourceRef:
+        kind: HelmRepository
+        name: codecentric
+        namespace: keycloak
+      interval: 5m
+  releaseName: keycloak
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  test:
+    enable: true
+  driftDetection:
+    mode: enabled
+    ignore:
+      - paths: ["/spec/replicas"]
+        target:
+          kind: Deployment
+  valuesFrom:
+    - kind: Secret
+      name: keycloak-secrets
+      valuesKey: values.yaml
+      optional: false
+  values:
+    replicas: 1
+    database:
+      vendor: postgres
+      hostname: keycloak-postgresql
+      port: 5432
+      database: keycloak
+      username: keycloak
+      password: keycloak
+    command:
+      - /opt/keycloak/bin/kc.sh
+      - start-dev
+      - --http-port=8080
+      - --hostname-strict=false
+      - --health-enabled=true
+      - --import-realm
+    extraEnv: |
+      - name: KC_BOOTSTRAP_ADMIN_USERNAME
+        valueFrom:
+          secretKeyRef:
+            key: KC_BOOTSTRAP_ADMIN_USERNAME
+            name: keycloak-secrets
+      - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: KC_BOOTSTRAP_ADMIN_PASSWORD
+            name: keycloak-secrets
+      - name: KC_HOSTNAME
+        value: https://keycloak.opencloud.test
+      - name: KC_PROXY
+        value: edge
+      - name: JAVA_OPTS_APPEND
+        value: >-
+          -Djgroups.dns.query={{ include "keycloak.fullname" . }}-headless
+    http:
+      relativePath: "/"
+    service:
+      type: ClusterIP
+      httpPort: 80
+    startupProbe: |
+      httpGet:
+        path: /health/started
+        port: 9000
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      failureThreshold: 60
+    readinessProbe: |
+      httpGet:
+        path: /health/ready
+        port: 9000
+      periodSeconds: 10
+      failureThreshold: 12
+    livenessProbe: |
+      httpGet:
+        path: /health/live
+        port: 9000
+      periodSeconds: 10
+      failureThreshold: 12
+    extraVolumeMounts: |
+      - name: realm-config
+        mountPath: /opt/keycloak/data/import
+        readOnly: true
+    extraVolumes: |
+      - name: realm-config
+        configMap:
+          name: keycloak-realm-config
+    ingress:
+      enabled: true
+      hostname: keycloak.opencloud.test
+    extraManifests:
+      - |
+        apiVersion: gateway.networking.k8s.io/v1beta1
+        kind: HTTPRoute
+        metadata:
+          name: keycloak-http-redirect
+          namespace: {{ .Release.Namespace }}
+        spec:
+          parentRefs:
+            - name: cilium-gateway
+              namespace: kube-system
+              sectionName: opencloud-keycloak-http
+          hostnames:
+            - "keycloak.opencloud.test"
+          rules:
+            - filters:
+                - type: RequestRedirect
+                  requestRedirect:
+                    scheme: https
+                    hostname: keycloak.opencloud.test
+                    statusCode: 301
+      - |
+        apiVersion: gateway.networking.k8s.io/v1beta1
+        kind: HTTPRoute
+        metadata:
+          name: keycloak-httproute
+          namespace: {{ .Release.Namespace }}
+        spec:
+          parentRefs:
+            - name: cilium-gateway
+              namespace: kube-system
+              sectionName: opencloud-keycloak-https
+          hostnames:
+            - "keycloak.opencloud.test"
+          rules:
+            - matches:
+                - path:
+                    type: PathPrefix
+                    value: /
+              backendRefs:
+                - name: keycloak-keycloakx-http
+                  port: 80
+      - |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: keycloak-realm-config
+          namespace: {{ .Release.Namespace }}
+        data:
+          openCloud-realm.json: |-
+            {
+              "id" : "openCloud",
+              "realm" : "openCloud",
+              "displayName" : "OpenCloud",
+              "enabled" : true,
+              "sslRequired" : "external",
+              "clients" : [
+                {
+                  "clientId" : "web",
+                  "name" : "OpenCloud Web",
+                  "enabled" : true,
+                  "publicClient" : true,
+                  "redirectUris" : [
+                    "http://cloud.opencloud.test/*",
+                    "https://cloud.opencloud.test/*"
+                  ],
+                  "webOrigins" : [
+                    "http://cloud.opencloud.test",
+                    "https://cloud.opencloud.test",
+                    "+"
+                  ],
+                  "protocolMappers" : [
+                    {
+                      "name" : "groups",
+                      "protocol" : "openid-connect",
+                      "protocolMapper" : "oidc-group-membership-mapper",
+                      "config" : {
+                        "claim.name" : "groups",
+                        "full.path" : "false",
+                        "id.token.claim" : "true",
+                        "access.token.claim" : "true"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "clientId" : "OpenCloudDesktop",
+                  "name" : "OpenCloud Desktop",
+                  "enabled" : true,
+                  "publicClient" : true,
+                  "redirectUris" : ["http://127.0.0.1:*", "http://localhost:*"]
+                },
+                {
+                  "clientId" : "OpenCloudAndroid",
+                  "name" : "OpenCloud Android",
+                  "enabled" : true,
+                  "publicClient" : true,
+                  "redirectUris" : ["oc://android.opencloud.eu"]
+                },
+                {
+                  "clientId" : "OpenCloudIOS",
+                  "name" : "OpenCloud iOS",
+                  "enabled" : true,
+                  "publicClient" : true,
+                  "redirectUris" : ["oc://ios.opencloud.eu"]
+                }
+              ],
+              "roles" : {
+                "realm" : [
+                  { "name" : "opencloudAdmin", "description" : "OpenCloud Admin" },
+                  { "name" : "opencloudSpaceAdmin", "description" : "OpenCloud Space Admin" },
+                  { "name" : "opencloudUser", "description" : "OpenCloud User" },
+                  { "name" : "opencloudGuest", "description" : "OpenCloud Guest" }
+                ]
+              },
+              "users" : [
+                {
+                  "username" : "admin",
+                  "enabled" : true,
+                  "firstName" : "Admin",
+                  "lastName" : "Admin",
+                  "email" : "admin@opencloud.test",
+                  "realmRoles" : ["opencloudAdmin", "default-roles-opencloud"],
+                  "credentials" : [{ "type" : "password", "value" : "admin", "temporary" : false }]
+                },
+                {
+                  "username" : "alan",
+                  "enabled" : true,
+                  "firstName" : "Alan",
+                  "lastName" : "Turing",
+                  "email" : "alan@opencloud.test",
+                  "realmRoles" : ["opencloudUser", "default-roles-opencloud"],
+                  "credentials" : [{ "type" : "password", "value" : "demo", "temporary" : false }]
+                },
+                {
+                  "username" : "mary",
+                  "enabled" : true,
+                  "firstName" : "Mary",
+                  "lastName" : "Kenneth Keller",
+                  "email" : "mary@opencloud.test",
+                  "realmRoles" : ["opencloudUser", "default-roles-opencloud"],
+                  "credentials" : [{ "type" : "password", "value" : "demo", "temporary" : false }]
+                },
+                {
+                  "username" : "margaret",
+                  "enabled" : true,
+                  "firstName" : "Margaret",
+                  "lastName" : "Hamilton",
+                  "email" : "margaret@opencloud.test",
+                  "realmRoles" : ["opencloudUser", "default-roles-opencloud"],
+                  "credentials" : [{ "type" : "password", "value" : "demo", "temporary" : false }]
+                },
+                {
+                  "username" : "dennis",
+                  "enabled" : true,
+                  "firstName" : "Dennis",
+                  "lastName" : "Ritchie",
+                  "email" : "dennis@opencloud.test",
+                  "realmRoles" : ["opencloudUser", "default-roles-opencloud"],
+                  "credentials" : [{ "type" : "password", "value" : "demo", "temporary" : false }]
+                },
+                {
+                  "username" : "lynn",
+                  "enabled" : true,
+                  "firstName" : "Lynn",
+                  "lastName" : "Conway",
+                  "email" : "lynn@opencloud.test",
+                  "realmRoles" : ["opencloudUser", "default-roles-opencloud"],
+                  "credentials" : [{ "type" : "password", "value" : "demo", "temporary" : false }]
+                }
+              ]
+    install:
+      remediation:
+        retries: 3
+    upgrade:
+      remediation:
+        retries: 3
