@@ -11,11 +11,11 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
-  name: flux-system
-  namespace: flux-system
+  name: opencloud-helm
+  namespace: opencloud
 spec:
   interval: 5m
-  url: https://github.com/Tim-herbie/opencloud-helm
+  url: https://github.com/suse-coder/helm-1
   ref:
     branch: main
 ---
@@ -32,8 +32,8 @@ spec:
       chart: ./charts/opencloud
       sourceRef:
         kind: GitRepository
-        name: flux-system
-        namespace: flux-system
+        name: opencloud-helm
+        namespace: opencloud
       interval: 5m
   releaseName: opencloud
   install:
@@ -199,6 +199,7 @@ spec:
         name: cilium-gateway
         namespace: kube-system
         port: 443
+        sectionName: opencloud
     quotas:
       roles:
         'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0

@@ -1,4 +1,5 @@
 {{- if .Values.httpRoute.gateway.create }}
+{{- $prefix := .Values.httpRoute.gateway.sectionName | default (include "opencloud.fullname" .) }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -17,9 +18,10 @@ spec:
       {{- toYaml . | nindent 4 }}
   {{- end }}
   listeners:
-    - name: opencloud-http
+    # OpenCloud (proxy) - HTTP redirect listener
+    - name: {{ $prefix }}-proxy-http
       protocol: HTTP
-      port: {{ .Values.httpRoute.gateway.port }}
+      port: 80
       hostname: {{ .Values.global.domain.opencloud | quote }}
       allowedRoutes:
         namespaces:
@@ -27,25 +29,28 @@ spec:
           selector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-    - name: keycloak-http
+    # Keycloak - HTTP redirect listener
+    - name: {{ $prefix }}-keycloak-http
       protocol: HTTP
-      port: {{ .Values.httpRoute.gateway.port }}
+      port: 80
       hostname: {{ .Values.global.domain.oidc | quote }}
       allowedRoutes:
         namespaces:
           from: All
-    - name: wopi-http
+    # WOPI - HTTP redirect listener
+    - name: {{ $prefix }}-wopi-http
       protocol: HTTP
-      port: {{ .Values.httpRoute.gateway.port }}
+      port: 80
       hostname: {{ .Values.global.domain.wopi | quote }}
       allowedRoutes:
         namespaces:
           from: All
-    {{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
-    - name: minio-http
+    # Collabora - HTTP redirect listener (conditional)
+    {{- if .Values.collabora.enabled }}
+    - name: {{ $prefix }}-collabora-http
       protocol: HTTP
-      port: {{ .Values.httpRoute.gateway.port }}
-      hostname: {{ .Values.global.domain.minio | quote }}
+      port: 80
+      hostname: {{ .Values.global.domain.collabora | quote }}
       allowedRoutes:
         namespaces:
           from: Selector
@@ -53,11 +58,12 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
     {{- end }}
-    {{- if .Values.collabora.enabled }}
-    - name: collabora-http
+    # MinIO - HTTP redirect listener (conditional, only for internal s3 mode)
+    {{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
+    - name: {{ $prefix }}-minio-http
       protocol: HTTP
-      port: {{ .Values.httpRoute.gateway.port }}
-      hostname: {{ .Values.global.domain.collabora | quote }}
+      port: 80
+      hostname: {{ .Values.global.domain.minio | quote }}
       allowedRoutes:
         namespaces:
           from: Selector
