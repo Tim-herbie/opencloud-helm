@@ -3,6 +3,47 @@ kind: Namespace
 metadata:
   name: keycloak
 ---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: OCIRepository
+metadata:
+  name: bitnami-postgresql
+  namespace: keycloak
+spec:
+  interval: 15m
+  url: oci://registry-1.docker.io/bitnamicharts/postgresql
+  ref:
+    semver: ">=16.0.0"
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: keycloak-postgresql
+  namespace: keycloak
+spec:
+  interval: 15m
+  timeout: 10m
+  chartRef:
+    kind: OCIRepository
+    name: bitnami-postgresql
+    namespace: keycloak
+  releaseName: keycloak-postgresql
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    auth:
+      postgresPassword: keycloak
+      username: keycloak
+      password: keycloak
+      database: keycloak
+    primary:
+      persistence:
+        enabled: true
+        size: 8Gi
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -44,13 +85,15 @@ spec:
       - paths: ["/spec/replicas"]
         target:
           kind: Deployment
-  valuesFrom:
-    - kind: Secret
-      name: keycloak-secrets
-      valuesKey: values.yaml
-      optional: false
   values:
     replicas: 1
+    database:
+      vendor: postgres
+      hostname: keycloak-postgresql
+      port: 5432
+      database: keycloak
+      username: keycloak
+      password: keycloak
     command:
       - /opt/keycloak/bin/kc.sh
       - start-dev
@@ -71,8 +114,6 @@ spec:
             name: keycloak-secrets
       - name: KC_HOSTNAME
         value: https://keycloak.opencloud.test
-      - name: KC_PROXY_HEADERS
-        value: forwarded
       - name: JAVA_OPTS_APPEND
         value: >-
           -Djgroups.dns.query={{ include "keycloak.fullname" . }}-headless
@@ -109,7 +150,7 @@ spec:
         configMap:
           name: keycloak-realm-config
     ingress:
-      enabled: true
+      enabled: false
       hostname: keycloak.opencloud.test
     extraManifests:
       - |
