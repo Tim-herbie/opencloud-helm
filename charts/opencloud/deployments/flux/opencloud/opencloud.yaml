@@ -216,6 +216,9 @@ spec:
       ocHttpApiInsecure: true
     secretRefs:
       ldapSecretRef: ldap-bind-secrets
+    insecure:
+      oidcIdpInsecure: true
+      ocHttpApiInsecure: true
     ingress:
       enabled: false
       ingressClassName: nginx
