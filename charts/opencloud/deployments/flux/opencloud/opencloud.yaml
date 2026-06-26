@@ -70,7 +70,7 @@ spec:
         collabora: collabora.opencloud.test
         companion: companion.opencloud.test
       tls:
-        enabled: false
+        enabled: true
     opencloud:
       logLevel: info
       migration:
