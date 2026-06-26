@@ -97,8 +97,12 @@ Deploy the full stack (Keycloak + PostgreSQL, OpenLDAP, ClamAV, OpenCloud, Colla
    for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
    ```
 
-4. **Remove the full stack** (one command — drops all HelmReleases, HelmRepositories, OCIRepositories, Secrets, ConfigMaps, and the namespaces; PVCs are retained by default, delete them manually if you want a clean slate):
+4. **Remove the full stack** (one command — deletes the HelmReleases; Flux's helm-controller then runs `helm uninstall` for each, dropping the chart-rendered resources. The `keycloak/`, `openldap/`, `clamav/` YAMLs embed their `Namespace` manifest so those namespaces cascade; `opencloud` isn't declared in `opencloud.yaml` so it must be deleted explicitly. **PVCs are retained by Helm** to preserve data — delete them manually for a clean slate):
    ```sh
    kubectl delete -R -f charts/opencloud/deployments/flux/
-   kubectl delete ns opencloud keycloak openldap clamav
+   kubectl delete ns opencloud                    # only opencloud ns needs manual delete
+   # Optional: drop retained PVCs
+   kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
+   kubectl -n keycloak  delete pvc -l app.kubernetes.io/instance=keycloak-postgresql
+   kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
    ```

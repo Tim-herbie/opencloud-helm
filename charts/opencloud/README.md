@@ -79,11 +79,15 @@ Reconcile after a change (edit a value, bump the chart, etc.):
 for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
 ```
 
-Remove the full stack in one command (drops all HelmReleases, HelmRepositories, OCIRepositories, Secrets, ConfigMaps, and the namespaces; PVCs are retained by default, delete them manually for a clean slate):
+Remove the full stack in one command (deletes the HelmReleases; Flux's helm-controller then runs `helm uninstall` for each, dropping the chart-rendered Deployments / Services / ConfigMaps / HTTPRoutes / Secrets. The `keycloak/`, `openldap/`, `clamav/` YAMLs also embed their `Namespace` manifest, so those namespaces cascade. The `opencloud` namespace is not declared in `opencloud.yaml`, so it must be deleted explicitly. **PVCs are retained by Helm** to preserve data — delete them manually for a clean slate):
 
 ```bash
 kubectl delete -R -f charts/opencloud/deployments/flux/
-kubectl delete ns opencloud keycloak openldap clamav
+kubectl delete ns opencloud                    # only opencloud ns needs manual delete
+# Optional: drop retained PVCs
+kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
+kubectl -n keycloak  delete pvc -l app.kubernetes.io/instance=keycloak-postgresql
+kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
 ```
 
 Alternatively, to install just the OpenCloud chart with Helm:
