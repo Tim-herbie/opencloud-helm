@@ -78,21 +78,27 @@ This project is licensed under the **AGPLv3** license. See the [LICENSE](LICENSE
 
 ## ⚡ Quick Start
 
-Deploy the full stack (Keycloak + PostgreSQL, OpenLDAP, ClamAV, OpenCloud, Collabora) with a single FluxCD apply:
+Deploy the full stack (Keycloak + PostgreSQL, OpenLDAP, ClamAV, OpenCloud, Collabora) with a single CLI command. Each manifest in `charts/opencloud/deployments/flux/` is self-contained (inline database config, realm import, HTTPRoutes, HTTP→HTTPS redirects) — no Helmfile or Timoni bundle required.
 
 1. **Deploy the full stack:**
    ```sh
-   kubectl apply -f charts/opencloud/deployments/flux/keycloak/keycloak.yaml
-   kubectl apply -f charts/opencloud/deployments/flux/keycloak/secrets.yaml
-   kubectl apply -f charts/opencloud/deployments/flux/openldap/openldap.yaml
-   kubectl apply -f charts/opencloud/deployments/flux/clamav/clamav.yaml
-   kubectl apply -f charts/opencloud/deployments/flux/opencloud/opencloud.yaml
-   kubectl apply -f charts/opencloud/deployments/flux/opencloud/secrets.yaml
+   kubectl apply -R -f charts/opencloud/deployments/flux/
    ```
 
-   Each `HelmRelease` is reconciled by FluxCD's helm-controller. The manifests are self-contained (inline database config, realm import, HTTPRoutes) — no separate Helmfile or Timoni bundle required.
+   `-R` recurses into the `flux/` subdirectories (`keycloak/`, `openldap/`, `clamav/`, `opencloud/`) and applies every `*.yaml` in one shot. Each `HelmRelease` is then reconciled by FluxCD's `helm-controller`.
 
 2. **Verify the deployment:**
    ```sh
    kubectl get pods -A | grep -E "opencloud|keycloak|openldap|clamav"
+   ```
+
+3. **Reconcile after a change** (edit a value, bump the chart, etc.):
+   ```sh
+   for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
+   ```
+
+4. **Remove the full stack** (one command — drops all HelmReleases, HelmRepositories, OCIRepositories, Secrets, ConfigMaps, and the namespaces; PVCs are retained by default, delete them manually if you want a clean slate):
+   ```sh
+   kubectl delete -R -f charts/opencloud/deployments/flux/
+   kubectl delete ns opencloud keycloak openldap clamav
    ```

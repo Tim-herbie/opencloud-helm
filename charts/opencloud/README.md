@@ -63,19 +63,28 @@ Please ensure that your PR follows best practices and includes necessary documen
 
 ## 📦 Installation
 
-To install the full stack using FluxCD (recommended — self-contained HelmReleases, no Helmfile/Timoni bundle needed):
+To install the full stack using FluxCD (recommended — self-contained HelmReleases in `deployments/flux/`, no Helmfile or Timoni bundle needed):
 
 ```bash
-# Deploy all components (Keycloak + PostgreSQL, OpenLDAP, ClamAV, OpenCloud)
-kubectl apply -f charts/opencloud/deployments/flux/keycloak/keycloak.yaml
-kubectl apply -f charts/opencloud/deployments/flux/keycloak/secrets.yaml
-kubectl apply -f charts/opencloud/deployments/flux/openldap/openldap.yaml
-kubectl apply -f charts/opencloud/deployments/flux/clamav/clamav.yaml
-kubectl apply -f charts/opencloud/deployments/flux/opencloud/opencloud.yaml
-kubectl apply -f charts/opencloud/deployments/flux/opencloud/secrets.yaml
+# One command: -R recurses into all subdirectories (keycloak/, openldap/,
+# clamav/, opencloud/) and applies every .yaml in one shot.
+kubectl apply -R -f charts/opencloud/deployments/flux/
 ```
 
 Each `HelmRelease` is reconciled by the FluxCD `helm-controller`. The manifests in `deployments/flux/` are self-contained — inline database config, realm import, HTTPRoutes, and HTTP→HTTPS redirects — so no separate Helmfile or Timoni bundle is required.
+
+Reconcile after a change (edit a value, bump the chart, etc.):
+
+```bash
+for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
+```
+
+Remove the full stack in one command (drops all HelmReleases, HelmRepositories, OCIRepositories, Secrets, ConfigMaps, and the namespaces; PVCs are retained by default, delete them manually for a clean slate):
+
+```bash
+kubectl delete -R -f charts/opencloud/deployments/flux/
+kubectl delete ns opencloud keycloak openldap clamav
+```
 
 Alternatively, to install just the OpenCloud chart with Helm:
 
