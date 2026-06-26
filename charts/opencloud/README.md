@@ -90,6 +90,21 @@ kubectl -n keycloak  delete pvc -l app.kubernetes.io/instance=keycloak-postgresq
 kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
 ```
 
+### Choosing a storage backend
+
+The flux deployment defaults to **`decomposed`** (PVC-backed metadata + blobs, no S3/MinIO). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml`:
+
+| Backend | What to change | Effect |
+|---------|---------------|--------|
+| **Decomposed (default)** | nothing — `storage.mode: decomposed` | PVC stores metadata + blobs; no MinIO deployment; `Recreate` rollout strategy (single RWO volume) |
+| **Decomposed + RWX** | under `storage.decomposed.persistence`, comment `ReadWriteOnce`, uncomment `ReadWriteMany` | Same as above but supports RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem) |
+| **S3 / MinIO** | uncomment the `storage.s3` block + uncomment `secretRefs.s3CredentialsSecretRef: s3secret` in opencloud.yaml + uncomment the `s3secret` Secret in `secrets.yaml` | Bundled MinIO pod handles blob storage; `RollingUpdate` rollout strategy (no shared PVC) |
+| **External S3** | uncomment `storage.s3` block (same as MinIO), but set `storage.s3.external.endpoint` instead of relying on bundled MinIO. MinIO pod won't deploy if `external.endpoint` is non-empty | OpenCloud talks to your existing S3 / Ceph / MinIO; no bundled MinIO |
+
+> ⚠️ **PVC access mode → rollout strategy**: `ReadWriteOnce` forces `Recreate` (single pod mounts the volume). `ReadWriteMany` enables `RollingUpdate` (multi-pod). Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
+
+The flux folder's `opencloud.yaml` keeps the `s3` block as a commented-out template — switch back to S3 by uncommenting it and the matching `s3secret` Secret in `secrets.yaml`, then `flux reconcile helmrelease opencloud-oc1 -n opencloud`.
+
 Alternatively, to install just the OpenCloud chart with Helm:
 
 ```bash
