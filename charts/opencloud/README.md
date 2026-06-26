@@ -63,15 +63,19 @@ Please ensure that your PR follows best practices and includes necessary documen
 
 ## 📦 Installation
 
-To install the full stack using Helmfile:
+To install the full stack using FluxCD (recommended — self-contained HelmReleases, no Helmfile/Timoni bundle needed):
 
 ```bash
-# Navigate to the helmfile directory
-cd charts/opencloud/deployments/helm
-
-# Deploy all components (Keycloak, OpenLDAP, ClamAV, OpenCloud)
-helmfile sync
+# Deploy all components (Keycloak + PostgreSQL, OpenLDAP, ClamAV, OpenCloud)
+kubectl apply -f charts/opencloud/deployments/flux/keycloak/keycloak.yaml
+kubectl apply -f charts/opencloud/deployments/flux/keycloak/secrets.yaml
+kubectl apply -f charts/opencloud/deployments/flux/openldap/openldap.yaml
+kubectl apply -f charts/opencloud/deployments/flux/clamav/clamav.yaml
+kubectl apply -f charts/opencloud/deployments/flux/opencloud/opencloud.yaml
+kubectl apply -f charts/opencloud/deployments/flux/opencloud/secrets.yaml
 ```
+
+Each `HelmRelease` is reconciled by the FluxCD `helm-controller`. The manifests in `deployments/flux/` are self-contained — inline database config, realm import, HTTPRoutes, and HTTP→HTTPS redirects — so no separate Helmfile or Timoni bundle is required.
 
 Alternatively, to install just the OpenCloud chart with Helm:
 

@@ -72,6 +72,8 @@ spec:
         enabled: false
       oidc:
         scope: "openid profile email groups"
+      ldap:
+        secretRef: ldap-bind-secrets
     oidc:
       enabled: false
       external:
