@@ -79,6 +79,30 @@ spec:
         scope: "openid profile email groups"
       ldap:
         secretRef: ldap-bind-secrets
+      storage:
+        # Default: decomposed (PVC-backed, no MinIO/S3). Switch to "s3" +
+        # uncomment the s3 block below to use the bundled MinIO instance.
+        mode: decomposed
+        usersDriver: decomposed
+        systemDriver: decomposed
+        decomposed:
+          persistence:
+            enabled: true
+            size: 60Gi
+            accessMode: ReadWriteOnce
+        # --- S3 / MinIO alternative (uncomment to switch) ---
+        # s3:
+        #   enabled: true
+        #   rootUser: opencloud
+        #   rootPassword: opencloud-secret-key
+        #   bucketName: opencloud-bucket
+        #   region: "default"
+        #   persistence:
+        #     enabled: true
+        #     size: 30Gi
+        #     accessMode: ReadWriteOnce
+    # secretRefs:
+    #   s3CredentialsSecretRef: s3secret  # only needed when storage.mode = s3
     oidc:
       enabled: false
       external:
@@ -193,7 +217,6 @@ spec:
       ocHttpApiInsecure: true
     secretRefs:
       ldapSecretRef: ldap-bind-secrets
-      s3CredentialsSecretRef: s3secret
     ingress:
       enabled: false
       ingressClassName: nginx
