@@ -78,21 +78,21 @@ This project is licensed under the **AGPLv3** license. See the [LICENSE](LICENSE
 
 ## ⚡ Quick Start
 
-Follow these steps to quickly deploy OpenCloud using Helmfile:
+Deploy the full stack (Keycloak + PostgreSQL, OpenLDAP, ClamAV, OpenCloud, Collabora) with a single FluxCD apply:
 
-1. **Navigate to the helmfile directory:**
+1. **Deploy the full stack:**
    ```sh
-   cd charts/opencloud/deployments/helm
+   kubectl apply -f charts/opencloud/deployments/flux/keycloak/keycloak.yaml
+   kubectl apply -f charts/opencloud/deployments/flux/keycloak/secrets.yaml
+   kubectl apply -f charts/opencloud/deployments/flux/openldap/openldap.yaml
+   kubectl apply -f charts/opencloud/deployments/flux/clamav/clamav.yaml
+   kubectl apply -f charts/opencloud/deployments/flux/opencloud/opencloud.yaml
+   kubectl apply -f charts/opencloud/deployments/flux/opencloud/secrets.yaml
    ```
 
-2. **Deploy the full stack:**
-   ```sh
-   helmfile sync
-   ```
+   Each `HelmRelease` is reconciled by FluxCD's helm-controller. The manifests are self-contained (inline database config, realm import, HTTPRoutes) — no separate Helmfile or Timoni bundle required.
 
-   This deploys Keycloak, OpenLDAP, ClamAV, and OpenCloud with Collabora in their respective namespaces.
-
-3. **Verify the deployment:**
+2. **Verify the deployment:**
    ```sh
    kubectl get pods -A | grep -E "opencloud|keycloak|openldap|clamav"
    ```
