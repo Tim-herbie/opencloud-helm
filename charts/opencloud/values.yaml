@@ -151,11 +151,19 @@ tika:
     tag: "latest-full"
     # Image pull policy
     pullPolicy: IfNotPresent
+  # Optional environment variables for the Tika container.
+  # By default the JVM auto-sizes its heap from the container memory limit
+  # (the recommended behaviour — see opencloud-compose). Set JAVA_OPTS here
+  # only if you need to override, e.g. to add per-parse timeout sysprops:
+  #   env:
+  #     - name: JAVA_OPTS
+  #       value: "-Dtika.server.forkedProcessTimeoutMillis=300000 -Dorg.apache.tika.server.core.maxElapsedMillis=1800000"
+  env: []
   # Resources allocation
   resources:
     requests:
-      cpu: 100m
-      memory: 1Gi
+      cpu: 1000m
+      memory: 4Gi
     limits:
       cpu: 4
       memory: 10Gi
