@@ -69,20 +69,6 @@ Create a fully qualified OpenCloud name.
 {{- end }}
 
 {{/*
-Create a fully qualified Keycloak name.
-*/}}
-{{- define "opencloud.keycloak.fullname" -}}
-{{- printf "%s-keycloak" (include "opencloud.fullname" .) | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Create a fully qualified PostgreSQL name.
-*/}}
-{{- define "opencloud.postgres.fullname" -}}
-{{- printf "%s-postgres" (include "opencloud.fullname" .) | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
 Create a fully qualified MinIO name.
 */}}
 {{- define "opencloud.minio.fullname" -}}
@@ -94,13 +80,6 @@ Return the OpenCloud domain
 */}}
 {{- define "opencloud.domain" -}}
 {{- .Values.global.domain.opencloud }}
-{{- end }}
-
-{{/*
-Return the Keycloak domain
-*/}}
-{{- define "opencloud.keycloak.domain" -}}
-{{- .Values.global.domain.oidc }}
 {{- end }}
 
 {{/*
@@ -135,32 +114,24 @@ Return the WOPI domain
 Return the OIDC issuer URL
 */}}
 {{- define "opencloud.oidc.issuer" -}}
-{{- if not .Values.oidc.enabled }}
-{{- .Values.oidc.external.issuerUrl }}
-{{- else }}
-{{- printf "https://%s/realms/%s" .Values.global.domain.oidc .Values.oidc.realm }}
-{{- end }}
+{{- .Values.oidc.issuerUrl }}
 {{- end }}
 
 {{/*
 Return the OIDC client ID
 */}}
 {{- define "opencloud.oidc.clientId" -}}
-{{- if not .Values.oidc.enabled }}
-{{- .Values.oidc.external.clientId }}
-{{- else }}
-{{- "web" }}
-{{- end }}
+{{- .Values.oidc.clientId }}
 {{- end }}
 
 {{/*
 Return the OIDC account URL
 */}}
 {{- define "opencloud.oidc.accountUrl" -}}
-{{- if not .Values.oidc.enabled }}
-{{- .Values.oidc.external.accountUrl }}
+{{- if .Values.oidc.accountUrl }}
+{{- .Values.oidc.accountUrl }}
 {{- else }}
-{{- printf "https://%s/realms/%s/account" .Values.global.domain.oidc .Values.oidc.realm }}
+{{- printf "%s/account" .Values.oidc.issuerUrl }}
 {{- end }}
 {{- end }}
 
@@ -312,4 +283,17 @@ secretKey
 {{- else -}}
 rootPassword
 {{- end -}}
+{{- end -}}
+
+{{/*
+Renders a value that contains template.
+Usage:
+{{ include "opencloud.tplvalues.render" ( dict "value" .Values.path.to.the.Value "context" $) }}
+*/}}
+{{- define "opencloud.tplvalues.render" -}}
+    {{- if typeIs "string" .value }}
+        {{- tpl .value .context }}
+    {{- else }}
+        {{- tpl (.value | toYaml) .context }}
+    {{- end }}
 {{- end -}}

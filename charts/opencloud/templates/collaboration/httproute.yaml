@@ -2,6 +2,30 @@
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
+  name: {{ include "opencloud.fullname" . }}-collaboration-http-redirect
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collaboration
+spec:
+  parentRefs:
+    - name: {{ .Values.httpRoute.gateway.name }}
+      namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+      {{- with .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ . }}-wopi-http
+      {{- end }}
+  hostnames:
+    - {{ .Values.global.domain.wopi | quote }}
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            hostname: {{ .Values.global.domain.wopi }}
+            statusCode: 301
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
   name: {{ include "opencloud.fullname" . }}-collaboration-httproute
   labels:
     {{- include "opencloud.labels" . | nindent 4 }}
@@ -11,7 +35,7 @@ spec:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
       {{- with .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ . }}
+      sectionName: {{ . }}-wopi-https
       {{- end }}
   hostnames:
     - {{ .Values.global.domain.wopi | quote }}

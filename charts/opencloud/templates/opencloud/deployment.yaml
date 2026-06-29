@@ -15,15 +15,36 @@ spec:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: opencloud
   strategy:
-    {{- if and (gt (int .Values.opencloud.replicas) 1) .Values.opencloud.persistence.enabled }}
-    # When using multiple replicas with persistence enabled, use RollingUpdate strategy
-    # Note: This may cause issues with PVCs that use ReadWriteOnce access mode
+    {{- if or (eq .Values.opencloud.storage.mode "posixfs") (eq .Values.opencloud.storage.mode "decomposed") }}
+      {{- if eq .Values.opencloud.storage.mode "posixfs" }}
+        {{- if eq .Values.opencloud.storage.posixfs.persistence.accessMode "ReadWriteMany" }}
+    # RWX access mode allows multiple pods to mount the volume simultaneously
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-    {{- else }}
+        {{- else }}
+    # RWO access mode only allows one pod to mount at a time, so use Recreate
     type: Recreate
+        {{- end }}
+      {{- else }}
+        {{- if eq .Values.opencloud.storage.decomposed.persistence.accessMode "ReadWriteMany" }}
+    # RWX access mode allows multiple pods to mount the volume simultaneously
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+        {{- else }}
+    # RWO access mode only allows one pod to mount at a time, so use Recreate
+    type: Recreate
+        {{- end }}
+      {{- end }}
+    {{- else }}
+    # S3 mode doesn't use PVCs, so RollingUpdate is safe
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
     {{- end }}
   template:
     metadata:
@@ -170,7 +191,7 @@ spec:
           env:
             # OpenCloud URL
             - name: OC_URL
-              value: "https://{{ include "opencloud.domain" . }}"
+              value: "{{ if .Values.global.tls.enabled }}https{{ else }}http{{ end }}://{{ include "opencloud.domain" . }}"
             # Available roles
             - name: GRAPH_AVAILABLE_ROLES
               value: {{ .Values.opencloud.graphAvailableRoles | quote }}
@@ -214,11 +235,22 @@ spec:
               value: {{ .Values.opencloud.sharingPublicShareMustHavePassword | quote }}
             - name: OC_PASSWORD_POLICY_BANNED_PASSWORDS_LIST
               value: {{ .Values.opencloud.passwordPolicyBannedPasswordsList | quote }}
+            # Gateway: disable CreateHome on login (external IdP handles home creation)
+            - name: GATEWAY_DISABLE_HOME_CREATION_ON_LOGIN
+              value: "true"
             # Search settings
             - name: SEARCH_EXTRACTOR_TYPE
               value: {{ .Values.opencloud.searchExtractorType | quote }}
             - name: SEARCH_EXTRACTOR_TIKA_TIKA_URL
               value: "http://{{ include "opencloud.tika.fullname" . }}:9998"
+            # Must be false — Go default is true, which makes search subscribe to UploadReady
+            # instead of FileUploaded. With sync uploads, FileUploaded is the correct event.
+            - name: OC_ASYNC_UPLOADS
+              value: "false"
+            {{- with .Values.opencloud.searchExtractorSizeLimit }}
+            - name: SEARCH_CONTENT_EXTRACTION_SIZE_LIMIT
+              value: {{ int64 . | quote }}
+            {{- end }}
             # Performance settings
             - name: OC_GRPC_MAX_RECEIVED_MESSAGE_SIZE
               value: {{ .Values.opencloud.grpcMaxReceivedMessageSize | quote }}
@@ -255,10 +287,30 @@ spec:
             - name: NOTIFICATIONS_SMTP_ENCRYPTION
               value: "{{ .Values.opencloud.smtp.encryption }}"
             {{- end }}
-            {{- if or .Values.oidc.enabled .Values.oidc.external.issuerUrl }}
+            {{- if .Values.opencloud.antivirus.enabled }}
+            - name: ANTIVIRUS_ENABLED
+              value: "true"
+            - name: ANTIVIRUS_INFECTED_FILE_HANDLING
+              value: {{ .Values.opencloud.antivirus.infectedFileHandling | quote }}
+            - name: ANTIVIRUS_SCANNER_TYPE
+              value: {{ .Values.opencloud.antivirus.scannerType | quote }}
+            {{- if eq .Values.opencloud.antivirus.scannerType "clamav" }}
+            - name: ANTIVIRUS_CLAMAV_SOCKET
+              value: {{ .Values.opencloud.antivirus.clamavSocket | quote }}
+            {{- end }}
+            {{- if eq .Values.opencloud.antivirus.scannerType "icap" }}
+            - name: ANTIVIRUS_ICAP_URL
+              value: {{ .Values.opencloud.antivirus.icapUrl | quote }}
+            - name: ANTIVIRUS_ICAP_SERVICE
+              value: {{ .Values.opencloud.antivirus.icapService | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.oidc.issuerUrl }}
             # IDP specific configuration
             - name: PROXY_AUTOPROVISION_ACCOUNTS
               value: {{ .Values.opencloud.proxyAutoprovisionAccounts | quote }}
+            - name: FRONTEND_CHECK_FOR_UPDATES
+              value: {{ .Values.opencloud.frontendCheckForUpdates | quote }}
             # user properties are edited in the idp, so we have to make them readonly
             - name: FRONTEND_READONLY_USER_ATTRIBUTES
               value: {{ .Values.opencloud.frontendReadonlyUserAttributes | quote }}
@@ -290,6 +342,40 @@ spec:
               value: {{ printf "%s/.well-known/openid-configuration" (include "opencloud.oidc.issuer" .) | quote }}
             - name: WEB_OIDC_SCOPE
               value: {{ .Values.opencloud.oidc.scope | quote }}
+            - name: OC_LDAP_SERVER_WRITE_ENABLED
+              value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
+            - name: GRAPH_LDAP_SERVER_WRITE_ENABLED
+              value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
+            - name: FRONTEND_LDAP_SERVER_WRITE_ENABLED
+              value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
+            - name: OC_LDAP_URI
+              value: {{ .Values.opencloud.ldap.uri | quote }}
+            - name: OC_LDAP_INSECURE
+              value: {{ .Values.opencloud.ldap.insecure | quote }}
+            - name: OC_LDAP_BIND_DN
+              value: {{ .Values.opencloud.ldap.bindDN | quote }}
+            - name: OC_LDAP_USER_BASE_DN
+              value: {{ .Values.opencloud.ldap.user.baseDN | quote }}
+            - name: OC_LDAP_GROUP_BASE_DN
+              value: {{ .Values.opencloud.ldap.group.baseDN | quote }}
+            - name: GRAPH_LDAP_GROUP_CREATE_BASE_DN
+              value: {{ .Values.opencloud.ldap.group.createBaseDN | quote }}
+            - name: GRAPH_LDAP_REFINT_ENABLED
+              value: {{ .Values.opencloud.graphLdapRefintEnabled | quote }}
+            - name: GRAPH_LDAP_SERVER_UUID
+              value: {{ .Values.opencloud.graphLdapServerUuid | default "false" | quote }}
+            - name: OC_LDAP_USER_SCHEMA_ID
+              value: {{ .Values.opencloud.ldap.user.schema.id | default "opencloudUUID" | quote }}
+            - name: OC_LDAP_GROUP_SCHEMA_ID
+              value: {{ .Values.opencloud.ldap.group.schema.id | default "opencloudUUID" | quote }}
+            - name: OC_LDAP_DISABLE_USER_MECHANISM
+              value: {{ .Values.opencloud.ldap.disableUserMechanism | default "attribute" | quote }}
+            - name: SETTINGS_SETUP_DEFAULT_ASSIGNMENTS
+              value: {{ .Values.opencloud.settingsSetupDefaultAssignments | default "false" | quote }}
+            - name: PROXY_AUTOPROVISION_CLAIM_USERNAME
+              value: {{ .Values.opencloud.proxyAutoprovisionClaimUsername | default "sub" | quote }}
+            - name: FRONTEND_FULL_TEXT_SEARCH_ENABLED
+              value: {{ .Values.opencloud.frontendFullTextSearchEnabled | quote }}
             {{- end }}
             {{- /* Runtime secrets — injected directly, no opencloud init needed */ -}}
             {{- $initSecretName := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) }}
@@ -382,28 +468,28 @@ spec:
             - name: USERS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmRevaServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: reva-ldap-bind-password
             - name: GROUPS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmRevaServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: reva-ldap-bind-password
             - name: AUTH_BASIC_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmRevaServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: reva-ldap-bind-password
             - name: IDP_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmIdpServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: reva-ldap-bind-password
             - name: GRAPH_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $initSecretName }}
-                  key: idmServicePassword
+                  name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
+                  key: graph-ldap-bind-password
             - name: IDM_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -444,15 +530,26 @@ spec:
             # Changing .Values.opencloud.nats.port in this mode is unsupported and may lead to port mismatches.
             - name: NATS_NATS_PORT
               value: {{ .Values.opencloud.nats.port | quote }}
+            # Use internal NATS for events, cache, and persistent store
+            - name: OC_EVENTS_ENDPOINT
+              value: {{ .Values.opencloud.nats.internalEndpoint | quote }}
+            - name: OC_CACHE_STORE_NODES
+              value: {{ .Values.opencloud.nats.internalEndpoint | quote }}
+            - name: OC_PERSISTENT_STORE_NODES
+              value: {{ .Values.opencloud.nats.internalEndpoint | quote }}
             {{- end }}
             # CSP configuration
             - name: PROXY_CSP_CONFIG_FILE_LOCATION
               value: {{ .Values.opencloud.cspConfigFileLocation | quote }}
             # Storage configuration
-            # Always use decomposeds3 for user storage and decomposed for system storage
+            # Use explicit usersDriver if set, otherwise derive from mode
             - name: STORAGE_USERS_DRIVER
-            {{- if eq .Values.opencloud.storage.mode "posixfs" }}
+            {{- if .Values.opencloud.storage.usersDriver }}
+              value: {{ .Values.opencloud.storage.usersDriver | quote }}
+            {{- else if eq .Values.opencloud.storage.mode "posixfs" }}
               value: "posix"
+            {{- else if eq .Values.opencloud.storage.mode "decomposed" }}
+              value: "decomposed"
             {{- else }}
               value: "decomposeds3"
             {{- end }}
@@ -464,6 +561,9 @@ spec:
               value: {{ .Values.opencloud.storage.posixfs.rootPath | quote }}
             - name: STORAGE_USERS_ID_CACHE_STORE
               value: {{ .Values.opencloud.storage.posixfs.idCacheStore | quote }}
+            {{- else if eq .Values.opencloud.storage.mode "decomposed" }}
+            - name: STORAGE_USERS_OC_MAX_CONCURRENCY
+              value: {{ .Values.opencloud.storage.decomposed.maxConcurrency | quote }}
             {{- else }}
             - name: STORAGE_USERS_DECOMPOSEDS3_ENDPOINT
               value: {{ include "opencloud.s3.user.endpoint" . }}
@@ -517,6 +617,10 @@ spec:
             - name: posixfs
               mountPath: {{ .Values.opencloud.storage.posixfs.rootPath | default "/var/lib/opencloud/storage" | quote }}
             {{- end }}
+            {{- if and (eq .Values.opencloud.storage.mode "decomposed") .Values.opencloud.storage.decomposed.persistence.enabled }}
+            - name: decomposed
+              mountPath: {{ .Values.opencloud.storage.decomposed.rootPath | default "/var/lib/opencloud/storage" | quote }}
+            {{- end }}
             - name: config-json
               mountPath: /var/lib/opencloud/config.json
               subPath: config.json
@@ -558,6 +662,15 @@ spec:
             claimName: {{ .Values.opencloud.storage.posixfs.persistence.existingClaim | quote }}
             {{- else }}
             claimName: {{ include "opencloud.opencloud.fullname" . }}-posixfs
+            {{- end }}
+        {{- end }}
+        {{- if and (eq .Values.opencloud.storage.mode "decomposed") .Values.opencloud.storage.decomposed.persistence.enabled }}
+        - name: decomposed
+          persistentVolumeClaim:
+            {{- if .Values.opencloud.storage.decomposed.persistence.existingClaim }}
+            claimName: {{ .Values.opencloud.storage.decomposed.persistence.existingClaim | quote }}
+            {{- else }}
+            claimName: {{ include "opencloud.opencloud.fullname" . }}-decomposed
             {{- end }}
         {{- end }}
         - name: config-json

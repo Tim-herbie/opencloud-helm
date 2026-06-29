@@ -1,0 +1,237 @@
+# OpenCloud chart shipped from the local GitRepository `flux-system`.
+# Adjust the url / branch / path to your repo. Create the GitRepository
+# before applying the HelmRelease:
+#
+#   kubectl apply -f opencloud/gitrepository.yaml
+#
+# To add another OpenCloud instance on the same cluster:
+#   1. `cp opencloud.yaml opencloud-oc2.yaml`
+#   2. Edit metadata.name, releaseName, global.domain.opencloud
+#   3. Apply it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opencloud
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: opencloud-helm
+  namespace: opencloud
+spec:
+  interval: 5m
+  url: https://github.com/suse-coder/helm-1
+  ref:
+    branch: main
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: opencloud-oc1
+  namespace: opencloud
+spec:
+  interval: 15m
+  timeout: 10m
+  chart:
+    spec:
+      chart: ./charts/opencloud
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: opencloud-helm
+        namespace: opencloud
+      interval: 5m
+  releaseName: opencloud
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  test:
+    enable: true
+  driftDetection:
+    mode: enabled
+    ignore:
+      - paths: ["/spec/replicas"]
+        target:
+          kind: Deployment
+  valuesFrom:
+    - kind: Secret
+      name: opencloud-oc1-secrets
+      valuesKey: values.yaml
+      optional: true
+  values:
+    global:
+      domain:
+        opencloud: cloud.opencloud.test
+        oidc: keycloak.opencloud.test
+        minio: minio.opencloud.test
+        wopi: wopiserver.opencloud.test
+        collabora: collabora.opencloud.test
+        companion: companion.opencloud.test
+      tls:
+        enabled: true
+    opencloud:
+      logLevel: info
+      migration:
+        enabled: false
+      oidc:
+        scope: "openid profile email groups"
+      ldap:
+        secretRef: ldap-bind-secrets
+      storage:
+        # Default: decomposed (PVC-backed, no MinIO/S3). Switch to "s3" +
+        # uncomment the s3 block below to use the bundled MinIO instance.
+        mode: decomposed
+        usersDriver: decomposed
+        systemDriver: decomposed
+        decomposed:
+          persistence:
+            enabled: true
+            size: 60Gi
+            accessMode: ReadWriteOnce
+            # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+        # --- S3 / MinIO alternative (uncomment to switch) ---
+        # s3:
+        #   enabled: true
+        #   rootUser: opencloud
+        #   rootPassword: opencloud-secret-key
+        #   bucketName: opencloud-bucket
+        #   region: "default"
+        #   persistence:
+        #     enabled: true
+        #     size: 30Gi
+        #     accessMode: ReadWriteOnce
+    # secretRefs:
+    #   s3CredentialsSecretRef: s3secret  # only needed when storage.mode = s3
+    oidc:
+      issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      clientId: web
+    features:
+      externalUserManagement:
+        enabled: true
+        adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
+        autoprovisionAccounts:
+          enabled: true
+          claimUserName: sub
+        oidc:
+          domain: keycloak.opencloud.test
+          issuerURI: https://keycloak.opencloud.test/realms/openCloud
+          userIDClaim: sub
+          userIDClaimAttributeMapping: username
+          roleAssignment:
+            claim: roles
+        ldap:
+          writeable: true
+          uri: ldaps://openldap.openldap.svc.cluster.local:636
+          insecure: true
+          bindDN: cn=admin,dc=opencloud,dc=eu
+          user:
+            userNameMatch: none
+            schema:
+              id: openCloudUUID
+          group:
+            schema:
+              id: openCloudUUID
+      virusscan:
+        enabled: false
+        infectedFileHandling: "abort"
+        scannerType: "clamav"
+        clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+      emailNotifications:
+        enabled: false
+        smtp:
+          host: ""
+          port: ""
+          sender: ""
+          authentication: none
+          encryption: ssltls
+      policies:
+        enabled: false
+        policies:
+          - fileName: proxy.rego
+            content: |
+              package proxy
+              import future.keywords.if
+              import data.utils
+              default granted := true
+              granted = false if {
+                  input.request.method == "PUT"
+                  pathPrefixes := ["/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
+                  restricted := pathPrefixes[_]
+                  startswith(input.request.path, restricted)
+                  utils.is_extension_restricted(input.resource.name)
+              }
+          - fileName: postprocessing.rego
+            content: |
+              package postprocessing
+              import future.keywords.if
+              import data.utils
+              default granted := true
+              granted = false if {
+                  utils.is_extension_restricted(input.resource.name)
+              }
+              granted = false if {
+                  bytes := opencloud.resource.download(input.resource.url)
+                  mimetype := opencloud.mimetype.detect(bytes)
+                  utils.is_mimetype_restricted(mimetype)
+              }
+          - fileName: utils.rego
+            content: |
+              package utils
+              RESTRICTED_EXTENSIONS := {".exe", ".dll", ".msi", ".scr", ".com", ".pif", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsh"}
+              RESTRICTED_EXTENSIONS_NO_DOT := {"exe", "dll", "msi", "scr", "com", "pif", "bat", "cmd", "ps1", "vbs", "vbe", "wsh"}
+              RESTRICTED_MIMETYPES := {"application/x-msdownload", "application/x-dosexec", "application/x-executable", "application/vnd.microsoft.portable-executable", "application/x-msi", "application/x-ms-dos-executable", "application/x-msdos-program", "application/x-bat", "application/bat", "application/x-sh", "application/x-shellscript"}
+              is_extension_restricted(identifier) {
+                  extension := RESTRICTED_EXTENSIONS[_]
+                  endswith(lower(identifier), extension)
+              }
+              is_mimetype_restricted(mimetype) {
+                  RESTRICTED_MIMETYPES[mimetype]
+              }
+              is_mimetype_restricted(mimetype) {
+                  extensions := opencloud.mimetype.extensions(mimetype)
+                  ext := extensions[_]
+                  RESTRICTED_EXTENSIONS_NO_DOT[ext]
+              }
+      appsIntegration:
+        enabled: true
+        wopiIntegration:
+          officeSuites:
+            - name: Collabora
+              product: Collabora
+              enabled: true
+              uri: "https://collabora.opencloud.test"
+              insecure: true
+              disableProof: false
+              iconURI: https://collabora.opencloud.test/favicon.ico
+            - name: OnlyOffice
+              product: OnlyOffice
+              enabled: false
+              uri: "https://onlyoffice.opencloud.test"
+              insecure: true
+              disableProof: false
+    insecure:
+      oidcIdpInsecure: true
+      ocHttpApiInsecure: true
+    secretRefs:
+      ldapSecretRef: ldap-bind-secrets
+    ingress:
+      enabled: false
+      ingressClassName: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+    httpRoute:
+      enabled: true
+      gateway:
+        create: false
+        name: cilium-gateway
+        namespace: kube-system
+        port: 443
+        sectionName: opencloud
+    quotas:
+      roles:
+        'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
+        '2aadd357-682c-406b-8874-293091995fdd': 0
+    replicas: 1
