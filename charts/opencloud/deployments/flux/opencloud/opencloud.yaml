@@ -35,6 +35,7 @@ spec:
   chart:
     spec:
       chart: ./charts/opencloud
+      reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
         name: opencloud-helm
