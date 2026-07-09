@@ -251,7 +251,7 @@ collabora:
     registry: docker.io
     repository: collabora/code
     pullPolicy: IfNotPresent
-    tag: 26.04.1.4.1
+    tag: 26.04.2.1.1
   ssl:
     enabled: false
     verification: true
@@ -320,7 +320,7 @@ image:
   # OpenCloud image repository
   repository: opencloudeu/opencloud-rolling
   # OpenCloud image tag
-  tag: "7.2.0"
+  tag: "7.2.1"
   # Image pull policy
   pullPolicy: IfNotPresent
   # Image pull secrets
