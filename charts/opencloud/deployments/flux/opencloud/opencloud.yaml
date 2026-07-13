@@ -81,17 +81,24 @@ spec:
       ldap:
         secretRef: ldap-bind-secrets
       storage:
-        # Default: decomposed (PVC-backed, no MinIO/S3). Switch to "s3" +
-        # uncomment the s3 block below to use the bundled MinIO instance.
-        mode: decomposed
-        usersDriver: decomposed
-        systemDriver: decomposed
-        decomposed:
+        # Default: posixfs (PVC-backed POSIX filesystem, no MinIO/S3). Switch to "s3" or
+        # "decomposed" below to use the alternatives.
+        mode: posixfs
+        # usersDriver: posix       # auto-derived from mode=posixfs; uncomment to override
+        # systemDriver: decomposed # only "decomposed"/"decomposeds3" valid; system has no posix option
+        posixfs:
           persistence:
             enabled: true
             size: 60Gi
             accessMode: ReadWriteOnce
-            # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+            # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
+        # --- Decomposed alternative (uncomment to switch) ---
+        # decomposed:
+        #   persistence:
+        #     enabled: true
+        #     size: 60Gi
+        #     accessMode: ReadWriteOnce
+        #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
         # --- S3 / MinIO alternative (uncomment to switch) ---
         # s3:
         #   enabled: true
