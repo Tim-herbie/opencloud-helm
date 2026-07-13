@@ -72,6 +72,9 @@ spec:
         companion: companion.opencloud.test
       tls:
         enabled: true
+    # Pin the opencloud image tag here so it doesn't drift with chart values.yaml
+    image:
+      tag: "7.2.0"
     opencloud:
       logLevel: info
       migration:
