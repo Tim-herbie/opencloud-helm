@@ -8,11 +8,6 @@
 #   1. `cp opencloud.yaml opencloud-oc2.yaml`
 #   2. Edit metadata.name, releaseName, global.domain.opencloud
 #   3. Apply it.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: opencloud
----
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
