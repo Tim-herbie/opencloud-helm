@@ -1,0 +1,140 @@
+suite: Storage Driver Tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  # --- Storage Driver Selection ---
+
+  - it: should use decomposeds3 driver by default (mode=s3)
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: s3
+          usersDriver: ""
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DRIVER
+            value: "decomposeds3"
+
+  - it: should use posix driver when mode is posixfs
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: posixfs
+          usersDriver: ""
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DRIVER
+            value: "posix"
+
+  - it: should use explicit usersDriver when set (overrides mode)
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: s3
+          usersDriver: "decomposed"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DRIVER
+            value: "decomposed"
+
+  - it: should use explicit usersDriver=posix even when mode is s3
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: s3
+          usersDriver: "posix"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DRIVER
+            value: "posix"
+
+  - it: should use explicit usersDriver=decomposeds3 even when mode is posixfs
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: posixfs
+          usersDriver: "decomposeds3"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DRIVER
+            value: "decomposeds3"
+
+  - it: should always use decomposed for system storage
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          systemDriver: "decomposed"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_SYSTEM_DRIVER
+            value: "decomposed"
+
+  # --- PosixFS Configuration ---
+
+  - it: should set STORAGE_USERS_POSIX_ROOT when mode is posixfs
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: posixfs
+          posixfs:
+            rootPath: "/var/lib/opencloud/storage"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_POSIX_ROOT
+            value: "/var/lib/opencloud/storage"
+
+  - it: should set STORAGE_USERS_ID_CACHE_STORE when mode is posixfs
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: posixfs
+          posixfs:
+            idCacheStore: "nats-js-kv"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_ID_CACHE_STORE
+            value: "nats-js-kv"
+
+  # --- S3 Configuration ---
+
+  - it: should set S3 env vars when mode is s3
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: s3
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DECOMPOSEDS3_REGION
+            value: "default"
