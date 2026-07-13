@@ -31,7 +31,7 @@ metadata:
   namespace: opencloud
 spec:
   interval: 15m
-  timeout: 10m
+  timeout: 5m
   chart:
     spec:
       chart: ./charts/opencloud
