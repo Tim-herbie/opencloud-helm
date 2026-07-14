@@ -1,17 +1,16 @@
-## Release 2.4.4
+## Release 2.4.5
 
-Base: changes since 2.4.3.
+Base: changes since 2.4.4.
 
-OpenCloud version from values.yaml: 7.2.0
+OpenCloud version from values.yaml: 7.3.0
 
 ### Pull Requests
-- [#108](https://github.com/Tim-herbie/opencloud-helm/pull/108) chore(deps): update actions/checkout action to v7
-- [#104](https://github.com/Tim-herbie/opencloud-helm/pull/104) chore(deps): update docker.io/collabora/code docker tag to v26
-- [#105](https://github.com/Tim-herbie/opencloud-helm/pull/105) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.6.3
-- [#109](https://github.com/Tim-herbie/opencloud-helm/pull/109) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.2.0
+- [#114](https://github.com/Tim-herbie/opencloud-helm/pull/114) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.3.0
+- [#111](https://github.com/Tim-herbie/opencloud-helm/pull/111) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.7.0
+- [#112](https://github.com/Tim-herbie/opencloud-helm/pull/112) chore(deps): update docker.io/collabora/code docker tag to v26.04.2.1.1
 
 ### Changelog
-## [2.4.4] - 2026-06-25
+## [2.4.5] - 2026-07-14
 
 ### Breaking Changes
 - None
@@ -23,7 +22,6 @@ OpenCloud version from values.yaml: 7.2.0
 - None
 
 ### Chore / Docs / CI / Other
-- [#108](https://github.com/Tim-herbie/opencloud-helm/pull/108) chore(deps): update actions/checkout action to v7
-- [#104](https://github.com/Tim-herbie/opencloud-helm/pull/104) chore(deps): update docker.io/collabora/code docker tag to v26
-- [#105](https://github.com/Tim-herbie/opencloud-helm/pull/105) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.6.3
-- [#109](https://github.com/Tim-herbie/opencloud-helm/pull/109) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.2.0
+- [#114](https://github.com/Tim-herbie/opencloud-helm/pull/114) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.3.0
+- [#111](https://github.com/Tim-herbie/opencloud-helm/pull/111) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.7.0
+- [#112](https://github.com/Tim-herbie/opencloud-helm/pull/112) chore(deps): update docker.io/collabora/code docker tag to v26.04.2.1.1
