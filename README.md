@@ -36,6 +36,7 @@ OpenCloud is a cloud collaboration platform that provides file sync and share, d
 | 7.0.0            | 2.4.0, 2.4.1, 2.4.2 |
 | 7.1.0            | 2.4.3 |
 | 7.2.0            | 2.4.4 |
+| 7.3.0            | 2.4.5 |
 
 
 ## 💡 Contributing
@@ -82,7 +83,7 @@ Follow these steps to quickly deploy OpenCloud using the Helm chart:
   ```sh
   helm install opencloud \
     oci://ghcr.io/tim-herbie/opencloud-helm/opencloud \
-    --version 2.4.4 \
+    --version 2.4.5 \
     --namespace opencloud \
     --create-namespace
   ```
