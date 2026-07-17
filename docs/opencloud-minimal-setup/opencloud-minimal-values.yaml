@@ -1,0 +1,50 @@
+global:
+  domain:
+    opencloud: opencloud.my-domain.de
+    wopi: wopiserver.my-domain.de
+    collabora: collabora.my-domain.de
+    onlyoffice: onlyoffice.my-domain.de
+    companion: companion.my-domain.de 
+
+collabora:
+  enabled: true
+  ssl:
+    enabled: false
+
+oidc:
+  enabled: false
+
+opencloud:
+  
+  migration:
+    enabled: false
+
+  createDemoUsers: true # necessary for admin user creation
+
+  excludeServices: [] # necessary that idp runs
+
+  persistence:
+    data:
+      accessMode: ReadWriteOnce
+      size: 10Gi
+    config:
+      accessMode: ReadWriteOnce
+      size: 10Gi
+  
+  storage:
+    mode: posixfs
+    s3:
+      enabled: false
+    posixfs:
+      persistence:
+        size: 10Gi
+        accessMode: ReadWriteOnce
+
+httpRoute:
+  enabled: true
+  
+  gateway:
+    name: cilium-gateway
+    className: cilium
+    namespace: "kube-system"
+    sectionName: https
