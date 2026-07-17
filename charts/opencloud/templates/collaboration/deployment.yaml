@@ -62,8 +62,12 @@ spec:
               value: {{ .Values.opencloud.nats.external.endpoint | quote }}
             - name: MICRO_REGISTRY_ADDRESS
               value: {{ .Values.opencloud.nats.external.endpoint | quote }}
+            - name: OC_EVENTS_ENDPOINT
+              value: {{ .Values.opencloud.nats.external.endpoint | quote }}
             {{- else }}
             - name: MICRO_REGISTRY_ADDRESS
+              value: "{{ include "opencloud.opencloud.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:9233"
+            - name: OC_EVENTS_ENDPOINT
               value: "{{ include "opencloud.opencloud.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:9233"
             {{- end }}
             {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
@@ -102,6 +106,11 @@ spec:
                 secretKeyRef:
                   name: {{ $initSecretName }}
                   key: collaborationWopiSecret
+            - name: OC_MACHINE_AUTH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: machineAuthApiKey
 
             {{- with .Values.collaboration.env }}
             {{- toYaml . | nindent 12 }}
