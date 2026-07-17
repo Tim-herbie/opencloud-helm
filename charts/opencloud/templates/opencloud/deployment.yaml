@@ -276,8 +276,6 @@ spec:
               value: {{ .Values.opencloud.proxyUserOidcClaim | quote }}
             - name: PROXY_USER_CS3_CLAIM
               value: {{ .Values.opencloud.proxyUserCs3Claim | quote }}
-            - name: OC_ADMIN_USER_ID
-              value: {{ .Values.opencloud.adminUserId | quote }}
             - name: GRAPH_ASSIGN_DEFAULT_USER_ROLE
               value: {{ .Values.opencloud.graphAssignDefaultUserRole | quote }}
             - name: GRAPH_USERNAME_MATCH
@@ -404,6 +402,11 @@ spec:
                 secretKeyRef:
                   name: {{ $initSecretName }}
                   key: idmServicePassword
+            - name: OC_ADMIN_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: adminUserID
             - name: IDM_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
