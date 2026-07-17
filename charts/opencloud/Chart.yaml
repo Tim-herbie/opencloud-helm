@@ -9,7 +9,7 @@ maintainers:
   - name: Tim Herbert
     url: https://timherbert.de
 type: application
-version: 2.4.5
+version: 2.4.6
 # renovate: datasource=docker depName=opencloudeu/opencloud-rolling
 appVersion: latest
 kubeVersion: ""

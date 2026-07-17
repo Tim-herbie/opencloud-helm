@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 <!-- release-bot:start -->
 
+## [2.4.6] - 2026-07-17
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- [#117](https://github.com/Tim-herbie/opencloud-helm/pull/117) fix: collaboration nats connection to opencloud
+
+### Chore / Docs / CI / Other
+- None
+
+
 ## [2.4.5] - 2026-07-14
 
 ### Breaking Changes
