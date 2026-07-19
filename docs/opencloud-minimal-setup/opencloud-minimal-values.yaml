@@ -40,11 +40,11 @@ opencloud:
         size: 10Gi
         accessMode: ReadWriteOnce
 
-httpRoute:
-  enabled: true
+# httpRoute:
+#   enabled: true
   
-  gateway:
-    name: cilium-gateway
-    className: cilium
-    namespace: "kube-system"
-    sectionName: https
+#   gateway:
+#     name: cilium-gateway
+#     className: cilium
+#     namespace: "kube-system"
+#     sectionName: https

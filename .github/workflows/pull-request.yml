@@ -41,7 +41,6 @@ jobs:
       - name: Install Helm chart
         run: |
           helm install opencloud-test charts/opencloud \
-            -f docs/opencloud-minimal-setup/opencloud-minimal-values.yaml \
             --namespace opencloud-test \
             --create-namespace \
             --wait \
@@ -91,6 +90,7 @@ jobs:
       - name: Install Helm chart
         run: |
           helm install opencloud-test charts/opencloud \
+            -f docs/opencloud-minimal-setup/opencloud-minimal-values.yaml \
             --namespace opencloud-test \
             --create-namespace \
             --wait \
