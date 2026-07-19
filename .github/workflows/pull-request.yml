@@ -54,6 +54,61 @@ jobs:
             --namespace opencloud-test \
             --timeout=180s
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install e2e dependencies
+        working-directory: charts/opencloud/tests/e2e
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: charts/opencloud/tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Port-forward OpenCloud service
+        run: |
+          OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep 'opencloud' | head -n 1)
+          if [ -z "$OC_SERVICE" ]; then
+            echo "OpenCloud service not found in namespace opencloud-test"
+            kubectl get svc -n opencloud-test
+            exit 1
+          fi
+
+          echo "Using service: $OC_SERVICE"
+          kubectl port-forward -n opencloud-test "svc/$OC_SERVICE" 8080:80 > /tmp/opencloud-port-forward.log 2>&1 &
+
+          for i in {1..30}; do
+            if curl -sSf http://127.0.0.1:8080 >/dev/null 2>&1; then
+              echo "OpenCloud is reachable at http://127.0.0.1:8080"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "OpenCloud was not reachable after port-forward"
+          cat /tmp/opencloud-port-forward.log || true
+          exit 1
+
+      - name: Run Playwright e2e tests
+        working-directory: charts/opencloud/tests/e2e
+        env:
+          OPENCLOUD_BASE_URL: http://127.0.0.1:8080
+          OPENCLOUD_USERNAME: admin
+          OPENCLOUD_PASSWORD: admin
+          OPENCLOUD_IGNORE_HTTPS_ERRORS: 'true'
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: charts/opencloud/tests/e2e/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
       # Debug if installation fails
       - name: Debug pods if failed
         if: failure()
@@ -64,3 +119,5 @@ jobs:
           kubectl describe pods -A
           echo "==== Events ===="
           kubectl get events -A
+
+      
