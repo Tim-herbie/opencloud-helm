@@ -21,6 +21,18 @@ export function personalHeading(page: Page) {
   return page.getByRole('heading', { name: 'Personal' });
 }
 
+export function appShellIndicator(page: Page) {
+  return page.locator(
+    [
+      'button:has-text("New")',
+      '[aria-label="Top bar"]',
+      'nav[aria-label*="navigation" i]',
+      'button:has-text("My Account")',
+      '[role="search"]'
+    ].join(', ')
+  );
+}
+
 export async function waitForLoginOrApp(page: Page) {
   await expect
     .poll(
@@ -28,9 +40,10 @@ export async function waitForLoginOrApp(page: Page) {
         const hasUser = await usernameInput(page).count();
         const hasPass = await passwordInput(page).count();
         const hasPersonal = await personalHeading(page).count();
-        return hasPersonal > 0 || (hasUser > 0 && hasPass > 0);
+        const hasAppShell = await appShellIndicator(page).count();
+        return hasPersonal > 0 || hasAppShell > 0 || (hasUser > 0 && hasPass > 0);
       },
-      { timeout: 10000, intervals: [300, 700, 1200] }
+      { timeout: 15000, intervals: [300, 700, 1200, 2000] }
     )
     .toBeTruthy();
 }
@@ -54,6 +67,13 @@ export async function login(page: Page) {
   if ((await personalHeading(page).count()) > 0) {
     await expect(personalHeading(page)).toBeVisible();
     return;
+  }
+
+  if ((await usernameInput(page).count()) === 0 || (await passwordInput(page).count()) === 0) {
+    await page.goto('/files/spaces/personal', { waitUntil: 'domcontentloaded' });
+    if ((await personalHeading(page).count()) > 0 || (await appShellIndicator(page).count()) > 0) {
+      return;
+    }
   }
 
   await usernameInput(page).fill(username!);

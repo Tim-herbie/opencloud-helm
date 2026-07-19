@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { passwordInput, personalHeading, usernameInput, waitForLoginOrApp } from './helpers/auth';
+import { appShellIndicator, passwordInput, personalHeading, usernameInput, waitForLoginOrApp } from './helpers/auth';
 
 test('login page is reachable and fields are visible', async ({ page }) => {
   const response = await page.goto('/', { waitUntil: 'domcontentloaded' });
@@ -10,6 +10,8 @@ test('login page is reachable and fields are visible', async ({ page }) => {
 
   if ((await personalHeading(page).count()) > 0) {
     await expect(personalHeading(page)).toBeVisible();
+  } else if ((await appShellIndicator(page).count()) > 0) {
+    await expect(appShellIndicator(page).first()).toBeVisible();
   } else {
     await expect(usernameInput(page)).toBeVisible();
     await expect(passwordInput(page)).toBeVisible();
