@@ -119,6 +119,7 @@ jobs:
 
       - name: Port-forward OpenCloud service and run e2e tests
         run: |
+          OC_HOST=opencloud.my-domain.de
           OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-opencloud$' | head -n 1)
           if [ -z "$OC_SERVICE" ]; then
             echo "OpenCloud service not found in namespace opencloud-test"
@@ -137,27 +138,29 @@ jobs:
           kubectl port-forward -n opencloud-test "svc/$OC_SERVICE" 8080:$OC_PORT > /tmp/opencloud-port-forward.log 2>&1 &
           PF_PID=$!
 
+          echo "127.0.0.1 $OC_HOST" | sudo tee -a /etc/hosts
+
           cleanup() {
             kill "$PF_PID" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
 
           for i in {1..30}; do
-            if curl -sSf http://127.0.0.1:8080 >/dev/null 2>&1; then
-              echo "OpenCloud is reachable at http://127.0.0.1:8080"
+            if curl -sSf "http://$OC_HOST:8080" >/dev/null 2>&1; then
+              echo "OpenCloud is reachable at http://$OC_HOST:8080"
               break
             fi
             sleep 1
           done
 
-          if ! curl -sSf http://127.0.0.1:8080 >/dev/null 2>&1; then
+          if ! curl -sSf "http://$OC_HOST:8080" >/dev/null 2>&1; then
             echo "OpenCloud was not reachable after port-forward"
             cat /tmp/opencloud-port-forward.log || true
             exit 1
           fi
 
           cd charts/opencloud/tests/e2e
-          OPENCLOUD_BASE_URL=http://127.0.0.1:8080 \
+          OPENCLOUD_BASE_URL="http://$OC_HOST:8080" \
           OPENCLOUD_USERNAME=admin \
           OPENCLOUD_PASSWORD=admin \
           OPENCLOUD_IGNORE_HTTPS_ERRORS='true' \
