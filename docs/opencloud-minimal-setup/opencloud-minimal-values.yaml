@@ -21,6 +21,57 @@ opencloud:
 
   createDemoUsers: true # necessary for admin user creation
 
+  config:
+    csp: |-
+      directives:
+        child-src:
+          - '''self'''
+        connect-src:
+          - '''self'''
+          - 'blob:'
+          - 'http://companion.my-domain.de/'
+          - 'ws://companion.my-domain.de/'
+          - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
+          - 'http://keycloak.my-domain.de/'
+        default-src:
+          - '''none'''
+        font-src:
+          - '''self'''
+        frame-ancestors:
+          - '''self'''
+        frame-src:
+          - '''self'''
+          - 'blob:'
+          - 'https://embed.diagrams.net/'
+          - 'http://collabora.my-domain.de/'
+          - 'https://docs.opencloud.eu'
+        img-src:
+          - '''self'''
+          - 'data:'
+          - 'blob:'
+          - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
+          - 'http://collabora.my-domain.de/'
+        manifest-src:
+          - '''self'''
+        media-src:
+          - '''self'''
+        object-src:
+          - '''self'''
+          - 'blob:'
+        script-src:
+          - '''self'''
+          - '''unsafe-inline'''
+          - 'http://opencloud.my-domain.de/'
+        script-src-elem:
+          - '''self'''
+          - '''unsafe-inline'''
+          - 'http://opencloud.my-domain.de/'
+        style-src:
+          - '''self'''
+          - '''unsafe-inline'''
+        worker-src:
+          - '''self'''
+
   excludeServices: [] # necessary that idp runs
 
   persistence:
