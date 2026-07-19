@@ -144,6 +144,7 @@ jobs:
       - name: Port-forward OpenCloud service and run e2e tests
         run: |
           OC_HOST=opencloud.my-domain.de
+          OC_HOST_COLLABORA=collabora.my-domain.de
           OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-opencloud$' | head -n 1)
           if [ -z "$OC_SERVICE" ]; then
             echo "OpenCloud service not found in namespace opencloud-test"
@@ -163,6 +164,8 @@ jobs:
           PF_PID=$!
 
           echo "127.0.0.1 $OC_HOST" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 $OC_HOST_COLLABORA" | sudo tee -a /etc/hosts
+
 
           cleanup() {
             kill "$PF_PID" >/dev/null 2>&1 || true
