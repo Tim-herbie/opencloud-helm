@@ -17,6 +17,24 @@ export function passwordInput(page: Page) {
     .first();
 }
 
+export function personalHeading(page: Page) {
+  return page.getByRole('heading', { name: 'Personal' });
+}
+
+export async function waitForLoginOrApp(page: Page) {
+  await expect
+    .poll(
+      async () => {
+        const hasUser = await usernameInput(page).count();
+        const hasPass = await passwordInput(page).count();
+        const hasPersonal = await personalHeading(page).count();
+        return hasPersonal > 0 || (hasUser > 0 && hasPass > 0);
+      },
+      { timeout: 10000, intervals: [300, 700, 1200] }
+    )
+    .toBeTruthy();
+}
+
 export function randomLetters(length: number): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz';
   let result = '';
@@ -31,6 +49,13 @@ export async function login(page: Page) {
   expect(password, 'Missing OPENCLOUD_PASSWORD. Set it in charts/opencloud/tests/e2e/.env').toBeTruthy();
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  await waitForLoginOrApp(page);
+  if ((await personalHeading(page).count()) > 0) {
+    await expect(personalHeading(page)).toBeVisible();
+    return;
+  }
+
   await usernameInput(page).fill(username!);
   await passwordInput(page).fill(password!);
 
@@ -44,5 +69,5 @@ export async function login(page: Page) {
     submit.click()
   ]);
 
-  await expect(page.getByRole('heading', { name: 'Personal' })).toBeVisible();
+  await expect(personalHeading(page)).toBeVisible();
 }
