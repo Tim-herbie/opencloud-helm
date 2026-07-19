@@ -86,30 +86,6 @@ jobs:
       - name: Create Kind cluster
         uses: helm/kind-action@v1
 
-      - name: Configure CoreDNS for test domains
-        run: |
-          kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}' > /tmp/Corefile
-
-          if ! grep -q 'opencloud.my-domain.de' /tmp/Corefile; then
-            awk '
-              /kubernetes cluster.local in-addr.arpa ip6.arpa/ && !done {
-                print "        rewrite name exact opencloud.my-domain.de opencloud-test-opencloud.opencloud-test.svc.cluster.local"
-                print "        rewrite name exact collabora.my-domain.de opencloud-test-collabora.opencloud-test.svc.cluster.local"
-                print "        rewrite name exact wopiserver.my-domain.de opencloud-test-collaboration.opencloud-test.svc.cluster.local"
-                print "        rewrite name exact companion.my-domain.de opencloud-test-opencloud.opencloud-test.svc.cluster.local"
-                done=1
-              }
-              { print }
-            ' /tmp/Corefile > /tmp/Corefile.patched
-
-            kubectl -n kube-system create configmap coredns \
-              --from-file=Corefile=/tmp/Corefile.patched \
-              -o yaml --dry-run=client | kubectl apply -f -
-
-            kubectl -n kube-system rollout restart deployment coredns
-            kubectl -n kube-system rollout status deployment coredns --timeout=120s
-          fi
-
       # Install Helm chart in test namespace
       - name: Install Helm chart
         run: |
@@ -143,8 +119,8 @@ jobs:
 
       - name: Port-forward OpenCloud service and run e2e tests
         run: |
-          OC_HOST=opencloud.my-domain.de
-          OC_HOST_COLLABORA=collabora.my-domain.de
+          OC_HOST=opencloud.127.0.0.1.nip.io
+          COLLABORA_HOST=collabora.127.0.0.1.nip.io
           OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-opencloud$' | head -n 1)
           if [ -z "$OC_SERVICE" ]; then
             echo "OpenCloud service not found in namespace opencloud-test"
@@ -163,12 +139,28 @@ jobs:
           kubectl port-forward -n opencloud-test "svc/$OC_SERVICE" 8080:$OC_PORT > /tmp/opencloud-port-forward.log 2>&1 &
           PF_PID=$!
 
-          echo "127.0.0.1 $OC_HOST" | sudo tee -a /etc/hosts
-          echo "127.0.0.1 $OC_HOST_COLLABORA" | sudo tee -a /etc/hosts
+          COLLABORA_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-collabora$' | head -n 1)
+          if [ -z "$COLLABORA_SERVICE" ]; then
+            echo "Collabora service not found in namespace opencloud-test"
+            kubectl get svc -n opencloud-test
+            exit 1
+          fi
+
+          COLLABORA_PORT=$(kubectl get svc -n opencloud-test "$COLLABORA_SERVICE" -o jsonpath='{.spec.ports[0].port}')
+          if [ -z "$COLLABORA_PORT" ]; then
+            echo "No service port found for $COLLABORA_SERVICE"
+            kubectl get svc -n opencloud-test "$COLLABORA_SERVICE" -o yaml
+            exit 1
+          fi
+
+          echo "Using service: $COLLABORA_SERVICE (port $COLLABORA_PORT)"
+          kubectl port-forward -n opencloud-test "svc/$COLLABORA_SERVICE" 9980:$COLLABORA_PORT > /tmp/collabora-port-forward.log 2>&1 &
+          COLLABORA_PF_PID=$!
 
 
           cleanup() {
             kill "$PF_PID" >/dev/null 2>&1 || true
+            kill "$COLLABORA_PF_PID" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
 
@@ -180,9 +172,23 @@ jobs:
             sleep 1
           done
 
+          for i in {1..30}; do
+            if curl -sSf "http://$COLLABORA_HOST:9980" >/dev/null 2>&1; then
+              echo "Collabora is reachable at http://$COLLABORA_HOST:9980"
+              break
+            fi
+            sleep 1
+          done
+
           if ! curl -sSf "http://$OC_HOST:8080" >/dev/null 2>&1; then
             echo "OpenCloud was not reachable after port-forward"
             cat /tmp/opencloud-port-forward.log || true
+            exit 1
+          fi
+
+          if ! curl -sSf "http://$COLLABORA_HOST:9980" >/dev/null 2>&1; then
+            echo "Collabora was not reachable after port-forward"
+            cat /tmp/collabora-port-forward.log || true
             exit 1
           fi
 

@@ -1,10 +1,10 @@
 global:
   domain:
-    opencloud: opencloud.my-domain.de
-    wopi: wopiserver.my-domain.de
-    collabora: collabora.my-domain.de
-    onlyoffice: onlyoffice.my-domain.de
-    companion: companion.my-domain.de 
+    opencloud: opencloud.127.0.0.1.nip.io
+    wopi: wopiserver.127.0.0.1.nip.io
+    collabora: collabora.127.0.0.1.nip.io
+    onlyoffice: onlyoffice.127.0.0.1.nip.io
+    companion: companion.127.0.0.1.nip.io
 
 collabora:
   enabled: true
@@ -29,10 +29,10 @@ opencloud:
         connect-src:
           - '''self'''
           - 'blob:'
-          - 'http://companion.my-domain.de/'
-          - 'ws://companion.my-domain.de/'
+          - 'http://companion.127.0.0.1.nip.io/'
+          - 'ws://companion.127.0.0.1.nip.io/'
           - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-          - 'http://keycloak.my-domain.de/'
+          - 'http://keycloak.127.0.0.1.nip.io/'
         default-src:
           - '''none'''
         font-src:
@@ -43,14 +43,14 @@ opencloud:
           - '''self'''
           - 'blob:'
           - 'https://embed.diagrams.net/'
-          - 'http://collabora.my-domain.de/'
+          - 'http://collabora.127.0.0.1.nip.io/'
           - 'https://docs.opencloud.eu'
         img-src:
           - '''self'''
           - 'data:'
           - 'blob:'
           - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-          - 'http://collabora.my-domain.de/'
+          - 'http://collabora.127.0.0.1.nip.io/'
         manifest-src:
           - '''self'''
         media-src:
@@ -61,11 +61,11 @@ opencloud:
         script-src:
           - '''self'''
           - '''unsafe-inline'''
-          - 'http://opencloud.my-domain.de/'
+          - 'http://opencloud.127.0.0.1.nip.io/'
         script-src-elem:
           - '''self'''
           - '''unsafe-inline'''
-          - 'http://opencloud.my-domain.de/'
+          - 'http://opencloud.127.0.0.1.nip.io/'
         style-src:
           - '''self'''
           - '''unsafe-inline'''
