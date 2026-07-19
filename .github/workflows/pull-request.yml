@@ -86,6 +86,30 @@ jobs:
       - name: Create Kind cluster
         uses: helm/kind-action@v1
 
+      - name: Configure CoreDNS for test domains
+        run: |
+          kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}' > /tmp/Corefile
+
+          if ! grep -q 'opencloud.my-domain.de' /tmp/Corefile; then
+            awk '
+              /kubernetes cluster.local in-addr.arpa ip6.arpa/ && !done {
+                print "        rewrite name exact opencloud.my-domain.de opencloud-test-opencloud.opencloud-test.svc.cluster.local"
+                print "        rewrite name exact collabora.my-domain.de opencloud-test-collabora.opencloud-test.svc.cluster.local"
+                print "        rewrite name exact wopiserver.my-domain.de opencloud-test-collaboration.opencloud-test.svc.cluster.local"
+                print "        rewrite name exact companion.my-domain.de opencloud-test-opencloud.opencloud-test.svc.cluster.local"
+                done=1
+              }
+              { print }
+            ' /tmp/Corefile > /tmp/Corefile.patched
+
+            kubectl -n kube-system create configmap coredns \
+              --from-file=Corefile=/tmp/Corefile.patched \
+              -o yaml --dry-run=client | kubectl apply -f -
+
+            kubectl -n kube-system rollout restart deployment coredns
+            kubectl -n kube-system rollout status deployment coredns --timeout=120s
+          fi
+
       # Install Helm chart in test namespace
       - name: Install Helm chart
         run: |
