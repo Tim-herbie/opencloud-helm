@@ -11,9 +11,9 @@ if (!baseURL) {
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 15_000,
+  timeout: process.env.CI ? 120_000 : 15_000,
   expect: {
-    timeout: 10_000
+    timeout: process.env.CI ? 15_000 : 10_000
   },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

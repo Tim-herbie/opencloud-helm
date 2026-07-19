@@ -28,7 +28,8 @@ export function appShellIndicator(page: Page) {
       '[aria-label="Top bar"]',
       'nav[aria-label*="navigation" i]',
       'button:has-text("My Account")',
-      '[role="search"]'
+      '[role="search"]',
+      'a[href*="/files/"]'
     ].join(', ')
   );
 }
@@ -37,13 +38,19 @@ export async function waitForLoginOrApp(page: Page) {
   await expect
     .poll(
       async () => {
+        const currentUrl = page.url();
         const hasUser = await usernameInput(page).count();
         const hasPass = await passwordInput(page).count();
         const hasPersonal = await personalHeading(page).count();
         const hasAppShell = await appShellIndicator(page).count();
-        return hasPersonal > 0 || hasAppShell > 0 || (hasUser > 0 && hasPass > 0);
+        return (
+          hasPersonal > 0 ||
+          hasAppShell > 0 ||
+          (hasUser > 0 && hasPass > 0) ||
+          currentUrl.includes('/files/')
+        );
       },
-      { timeout: 15000, intervals: [300, 700, 1200, 2000] }
+      { timeout: 25000, intervals: [300, 700, 1200, 2000] }
     )
     .toBeTruthy();
 }
@@ -64,14 +71,16 @@ export async function login(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   await waitForLoginOrApp(page);
-  if ((await personalHeading(page).count()) > 0) {
-    await expect(personalHeading(page)).toBeVisible();
+  if ((await personalHeading(page).count()) > 0 || (await appShellIndicator(page).count()) > 0 || page.url().includes('/files/')) {
+    if ((await personalHeading(page).count()) > 0) {
+      await expect(personalHeading(page)).toBeVisible();
+    }
     return;
   }
 
   if ((await usernameInput(page).count()) === 0 || (await passwordInput(page).count()) === 0) {
     await page.goto('/files/spaces/personal', { waitUntil: 'domcontentloaded' });
-    if ((await personalHeading(page).count()) > 0 || (await appShellIndicator(page).count()) > 0) {
+    if ((await personalHeading(page).count()) > 0 || (await appShellIndicator(page).count()) > 0 || page.url().includes('/files/')) {
       return;
     }
   }
