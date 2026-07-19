@@ -69,15 +69,22 @@ jobs:
 
       - name: Port-forward OpenCloud service
         run: |
-          OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep 'opencloud' | head -n 1)
+          OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-opencloud$' | head -n 1)
           if [ -z "$OC_SERVICE" ]; then
             echo "OpenCloud service not found in namespace opencloud-test"
             kubectl get svc -n opencloud-test
             exit 1
           fi
 
-          echo "Using service: $OC_SERVICE"
-          kubectl port-forward -n opencloud-test "svc/$OC_SERVICE" 8080:80 > /tmp/opencloud-port-forward.log 2>&1 &
+          OC_PORT=$(kubectl get svc -n opencloud-test "$OC_SERVICE" -o jsonpath='{.spec.ports[0].port}')
+          if [ -z "$OC_PORT" ]; then
+            echo "No service port found for $OC_SERVICE"
+            kubectl get svc -n opencloud-test "$OC_SERVICE" -o yaml
+            exit 1
+          fi
+
+          echo "Using service: $OC_SERVICE (port $OC_PORT)"
+          kubectl port-forward -n opencloud-test "svc/$OC_SERVICE" 8080:$OC_PORT > /tmp/opencloud-port-forward.log 2>&1 &
 
           for i in {1..30}; do
             if curl -sSf http://127.0.0.1:8080 >/dev/null 2>&1; then
