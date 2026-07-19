@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint-and-test:
+  helm-validation:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -41,6 +41,56 @@ jobs:
       - name: Install Helm chart
         run: |
           helm install opencloud-test charts/opencloud \
+            -f docs/opencloud-minimal-setup/opencloud-minimal-values.yaml \
+            --namespace opencloud-test \
+            --create-namespace \
+            --wait \
+            --timeout 5m
+
+      # Verify pods become ready
+      - name: Wait for pods to be ready
+        run: |
+          kubectl wait --for=condition=Ready pod \
+            --all \
+            --namespace opencloud-test \
+            --timeout=180s
+
+      # Debug if validation job fails
+      - name: Debug pods if failed
+        if: failure()
+        run: |
+          echo "==== Pods ===="
+          kubectl get pods -A
+          echo "==== Describe Pods ===="
+          kubectl describe pods -A
+          echo "==== Events ===="
+          kubectl get events -A
+
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: 'latest'
+
+      # Create ephemeral Kubernetes cluster
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
+
+      # Install Helm chart in test namespace
+      - name: Install Helm chart
+        run: |
+          helm install opencloud-test charts/opencloud \
             --namespace opencloud-test \
             --create-namespace \
             --wait \
@@ -67,7 +117,7 @@ jobs:
         working-directory: charts/opencloud/tests/e2e
         run: npx playwright install --with-deps chromium
 
-      - name: Port-forward OpenCloud service
+      - name: Port-forward OpenCloud service and run e2e tests
         run: |
           OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-opencloud$' | head -n 1)
           if [ -z "$OC_SERVICE" ]; then
@@ -85,27 +135,33 @@ jobs:
 
           echo "Using service: $OC_SERVICE (port $OC_PORT)"
           kubectl port-forward -n opencloud-test "svc/$OC_SERVICE" 8080:$OC_PORT > /tmp/opencloud-port-forward.log 2>&1 &
+          PF_PID=$!
+
+          cleanup() {
+            kill "$PF_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
 
           for i in {1..30}; do
             if curl -sSf http://127.0.0.1:8080 >/dev/null 2>&1; then
               echo "OpenCloud is reachable at http://127.0.0.1:8080"
-              exit 0
+              break
             fi
             sleep 1
           done
 
-          echo "OpenCloud was not reachable after port-forward"
-          cat /tmp/opencloud-port-forward.log || true
-          exit 1
+          if ! curl -sSf http://127.0.0.1:8080 >/dev/null 2>&1; then
+            echo "OpenCloud was not reachable after port-forward"
+            cat /tmp/opencloud-port-forward.log || true
+            exit 1
+          fi
 
-      - name: Run Playwright e2e tests
-        working-directory: charts/opencloud/tests/e2e
-        env:
-          OPENCLOUD_BASE_URL: http://127.0.0.1:8080
-          OPENCLOUD_USERNAME: admin
-          OPENCLOUD_PASSWORD: admin
-          OPENCLOUD_IGNORE_HTTPS_ERRORS: 'true'
-        run: npx playwright test
+          cd charts/opencloud/tests/e2e
+          OPENCLOUD_BASE_URL=http://127.0.0.1:8080 \
+          OPENCLOUD_USERNAME=admin \
+          OPENCLOUD_PASSWORD=admin \
+          OPENCLOUD_IGNORE_HTTPS_ERRORS='true' \
+          npx playwright test
 
       - name: Upload Playwright report
         if: always()
@@ -116,7 +172,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      # Debug if installation fails
+      # Debug if e2e job fails
       - name: Debug pods if failed
         if: failure()
         run: |
