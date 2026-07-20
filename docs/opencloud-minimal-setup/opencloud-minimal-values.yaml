@@ -48,4 +48,3 @@ httpRoute:
     className: cilium
     namespace: "kube-system"
     sectionName: https
-    port: 8443
