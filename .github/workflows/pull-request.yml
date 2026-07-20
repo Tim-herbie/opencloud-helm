@@ -135,6 +135,14 @@ jobs:
 
           echo "------------"
 
+          kubectl -n traefik get gateway traefik-gateway -o yaml
+
+          echo "------------"
+
+          kubectl -n opencloud-test get gateway opencloud-gateway -o yaml
+
+          echo "------------"
+
           kubectl get httproute -A
 
           echo "------------"
@@ -148,6 +156,10 @@ jobs:
           echo "------------"
 
           curl -v http://localhost
+
+          echo "------------"
+
+          curl -v https://opencloud.127.0.0.1.nip.io
 
       # Verify pods become ready
       - name: Wait for pods to be ready
