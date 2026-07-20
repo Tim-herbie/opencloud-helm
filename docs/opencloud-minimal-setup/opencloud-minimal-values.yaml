@@ -47,4 +47,4 @@ httpRoute:
     name: cilium-gateway
     className: cilium
     namespace: "kube-system"
-    sectionName: https
+    sectionName: https-opencloud
