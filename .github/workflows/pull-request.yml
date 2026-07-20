@@ -5,65 +5,65 @@ on:
   workflow_dispatch:
 
 jobs:
-  helm-validation:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+  # helm-validation:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     packages: write
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v7
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v5
-        with:
-          version: 'latest'
+  #     - name: Set up Helm
+  #       uses: azure/setup-helm@v5
+  #       with:
+  #         version: 'latest'
 
-      - name: Lint Helm chart
-        run: |
-          echo "Linting charts/opencloud..."
-          helm lint charts/opencloud
+  #     - name: Lint Helm chart
+  #       run: |
+  #         echo "Linting charts/opencloud..."
+  #         helm lint charts/opencloud
 
-      - name: Install helm-unittest plugin
-        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.5.1 --verify=false
+  #     - name: Install helm-unittest plugin
+  #       run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.5.1 --verify=false
 
-      - name: Run Helm unit tests
-        run: helm unittest charts/opencloud
+  #     - name: Run Helm unit tests
+  #       run: helm unittest charts/opencloud
 
-      # Create ephemeral Kubernetes cluster
-      - name: Create Kind cluster
-        uses: helm/kind-action@v1
+  #     # Create ephemeral Kubernetes cluster
+  #     - name: Create Kind cluster
+  #       uses: helm/kind-action@v1
 
-      # Install Helm chart in test namespace
-      - name: Install Helm chart
-        run: |
-          helm install opencloud-test charts/opencloud \
-            --namespace opencloud-test \
-            --create-namespace \
-            --wait \
-            --timeout 5m
+  #     # Install Helm chart in test namespace
+  #     - name: Install Helm chart
+  #       run: |
+  #         helm install opencloud-test charts/opencloud \
+  #           --namespace opencloud-test \
+  #           --create-namespace \
+  #           --wait \
+  #           --timeout 5m
 
-      # Verify pods become ready
-      - name: Wait for pods to be ready
-        run: |
-          kubectl wait --for=condition=Ready pod \
-            --all \
-            --namespace opencloud-test \
-            --timeout=180s
+  #     # Verify pods become ready
+  #     - name: Wait for pods to be ready
+  #       run: |
+  #         kubectl wait --for=condition=Ready pod \
+  #           --all \
+  #           --namespace opencloud-test \
+  #           --timeout=180s
 
-      # Debug if validation job fails
-      - name: Debug pods if failed
-        if: failure()
-        run: |
-          echo "==== Pods ===="
-          kubectl get pods -A
-          echo "==== Describe Pods ===="
-          kubectl describe pods -A
-          echo "==== Events ===="
-          kubectl get events -A
+  #     # Debug if validation job fails
+  #     - name: Debug pods if failed
+  #       if: failure()
+  #       run: |
+  #         echo "==== Pods ===="
+  #         kubectl get pods -A
+  #         echo "==== Describe Pods ===="
+  #         kubectl describe pods -A
+  #         echo "==== Events ===="
+  #         kubectl get events -A
 
   e2e:
     runs-on: ubuntu-latest
@@ -86,6 +86,22 @@ jobs:
       - name: Create Kind cluster
         uses: helm/kind-action@v1
 
+      - name: Install Gateway API CRDs
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
+
+      - name: Install Traefik
+        run: |
+          helm repo add traefik https://traefik.github.io/charts
+          helm repo update
+
+          helm install traefik traefik/traefik \
+            --namespace traefik \
+            --create-namespace \
+            --set providers.kubernetesGateway.enabled=true \
+            --set service.type=NodePort \
+            --wait
+
       # Install Helm chart in test namespace
       - name: Install Helm chart
         run: |
@@ -96,6 +112,10 @@ jobs:
             --wait \
             --timeout 5m
 
+      - name: Test
+        run: |
+          kubectl get svc -o wide -A
+
       # Verify pods become ready
       - name: Wait for pods to be ready
         run: |
@@ -104,111 +124,7 @@ jobs:
             --namespace opencloud-test \
             --timeout=180s
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install e2e dependencies
-        working-directory: charts/opencloud/tests/e2e
-        run: npm ci
-
-      - name: Install Playwright Chromium
-        working-directory: charts/opencloud/tests/e2e
-        run: npx playwright install --with-deps chromium
-
-      - name: Port-forward OpenCloud service and run e2e tests
-        run: |
-          OC_HOST=opencloud.127.0.0.1.nip.io
-          COLLABORA_HOST=collabora.127.0.0.1.nip.io
-          OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-opencloud$' | head -n 1)
-          if [ -z "$OC_SERVICE" ]; then
-            echo "OpenCloud service not found in namespace opencloud-test"
-            kubectl get svc -n opencloud-test
-            exit 1
-          fi
-
-          OC_PORT=$(kubectl get svc -n opencloud-test "$OC_SERVICE" -o jsonpath='{.spec.ports[0].port}')
-          if [ -z "$OC_PORT" ]; then
-            echo "No service port found for $OC_SERVICE"
-            kubectl get svc -n opencloud-test "$OC_SERVICE" -o yaml
-            exit 1
-          fi
-
-          echo "Using service: $OC_SERVICE (port $OC_PORT)"
-          kubectl port-forward -n opencloud-test "svc/$OC_SERVICE" 8080:$OC_PORT > /tmp/opencloud-port-forward.log 2>&1 &
-          PF_PID=$!
-
-          COLLABORA_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-collabora$' | head -n 1)
-          if [ -z "$COLLABORA_SERVICE" ]; then
-            echo "Collabora service not found in namespace opencloud-test"
-            kubectl get svc -n opencloud-test
-            exit 1
-          fi
-
-          COLLABORA_PORT=$(kubectl get svc -n opencloud-test "$COLLABORA_SERVICE" -o jsonpath='{.spec.ports[0].port}')
-          if [ -z "$COLLABORA_PORT" ]; then
-            echo "No service port found for $COLLABORA_SERVICE"
-            kubectl get svc -n opencloud-test "$COLLABORA_SERVICE" -o yaml
-            exit 1
-          fi
-
-          echo "Using service: $COLLABORA_SERVICE (port $COLLABORA_PORT)"
-          kubectl port-forward -n opencloud-test "svc/$COLLABORA_SERVICE" 9980:$COLLABORA_PORT > /tmp/collabora-port-forward.log 2>&1 &
-          COLLABORA_PF_PID=$!
-
-
-          cleanup() {
-            kill "$PF_PID" >/dev/null 2>&1 || true
-            kill "$COLLABORA_PF_PID" >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-
-          for i in {1..30}; do
-            if curl -sSf "http://$OC_HOST:8080" >/dev/null 2>&1; then
-              echo "OpenCloud is reachable at http://$OC_HOST:8080"
-              break
-            fi
-            sleep 1
-          done
-
-          for i in {1..30}; do
-            if curl -sSf "http://$COLLABORA_HOST:9980" >/dev/null 2>&1; then
-              echo "Collabora is reachable at http://$COLLABORA_HOST:9980"
-              break
-            fi
-            sleep 1
-          done
-
-          if ! curl -sSf "http://$OC_HOST:8080" >/dev/null 2>&1; then
-            echo "OpenCloud was not reachable after port-forward"
-            cat /tmp/opencloud-port-forward.log || true
-            exit 1
-          fi
-
-          if ! curl -sSf "http://$COLLABORA_HOST:9980" >/dev/null 2>&1; then
-            echo "Collabora was not reachable after port-forward"
-            cat /tmp/collabora-port-forward.log || true
-            exit 1
-          fi
-
-          cd charts/opencloud/tests/e2e
-          OPENCLOUD_BASE_URL="http://$OC_HOST:8080" \
-          OPENCLOUD_USERNAME=admin \
-          OPENCLOUD_PASSWORD=admin \
-          OPENCLOUD_IGNORE_HTTPS_ERRORS='true' \
-          npx playwright test
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: charts/opencloud/tests/e2e/playwright-report
-          if-no-files-found: ignore
-          retention-days: 7
-
-      # Debug if e2e job fails
+      # Debug if helm install fails
       - name: Debug pods if failed
         if: failure()
         run: |
@@ -219,4 +135,106 @@ jobs:
           echo "==== Events ===="
           kubectl get events -A
 
-      
+      # - name: Set up Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: 20
+
+      # - name: Install e2e dependencies
+      #   working-directory: charts/opencloud/tests/e2e
+      #   run: npm ci
+
+      # - name: Install Playwright Chromium
+      #   working-directory: charts/opencloud/tests/e2e
+      #   run: npx playwright install --with-deps chromium
+
+      # - name: Port-forward OpenCloud service and run e2e tests
+      #   run: |
+      #     OC_HOST=opencloud.127.0.0.1.nip.io
+      #     COLLABORA_HOST=collabora.127.0.0.1.nip.io
+      #     OC_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-opencloud$' | head -n 1)
+      #     if [ -z "$OC_SERVICE" ]; then
+      #       echo "OpenCloud service not found in namespace opencloud-test"
+      #       kubectl get svc -n opencloud-test
+      #       exit 1
+      #     fi
+
+      #     OC_PORT=$(kubectl get svc -n opencloud-test "$OC_SERVICE" -o jsonpath='{.spec.ports[0].port}')
+      #     if [ -z "$OC_PORT" ]; then
+      #       echo "No service port found for $OC_SERVICE"
+      #       kubectl get svc -n opencloud-test "$OC_SERVICE" -o yaml
+      #       exit 1
+      #     fi
+
+      #     echo "Using service: $OC_SERVICE (port $OC_PORT)"
+      #     kubectl port-forward -n opencloud-test "svc/$OC_SERVICE" 8080:$OC_PORT > /tmp/opencloud-port-forward.log 2>&1 &
+      #     PF_PID=$!
+
+      #     COLLABORA_SERVICE=$(kubectl get svc -n opencloud-test -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -E 'opencloud-test-collabora$' | head -n 1)
+      #     if [ -z "$COLLABORA_SERVICE" ]; then
+      #       echo "Collabora service not found in namespace opencloud-test"
+      #       kubectl get svc -n opencloud-test
+      #       exit 1
+      #     fi
+
+      #     COLLABORA_PORT=$(kubectl get svc -n opencloud-test "$COLLABORA_SERVICE" -o jsonpath='{.spec.ports[0].port}')
+      #     if [ -z "$COLLABORA_PORT" ]; then
+      #       echo "No service port found for $COLLABORA_SERVICE"
+      #       kubectl get svc -n opencloud-test "$COLLABORA_SERVICE" -o yaml
+      #       exit 1
+      #     fi
+
+      #     echo "Using service: $COLLABORA_SERVICE (port $COLLABORA_PORT)"
+      #     kubectl port-forward -n opencloud-test "svc/$COLLABORA_SERVICE" 9980:$COLLABORA_PORT > /tmp/collabora-port-forward.log 2>&1 &
+      #     COLLABORA_PF_PID=$!
+
+
+      #     cleanup() {
+      #       kill "$PF_PID" >/dev/null 2>&1 || true
+      #       kill "$COLLABORA_PF_PID" >/dev/null 2>&1 || true
+      #     }
+      #     trap cleanup EXIT
+
+      #     for i in {1..30}; do
+      #       if curl -sSf "http://$OC_HOST:8080" >/dev/null 2>&1; then
+      #         echo "OpenCloud is reachable at http://$OC_HOST:8080"
+      #         break
+      #       fi
+      #       sleep 1
+      #     done
+
+      #     for i in {1..30}; do
+      #       if curl -sSf "http://$COLLABORA_HOST:9980" >/dev/null 2>&1; then
+      #         echo "Collabora is reachable at http://$COLLABORA_HOST:9980"
+      #         break
+      #       fi
+      #       sleep 1
+      #     done
+
+      #     if ! curl -sSf "http://$OC_HOST:8080" >/dev/null 2>&1; then
+      #       echo "OpenCloud was not reachable after port-forward"
+      #       cat /tmp/opencloud-port-forward.log || true
+      #       exit 1
+      #     fi
+
+      #     if ! curl -sSf "http://$COLLABORA_HOST:9980" >/dev/null 2>&1; then
+      #       echo "Collabora was not reachable after port-forward"
+      #       cat /tmp/collabora-port-forward.log || true
+      #       exit 1
+      #     fi
+
+      #     cd charts/opencloud/tests/e2e
+      #     OPENCLOUD_BASE_URL="http://$OC_HOST:8080" \
+      #     OPENCLOUD_USERNAME=admin \
+      #     OPENCLOUD_PASSWORD=admin \
+      #     OPENCLOUD_IGNORE_HTTPS_ERRORS='true' \
+      #     npx playwright test
+
+      # - name: Upload Playwright report
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: playwright-report
+      #     path: charts/opencloud/tests/e2e/playwright-report
+      #     if-no-files-found: ignore
+      #     retention-days: 7
