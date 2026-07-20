@@ -103,13 +103,18 @@ jobs:
             -f .github/kind/traefik-values.yaml \
             --wait
 
+      - name: Create opencloud-test namespace and create tls secret
+        run: |
+          kubectl create namespace opencloud-test || true
+          kubectl create secret tls opencloud-tls-secret \
+            --namespace opencloud-test
+
       # Install Helm chart in test namespace
       - name: Install Helm chart
         run: |
           helm install opencloud-test charts/opencloud \
             -f .github/kind/opencloud-minimal-values.yaml \
             --namespace opencloud-test \
-            --create-namespace \
             --wait \
             --timeout 5m
 
