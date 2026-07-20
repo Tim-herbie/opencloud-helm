@@ -112,9 +112,10 @@ jobs:
             --wait \
             --timeout 5m
 
-      - name: Test
+      - name: Debug Traefik
         run: |
-          kubectl get svc -o wide -A
+          helm get values traefik -n traefik
+          kubectl get svc -n traefik -o yaml
 
       # Verify pods become ready
       - name: Wait for pods to be ready
