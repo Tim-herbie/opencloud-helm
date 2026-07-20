@@ -52,3 +52,4 @@ httpRoute:
     className: traefik
     sectionName: https-opencloud
     port: 8443
+    wildcard: "*.127.0.0.1.nip.io"

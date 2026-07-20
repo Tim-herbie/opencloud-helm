@@ -21,7 +21,7 @@ spec:
   listeners:
     - name: {{ .Values.httpRoute.gateway.sectionName }}
       port: {{ .Values.httpRoute.gateway.port }}
-      hostname: {{ .Values.global.domain.opencloud | quote }}
+      hostname: {{ .Values.httpRoute.gateway.wildcard | quote }}
 
       {{- if .Values.global.tls.enabled }}
       protocol: HTTPS
