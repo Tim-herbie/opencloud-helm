@@ -149,10 +149,6 @@ jobs:
 
           echo "------------"
 
-          kubectl -n traefik get gateway traefik-gateway -o yaml
-
-          echo "------------"
-
           kubectl -n opencloud-test get gateway opencloud-gateway -o yaml
 
           echo "------------"
