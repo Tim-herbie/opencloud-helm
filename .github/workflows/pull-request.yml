@@ -120,6 +120,18 @@ jobs:
         run: |
           kubectl get svc -o wide -A
 
+          echo "------------"
+
+          kubectl get gatewayclass
+
+          echo "------------"
+
+          kubectl get gateway -A
+
+          echo "------------"
+
+          kubectl get httproute -A
+
       # Verify pods become ready
       - name: Wait for pods to be ready
         run: |
