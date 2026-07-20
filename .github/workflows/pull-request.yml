@@ -100,17 +100,14 @@ jobs:
           helm install traefik traefik/traefik \
             --namespace traefik \
             --create-namespace \
-            --set providers.kubernetesGateway.enabled=true \
-            --set service.spec.type=NodePort \
-            --set service.spec.ports.web.nodePort=30080 \
-            --set service.spec.ports.websecure.nodePort=30443 \
+            -f .github/kind/traefik-values.yaml \
             --wait
 
       # Install Helm chart in test namespace
       - name: Install Helm chart
         run: |
           helm install opencloud-test charts/opencloud \
-            -f docs/opencloud-minimal-setup/opencloud-minimal-values.yaml \
+            -f .github/kind/opencloud-minimal-values.yaml \
             --namespace opencloud-test \
             --create-namespace \
             --wait \

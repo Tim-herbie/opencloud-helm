@@ -1,10 +1,10 @@
 global:
   domain:
-    opencloud: opencloud.127.0.0.1.nip.io
-    wopi: wopiserver.127.0.0.1.nip.io
-    collabora: collabora.127.0.0.1.nip.io
-    onlyoffice: onlyoffice.127.0.0.1.nip.io
-    companion: companion.127.0.0.1.nip.io
+    opencloud: opencloud.my-domain.de
+    wopi: wopiserver.my-domain.de
+    collabora: collabora.my-domain.de
+    onlyoffice: onlyoffice.my-domain.de
+    companion: companion.my-domain.de 
 
 collabora:
   enabled: true
@@ -20,57 +20,6 @@ opencloud:
     enabled: false
 
   createDemoUsers: true # necessary for admin user creation
-
-  # config:
-  #   csp: |-
-  #     directives:
-  #       child-src:
-  #         - '''self'''
-  #       connect-src:
-  #         - '''self'''
-  #         - 'blob:'
-  #         - 'http://companion.127.0.0.1.nip.io/'
-  #         - 'ws://companion.127.0.0.1.nip.io/'
-  #         - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-  #         - 'http://keycloak.127.0.0.1.nip.io/'
-  #       default-src:
-  #         - '''none'''
-  #       font-src:
-  #         - '''self'''
-  #       frame-ancestors:
-  #         - '''self'''
-  #       frame-src:
-  #         - '''self'''
-  #         - 'blob:'
-  #         - 'https://embed.diagrams.net/'
-  #         - 'http://collabora.127.0.0.1.nip.io/'
-  #         - 'https://docs.opencloud.eu'
-  #       img-src:
-  #         - '''self'''
-  #         - 'data:'
-  #         - 'blob:'
-  #         - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-  #         - 'http://collabora.127.0.0.1.nip.io/'
-  #       manifest-src:
-  #         - '''self'''
-  #       media-src:
-  #         - '''self'''
-  #       object-src:
-  #         - '''self'''
-  #         - 'blob:'
-  #       script-src:
-  #         - '''self'''
-  #         - '''unsafe-inline'''
-  #         - 'http://opencloud.127.0.0.1.nip.io/'
-  #       script-src-elem:
-  #         - '''self'''
-  #         - '''unsafe-inline'''
-  #         - 'http://opencloud.127.0.0.1.nip.io/'
-  #       style-src:
-  #         - '''self'''
-  #         - '''unsafe-inline'''
-  #       worker-src:
-  #         - '''self'''
 
   excludeServices: [] # necessary that idp runs
 
@@ -95,6 +44,7 @@ httpRoute:
   enabled: true
   
   gateway:
-    create: true
-    className: traefik
+    name: cilium-gateway
+    className: cilium
+    namespace: "kube-system"
     sectionName: https
