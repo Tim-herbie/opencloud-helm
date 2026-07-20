@@ -312,9 +312,18 @@ jobs:
 
       # Debug if helm install fails
       - name: Debug opencloud pod if failed
-        if: failure()
         run: |
           kubectl -n opencloud-test logs deploy/opencloud-test-opencloud
+
+      # Debug if helm install fails
+      - name: Debug collabora pod if failed
+        run: |
+          kubectl -n opencloud-test logs deploy/opencloud-test-collabora
+
+      # Debug if helm install fails
+      - name: Debug collaboration pod if failed
+        run: |
+          kubectl -n opencloud-test logs deploy/opencloud-test-collaboration
 
       - name: Upload Playwright report
         if: always()
