@@ -125,7 +125,7 @@ jobs:
           kubectl get nodes
 
           echo "------------"
-          
+
           kubectl get svc -o wide -A
 
           echo "------------"
@@ -146,7 +146,15 @@ jobs:
 
           echo "------------"
 
-          curl
+          curl -v http://localhost:30367
+
+          echo "------------"
+
+          docker ps
+
+          echo "------------"
+
+          docker port kind-control-plane
 
       # Verify pods become ready
       - name: Wait for pods to be ready
