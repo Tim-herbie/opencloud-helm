@@ -6,9 +6,9 @@ global:
     onlyoffice: onlyoffice.127.0.0.1.nip.io
     companion: companion.127.0.0.1.nip.io
 
-    tls:
-      enabled: true
-      secretName: opencloud-tls-secret
+  tls:
+    enabled: true
+    secretName: opencloud-tls-secret
 
 collabora:
   enabled: true
