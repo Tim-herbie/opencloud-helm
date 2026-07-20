@@ -12,34 +12,28 @@ metadata:
   {{- end }}
 spec:
   gatewayClassName: {{ .Values.httpRoute.gateway.className }}
+
   {{- with .Values.httpRoute.gateway.infrastructure }}
   infrastructure:
-      {{- toYaml . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
+
   listeners:
     - name: {{ .Values.httpRoute.gateway.sectionName }}
-      {{- if .Values.global.tls.enabled }}
-      protocol: HTTPS
-      {{- else }}
-      protocol: HTTP
-      {{- end }}
       port: {{ .Values.httpRoute.gateway.port }}
       hostname: {{ .Values.global.domain.opencloud | quote }}
+
       {{- if .Values.global.tls.enabled }}
+      protocol: HTTPS
       tls:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.global.tls.secretName }}
             namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+      {{- else }}
+      protocol: HTTP
       {{- end }}
-      allowedRoutes:
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-    {{- if .Values.oidc.enabled }}
-      {{- end }}
+
       allowedRoutes:
         namespaces:
           from: Selector
