@@ -90,8 +90,9 @@ jobs:
 
       - name: Install Gateway API CRDs
         run: |
-          kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
-
+          # kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
+          kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+      
       - name: Install Traefik
         run: |
           helm repo add traefik https://traefik.github.io/charts
@@ -131,44 +132,8 @@ jobs:
         run: |
           helm get values traefik -n traefik
 
-      - name: Debug Traefik Service
+      - name: Test opencloud endpoint
         run: |
-          kubectl get nodes
-
-          echo "------------"
-
-          kubectl get svc -o wide -A
-
-          echo "------------"
-
-          kubectl get gatewayclass
-
-          echo "------------"
-
-          kubectl get gateway -A
-
-          echo "------------"
-
-          kubectl -n opencloud-test get gateway opencloud-gateway -o yaml
-
-          echo "------------"
-
-          kubectl get httproute -A
-
-          echo "------------"
-
-          kubectl -n opencloud-test get httproute opencloud-test-httproute -o yaml
-
-          echo "------------"
-
-          docker ps
-
-          echo "------------"
-
-          curl -v http://localhost
-
-          echo "------------"
-
           curl -vk https://opencloud.127.0.0.1.nip.io
 
       # Verify pods become ready
@@ -211,6 +176,12 @@ jobs:
           OPENCLOUD_PASSWORD=admin \
           OPENCLOUD_IGNORE_HTTPS_ERRORS='true' \
           npx playwright test
+
+      # Debug if helm install fails
+      - name: Debug opencloud pod if failed
+        if: failure()
+        run: |
+          kubectl -n opencloud-test logs deploy/opencloud-test-opencloud
 
       - name: Upload Playwright report
         if: always()
