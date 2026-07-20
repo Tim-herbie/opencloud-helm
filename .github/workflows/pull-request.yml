@@ -273,6 +273,10 @@ jobs:
 
           kubectl -n opencloud-test get httproutes opencloud-test-collabora-httproute -o yaml
 
+          echo "-------------------"
+
+          kubectl -n opencloud-test get gateway opencloud-gateway -o yaml
+
       - name: Test opencloud endpoint
         run: |
           curl -vk https://opencloud.127.0.0.1.nip.io
