@@ -106,7 +106,24 @@ jobs:
 
       - name: Configure CoreDNS for opencloud domain
         run: |
-          TRAEFIK_SERVICE="$(kubectl get svc -n traefik -l app.kubernetes.io/instance=traefik -o jsonpath='{.items[0].metadata.name}')"
+          TRAEFIK_SERVICE=""
+
+          if kubectl get svc traefik -n traefik >/dev/null 2>&1; then
+            TRAEFIK_SERVICE="traefik"
+          else
+            TRAEFIK_SERVICE="$(kubectl get svc -n traefik -l app.kubernetes.io/instance=traefik -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+          fi
+
+          if [ -z "$TRAEFIK_SERVICE" ]; then
+            TRAEFIK_SERVICE="$(kubectl get svc -n traefik -l app.kubernetes.io/name=traefik -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+          fi
+
+          if [ -z "$TRAEFIK_SERVICE" ]; then
+            echo "Could not find Traefik service in namespace traefik"
+            kubectl get svc -n traefik -o wide || true
+            exit 1
+          fi
+
           TRAEFIK_CLUSTER_IP="$(kubectl get svc "$TRAEFIK_SERVICE" -n traefik -o jsonpath='{.spec.clusterIP}')"
 
           kubectl -n kube-system get configmap coredns -o go-template='{{index .data "Corefile"}}' > Corefile
