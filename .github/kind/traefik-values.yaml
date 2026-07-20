@@ -2,6 +2,9 @@ providers:
   kubernetesGateway:
     enabled: true
 
+gateway:
+  enabled: false
+  
 service:
   spec:
     type: NodePort
