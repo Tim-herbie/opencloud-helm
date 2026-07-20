@@ -146,11 +146,11 @@ jobs:
 
           echo "------------"
 
-          curl -v http://localhost:30080
+          docker ps
 
           echo "------------"
 
-          docker ps
+          curl -v http://localhost
 
       # Verify pods become ready
       - name: Wait for pods to be ready
