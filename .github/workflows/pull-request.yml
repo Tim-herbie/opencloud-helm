@@ -146,15 +146,11 @@ jobs:
 
           echo "------------"
 
-          # curl -v http://localhost:30367
+          curl -v http://localhost:30080
 
           echo "------------"
 
           docker ps
-
-          echo "------------"
-
-          docker port kind-control-plane
 
       # Verify pods become ready
       - name: Wait for pods to be ready
