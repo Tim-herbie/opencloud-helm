@@ -94,12 +94,12 @@ jobs:
         run: |
           helm repo add traefik https://traefik.github.io/charts
           helm repo update
-
+          
           helm install traefik traefik/traefik \
             --namespace traefik \
             --create-namespace \
             --set providers.kubernetesGateway.enabled=true \
-            --set service.type=NodePort \
+            --set service.spec.type=NodePort \
             --wait
 
       # Install Helm chart in test namespace
