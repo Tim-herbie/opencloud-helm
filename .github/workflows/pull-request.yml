@@ -85,6 +85,8 @@ jobs:
       # Create ephemeral Kubernetes cluster
       - name: Create Kind cluster
         uses: helm/kind-action@v1
+        with:
+          config: .github/kind/kind-config.yaml
 
       - name: Install Gateway API CRDs
         run: |
@@ -131,6 +133,14 @@ jobs:
           echo "------------"
 
           kubectl get httproute -A
+
+          echo "------------"
+
+          kubectl -n opencloud-test get httproute opencloud-test-httproute -o yaml
+
+          echo "------------"
+
+          curl
 
       # Verify pods become ready
       - name: Wait for pods to be ready
