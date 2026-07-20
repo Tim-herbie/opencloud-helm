@@ -125,20 +125,26 @@ jobs:
           fi
 
           TRAEFIK_CLUSTER_IP="$(kubectl get svc "$TRAEFIK_SERVICE" -n traefik -o jsonpath='{.spec.clusterIP}')"
+          if [ -z "$TRAEFIK_CLUSTER_IP" ]; then
+            echo "Could not determine ClusterIP for service $TRAEFIK_SERVICE"
+            kubectl get svc "$TRAEFIK_SERVICE" -n traefik -o yaml || true
+            exit 1
+          fi
 
           kubectl -n kube-system get configmap coredns -o go-template='{{index .data "Corefile"}}' > Corefile
 
-          if ! grep -q "opencloud.127.0.0.1.nip.io" Corefile; then
-            awk -v ip="$TRAEFIK_CLUSTER_IP" '
-              /forward \\. \/etc\/resolv.conf/ && !done {
-                print "    hosts {"
-                print "      " ip " opencloud.127.0.0.1.nip.io"
-                print "      fallthrough"
-                print "    }"
-                done=1
-              }
-              { print }
-            ' Corefile > Corefile.patched
+          if ! grep -q "opencloud.127.0.0.1.nip.io:53" Corefile; then
+            printf '%s\n' \
+              'opencloud.127.0.0.1.nip.io:53 {' \
+              '    errors' \
+              '    hosts {' \
+              "      $TRAEFIK_CLUSTER_IP opencloud.127.0.0.1.nip.io" \
+              '      fallthrough' \
+              '    }' \
+              '    cache 30' \
+              '}' \
+              '' > opencloud.server
+            cat opencloud.server Corefile > Corefile.patched
             mv Corefile.patched Corefile
           fi
 
@@ -153,7 +159,15 @@ jobs:
           kubectl run dns-check \
             --rm -i --restart=Never \
             --image=busybox:1.36 \
-            --command -- nslookup opencloud.127.0.0.1.nip.io
+            --command -- nslookup opencloud.127.0.0.1.nip.io | tee nslookup.out
+
+          RESOLVED_IP="$(awk '/^Address: / {print $2}' nslookup.out | tail -n1 | cut -d: -f1)"
+          if [ "$RESOLVED_IP" != "$TRAEFIK_CLUSTER_IP" ]; then
+            echo "DNS override check failed: expected $TRAEFIK_CLUSTER_IP, got $RESOLVED_IP"
+            echo "Corefile in cluster:"
+            kubectl -n kube-system get configmap coredns -o go-template='{{index .data "Corefile"}}'
+            exit 1
+          fi
 
       - name: Create opencloud-test namespace and create tls secret
         run: |
