@@ -104,6 +104,40 @@ jobs:
             -f .github/kind/traefik-values.yaml \
             --wait
 
+      - name: Configure CoreDNS for opencloud domain
+        run: |
+          TRAEFIK_SERVICE="$(kubectl get svc -n traefik -l app.kubernetes.io/instance=traefik -o jsonpath='{.items[0].metadata.name}')"
+          TRAEFIK_CLUSTER_IP="$(kubectl get svc "$TRAEFIK_SERVICE" -n traefik -o jsonpath='{.spec.clusterIP}')"
+
+          kubectl -n kube-system get configmap coredns -o go-template='{{index .data "Corefile"}}' > Corefile
+
+          if ! grep -q "opencloud.127.0.0.1.nip.io" Corefile; then
+            awk -v ip="$TRAEFIK_CLUSTER_IP" '
+              /forward \\. \/etc\/resolv.conf/ && !done {
+                print "    hosts {"
+                print "      " ip " opencloud.127.0.0.1.nip.io"
+                print "      fallthrough"
+                print "    }"
+                done=1
+              }
+              { print }
+            ' Corefile > Corefile.patched
+            mv Corefile.patched Corefile
+          fi
+
+          kubectl create configmap coredns \
+            -n kube-system \
+            --from-file=Corefile \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl rollout restart deployment coredns -n kube-system
+          kubectl rollout status deployment coredns -n kube-system --timeout=120s
+
+          kubectl run dns-check \
+            --rm -i --restart=Never \
+            --image=busybox:1.36 \
+            --command -- nslookup opencloud.127.0.0.1.nip.io
+
       - name: Create opencloud-test namespace and create tls secret
         run: |
           kubectl create namespace opencloud-test || true
