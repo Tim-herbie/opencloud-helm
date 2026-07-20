@@ -146,7 +146,7 @@ jobs:
 
           echo "------------"
 
-          curl -v http://localhost:30367
+          # curl -v http://localhost:30367
 
           echo "------------"
 
