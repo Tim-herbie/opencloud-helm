@@ -85,7 +85,6 @@ spec:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
     {{- end }}
     {{- if .Values.collabora.enabled }}
-    {{- if .Values.global.tls.enabled }}
     - name: collabora-{{ .Values.httpRoute.gateway.sectionName }}
       {{- if .Values.global.tls.enabled }}
       protocol: HTTPS
