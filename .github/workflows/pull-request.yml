@@ -90,7 +90,6 @@ jobs:
 
       - name: Install Gateway API CRDs
         run: |
-          # kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
           kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
       
       - name: Install Traefik
@@ -174,10 +173,14 @@ jobs:
           kubectl rollout restart deployment coredns -n kube-system
           kubectl rollout status deployment coredns -n kube-system --timeout=120s
 
+          kubectl delete pod dns-check --ignore-not-found=true
           kubectl run dns-check \
-            --rm -i --restart=Never \
+            --restart=Never \
             --image=busybox:1.36 \
-            --command -- nslookup opencloud.127.0.0.1.nip.io | tee nslookup.out
+            --command -- nslookup opencloud.127.0.0.1.nip.io
+          kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/dns-check --timeout=60s
+          kubectl logs dns-check | tee nslookup.out
+          kubectl delete pod dns-check --ignore-not-found=true
 
           RESOLVED_IP="$(awk '/^Address: / {print $2}' nslookup.out | tail -n1 | cut -d: -f1)"
           if [ "$RESOLVED_IP" != "$TRAEFIK_CLUSTER_IP" ]; then
@@ -187,10 +190,14 @@ jobs:
             exit 1
           fi
 
+          kubectl delete pod dns-check-collabora --ignore-not-found=true
           kubectl run dns-check-collabora \
-            --rm -i --restart=Never \
+            --restart=Never \
             --image=busybox:1.36 \
-            --command -- nslookup collabora.127.0.0.1.nip.io | tee nslookup-collabora.out
+            --command -- nslookup collabora.127.0.0.1.nip.io
+          kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/dns-check-collabora --timeout=60s
+          kubectl logs dns-check-collabora | tee nslookup-collabora.out
+          kubectl delete pod dns-check-collabora --ignore-not-found=true
 
           RESOLVED_IP_COLLABORA="$(awk '/^Address: / {print $2}' nslookup-collabora.out | tail -n1 | cut -d: -f1)"
           if [ "$RESOLVED_IP_COLLABORA" != "$TRAEFIK_CLUSTER_IP" ]; then
