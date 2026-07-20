@@ -312,16 +312,19 @@ jobs:
 
       # Debug if helm install fails
       - name: Debug opencloud pod if failed
+        if: always()
         run: |
           kubectl -n opencloud-test logs deploy/opencloud-test-opencloud
 
       # Debug if helm install fails
       - name: Debug collabora pod if failed
+        if: always()
         run: |
           kubectl -n opencloud-test logs deploy/opencloud-test-collabora
 
       # Debug if helm install fails
       - name: Debug collaboration pod if failed
+        if: always()
         run: |
           kubectl -n opencloud-test logs deploy/opencloud-test-collaboration
 
