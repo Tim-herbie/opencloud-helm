@@ -97,4 +97,4 @@ httpRoute:
   gateway:
     create: true
     className: traefik
-    sectionName: https
+    sectionName: http
