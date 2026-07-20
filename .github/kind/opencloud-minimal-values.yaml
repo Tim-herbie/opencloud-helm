@@ -25,66 +25,15 @@ opencloud:
 
   createDemoUsers: true # necessary for admin user creation
 
-  # config:
-  #   csp: |-
-  #     directives:
-  #       child-src:
-  #         - '''self'''
-  #       connect-src:
-  #         - '''self'''
-  #         - 'blob:'
-  #         - 'http://companion.127.0.0.1.nip.io/'
-  #         - 'ws://companion.127.0.0.1.nip.io/'
-  #         - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-  #         - 'http://keycloak.127.0.0.1.nip.io/'
-  #       default-src:
-  #         - '''none'''
-  #       font-src:
-  #         - '''self'''
-  #       frame-ancestors:
-  #         - '''self'''
-  #       frame-src:
-  #         - '''self'''
-  #         - 'blob:'
-  #         - 'https://embed.diagrams.net/'
-  #         - 'http://collabora.127.0.0.1.nip.io/'
-  #         - 'https://docs.opencloud.eu'
-  #       img-src:
-  #         - '''self'''
-  #         - 'data:'
-  #         - 'blob:'
-  #         - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-  #         - 'http://collabora.127.0.0.1.nip.io/'
-  #       manifest-src:
-  #         - '''self'''
-  #       media-src:
-  #         - '''self'''
-  #       object-src:
-  #         - '''self'''
-  #         - 'blob:'
-  #       script-src:
-  #         - '''self'''
-  #         - '''unsafe-inline'''
-  #         - 'http://opencloud.127.0.0.1.nip.io/'
-  #       script-src-elem:
-  #         - '''self'''
-  #         - '''unsafe-inline'''
-  #         - 'http://opencloud.127.0.0.1.nip.io/'
-  #       style-src:
-  #         - '''self'''
-  #         - '''unsafe-inline'''
-  #       worker-src:
-  #         - '''self'''
-
   excludeServices: [] # necessary that idp runs
 
   persistence:
     data:
       accessMode: ReadWriteOnce
-      size: 10Gi
+      size: 3Gi
     config:
       accessMode: ReadWriteOnce
-      size: 10Gi
+      size: 3Gi
   
   storage:
     mode: posixfs
@@ -92,7 +41,7 @@ opencloud:
       enabled: false
     posixfs:
       persistence:
-        size: 10Gi
+        size: 3Gi
         accessMode: ReadWriteOnce
 
 httpRoute:
