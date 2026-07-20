@@ -17,11 +17,7 @@ spec:
       {{- toYaml . | nindent 4 }}
   {{- end }}
   listeners:
-    {{- if .Values.global.tls.enabled }}
-    - name: opencloud-https
-    {{- else }}
-    - name: opencloud-http
-    {{- end }}
+    - name: opencloud-{{ .Values.httpRoute.gateway.sectionName }}
       {{- if .Values.global.tls.enabled }}
       protocol: HTTPS
       {{- else }}
@@ -43,11 +39,7 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
     {{- if .Values.oidc.enabled }}
-    {{- if .Values.global.tls.enabled }}
-    - name: keycloak-https
-    {{- else }}
-    - name: keycloak-http
-    {{- end }}
+    - name: keycloak-{{ .Values.httpRoute.gateway.sectionName }}
       {{- if .Values.global.tls.enabled }}
       protocol: HTTPS
       {{- else }}
@@ -70,11 +62,7 @@ spec:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
     {{- end }}
     {{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
-    {{- if .Values.global.tls.enabled }}
-    - name: minio-https
-    {{- else }}
-    - name: minio-http
-    {{- end }}
+    - name: minio-{{ .Values.httpRoute.gateway.sectionName }}
       {{- if .Values.global.tls.enabled }}
       protocol: HTTPS
       {{- else }}
@@ -98,10 +86,7 @@ spec:
     {{- end }}
     {{- if .Values.collabora.enabled }}
     {{- if .Values.global.tls.enabled }}
-    - name: collabora-https
-    {{- else }}
-    - name: collabora-http
-    {{- end }}
+    - name: collabora-{{ .Values.httpRoute.gateway.sectionName }}
       {{- if .Values.global.tls.enabled }}
       protocol: HTTPS
       {{- else }}
