@@ -6,8 +6,8 @@ global:
     onlyoffice: onlyoffice.127.0.0.1.nip.io
     companion: companion.127.0.0.1.nip.io
 
-    tls:
-      enabled: true
+  tls:
+    enabled: true
 
 collabora:
   enabled: true
