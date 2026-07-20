@@ -106,17 +106,26 @@ jobs:
       - name: Create opencloud-test namespace and create tls secret
         run: |
           kubectl create namespace opencloud-test || true
-          kubectl create secret tls opencloud-tls-secret \
-            --namespace opencloud-test
 
-      # Install Helm chart in test namespace
-      - name: Install Helm chart
-        run: |
-          helm install opencloud-test charts/opencloud \
-            -f .github/kind/opencloud-minimal-values.yaml \
+          openssl req -x509 -nodes -days 365 \
+            -newkey rsa:2048 \
+            -keyout tls.key \
+            -out tls.crt \
+            -subj "/CN=opencloud.127.0.0.1.nip.io"
+
+          kubectl create secret tls opencloud-tls-secret \
             --namespace opencloud-test \
-            --wait \
-            --timeout 5m
+            --cert=tls.crt \
+            --key=tls.key
+
+            # Install Helm chart in test namespace
+            - name: Install Helm chart
+              run: |
+                helm install opencloud-test charts/opencloud \
+                  -f .github/kind/opencloud-minimal-values.yaml \
+                  --namespace opencloud-test \
+                  --wait \
+                  --timeout 5m
 
       - name: Debug Traefik Helm Values
         run: |
