@@ -103,6 +103,8 @@ jobs:
             -f charts/opencloud/tests/e2e/workflow-configs/traefik-values.yaml \
             --wait
 
+          helm list -A
+
       - name: Configure CoreDNS for opencloud domain
         run: |
           TRAEFIK_SERVICE=""
