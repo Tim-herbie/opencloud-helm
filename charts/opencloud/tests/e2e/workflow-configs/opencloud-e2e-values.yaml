@@ -50,5 +50,4 @@ httpRoute:
   gateway:
     create: true
     className: traefik
-    sectionName: https
     port: 8443
