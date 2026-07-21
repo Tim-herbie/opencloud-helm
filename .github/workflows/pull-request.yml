@@ -86,7 +86,7 @@ jobs:
       - name: Create Kind cluster
         uses: helm/kind-action@v1
         with:
-          config: .github/kind/kind-config.yaml
+          config: charts/opencloud/tests/e2e/workflow-configs/kind-config.yaml
 
       - name: Install Gateway API CRDs
         run: |
@@ -100,7 +100,7 @@ jobs:
           helm install traefik traefik/traefik \
             --namespace traefik \
             --create-namespace \
-            -f .github/kind/traefik-values.yaml \
+            -f charts/opencloud/tests/e2e/workflow-configs/traefik-values.yaml \
             --wait
 
       - name: Configure CoreDNS for opencloud domain
@@ -256,26 +256,19 @@ jobs:
       - name: Install Helm chart
         run: |
           helm install opencloud-test charts/opencloud \
-            -f .github/kind/opencloud-minimal-values.yaml \
+            -f charts/opencloud/tests/e2e/workflow-configs/opencloud-e2e-values.yaml \
             --namespace opencloud-test \
             --wait \
             --timeout 5m
 
-      - name: Debug Traefik Helm Values
+      # Verify pods become ready
+      - name: Wait for pods to be ready
+        id: pods_wait
         run: |
-          helm get values traefik -n traefik
-
-      - name: Debug Traefik Helm Values
-        run: |
-          kubectl -n opencloud-test get httproutes
-
-          echo "-------------------"
-
-          kubectl -n opencloud-test get httproutes opencloud-test-collabora-httproute -o yaml
-
-          echo "-------------------"
-
-          kubectl -n opencloud-test get gateway opencloud-gateway -o yaml
+          kubectl wait --for=condition=Ready pod \
+            --all \
+            --namespace opencloud-test \
+            --timeout=180s
 
       - name: Test opencloud endpoint
         run: |
@@ -285,17 +278,9 @@ jobs:
         run: |
           curl -vk https://collabora.127.0.0.1.nip.io
 
-      # Verify pods become ready
-      - name: Wait for pods to be ready
-        run: |
-          kubectl wait --for=condition=Ready pod \
-            --all \
-            --namespace opencloud-test \
-            --timeout=180s
-
       # Debug if helm install fails
       - name: Debug pods if failed
-        if: failure()
+        if: steps.pods_wait.outcome == 'failure'
         run: |
           echo "==== Pods ===="
           kubectl get pods -A
@@ -318,6 +303,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run e2e tests
+        id: e2e_tests
         run: |      
           cd charts/opencloud/tests/e2e
           OPENCLOUD_BASE_URL="https://opencloud.127.0.0.1.nip.io" \
@@ -328,19 +314,19 @@ jobs:
 
       # Debug if helm install fails
       - name: Debug opencloud pod if failed
-        if: always()
+        if: steps.e2e_tests.outcome == 'failure'
         run: |
           kubectl -n opencloud-test logs deploy/opencloud-test-opencloud
 
       # Debug if helm install fails
       - name: Debug collabora pod if failed
-        if: always()
+        if: steps.e2e_tests.outcome == 'failure'
         run: |
           kubectl -n opencloud-test logs deploy/opencloud-test-collabora
 
       # Debug if helm install fails
       - name: Debug collaboration pod if failed
-        if: always()
+        if: steps.e2e_tests.outcome == 'failure'
         run: |
           kubectl -n opencloud-test logs deploy/opencloud-test-collaboration
 
