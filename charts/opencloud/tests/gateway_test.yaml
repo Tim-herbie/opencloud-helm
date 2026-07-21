@@ -12,6 +12,20 @@ tests:
       - isKind:
           of: Gateway
 
+  - it: Gateway includes the collaboration listener when collaboration is enabled
+    template: gateway/gateway.yaml
+    set:
+      httpRoute.gateway.create: true
+      httpRoute.gateway.className: cilium
+      collaboration.enabled: true
+    asserts:
+      - equal:
+          path: spec.listeners[3].name
+          value: collaboration-http
+      - equal:
+          path: spec.listeners[3].hostname
+          value: wopiserver.opencloud.test
+
   - it: ReferenceGrant resources are created when httpRoute is enabled
     template: gateway/reference-grant.yaml
     set:

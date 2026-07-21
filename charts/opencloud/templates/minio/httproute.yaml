@@ -10,8 +10,9 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- with .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ . }}
+      {{- $sectionName := include "opencloud.httpRoute.sectionName" (dict "root" . "route" "minio") }}
+      {{- if $sectionName }}
+      sectionName: {{ $sectionName }}
       {{- end }}
   hostnames:
     - {{ include "opencloud.minio.domain" . | quote }}

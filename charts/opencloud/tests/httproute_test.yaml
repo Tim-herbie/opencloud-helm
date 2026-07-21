@@ -11,6 +11,27 @@ tests:
       - isKind:
           of: HTTPRoute
 
+  - it: OpenCloud HTTPRoute uses the default gateway listener when gateway is created
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: true
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: opencloud-http
+
+  - it: OpenCloud HTTPRoute uses a custom sectionName when provided without creating the gateway
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: false
+      httpRoute.gateway.sectionName: custom-section
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: custom-section
+
   - it: Keycloak HTTPRoute is created when httpRoute and oidc are enabled
     template: keycloak/httproute.yaml
     set:
@@ -21,6 +42,17 @@ tests:
           count: 1
       - isKind:
           of: HTTPRoute
+
+  - it: Keycloak HTTPRoute uses the default gateway listener when gateway is created
+    template: keycloak/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: true
+      oidc.enabled: true
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: keycloak-http
 
   - it: Collabora HTTPRoute is created when httpRoute and collabora are enabled
     template: collabora/httproute.yaml
@@ -33,6 +65,17 @@ tests:
       - isKind:
           of: HTTPRoute
 
+  - it: Collabora HTTPRoute uses the default gateway listener when gateway is created
+    template: collabora/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: true
+      collabora.enabled: true
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: collabora-http
+
   - it: Collaboration HTTPRoute is created when httpRoute and collaboration are enabled
     template: collaboration/httproute.yaml
     set:
@@ -43,6 +86,17 @@ tests:
           count: 1
       - isKind:
           of: HTTPRoute
+
+  - it: Collaboration HTTPRoute uses the default gateway listener when gateway is created
+    template: collaboration/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: true
+      collaboration.enabled: true
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: collaboration-http
 
   - it: MinIO HTTPRoute is created when httpRoute, s3 storage and minio httpRoute are enabled
     template: minio/httproute.yaml
@@ -56,3 +110,16 @@ tests:
           count: 1
       - isKind:
           of: HTTPRoute
+
+  - it: MinIO HTTPRoute uses the default gateway listener when gateway is created
+    template: minio/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: true
+      opencloud.storage.mode: s3
+      opencloud.storage.s3.enabled: true
+      opencloud.storage.s3.httpRoute.enabled: true
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: minio-http
