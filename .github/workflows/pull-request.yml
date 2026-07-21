@@ -92,7 +92,7 @@ jobs:
         run: |
           kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
       
-      - name: Install Traefik
+      - name: Install Traefik Helm chart
         run: |
           helm repo add traefik https://traefik.github.io/charts
           helm repo update
@@ -101,9 +101,8 @@ jobs:
             --namespace traefik \
             --create-namespace \
             -f charts/opencloud/tests/e2e/workflow-configs/traefik-values.yaml \
+            --version 41.0.2 \
             --wait
-
-          helm list -A
 
       - name: Configure CoreDNS for opencloud domain
         run: |
@@ -255,7 +254,7 @@ jobs:
             --key=tls.key
 
       # Install Helm chart in test namespace
-      - name: Install Helm chart
+      - name: Install Opencloud Helm chart
         run: |
           helm install opencloud-test charts/opencloud \
             -f charts/opencloud/tests/e2e/workflow-configs/opencloud-e2e-values.yaml \
