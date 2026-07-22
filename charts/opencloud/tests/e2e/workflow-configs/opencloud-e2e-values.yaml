@@ -1,0 +1,53 @@
+global:
+  domain:
+    opencloud: opencloud.127.0.0.1.nip.io
+    wopi: wopiserver.127.0.0.1.nip.io
+    collabora: collabora.127.0.0.1.nip.io
+    onlyoffice: onlyoffice.127.0.0.1.nip.io
+    companion: companion.127.0.0.1.nip.io
+
+  tls:
+    enabled: true
+    secretName: opencloud-tls-secret
+
+collabora:
+  enabled: true
+  ssl:
+    enabled: false
+
+oidc:
+  enabled: false
+
+opencloud:
+  
+  migration:
+    enabled: false
+
+  createDemoUsers: true # necessary for admin user creation
+
+  excludeServices: [] # necessary that idp runs
+
+  persistence:
+    data:
+      accessMode: ReadWriteOnce
+      size: 3Gi
+    config:
+      accessMode: ReadWriteOnce
+      size: 3Gi
+  
+  storage:
+    mode: posixfs
+    s3:
+      enabled: false
+    posixfs:
+      persistence:
+        size: 3Gi
+        accessMode: ReadWriteOnce
+
+httpRoute:
+  enabled: true
+  
+  gateway:
+    create: true
+    className: traefik
+    port: 8443

@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint-and-test:
+  helm-validation:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,7 +31,7 @@ jobs:
         run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.5.1 --verify=false
 
       - name: Run Helm unit tests
-        run: helm unittest charts/opencloud
+        run: helm unittest -f 'tests/unit-tests/*_test.yaml' charts/opencloud
 
       # Create ephemeral Kubernetes cluster
       - name: Create Kind cluster
@@ -54,7 +54,7 @@ jobs:
             --namespace opencloud-test \
             --timeout=180s
 
-      # Debug if installation fails
+      # Debug if validation job fails
       - name: Debug pods if failed
         if: failure()
         run: |
@@ -64,3 +64,278 @@ jobs:
           kubectl describe pods -A
           echo "==== Events ===="
           kubectl get events -A
+
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: 'latest'
+
+      # Create ephemeral Kubernetes cluster
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
+        with:
+          config: charts/opencloud/tests/e2e/workflow-configs/kind-config.yaml
+
+      - name: Install Gateway API CRDs
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+      
+      - name: Install Traefik Helm chart
+        run: |
+          helm repo add traefik https://traefik.github.io/charts
+          helm repo update
+
+          helm install traefik traefik/traefik \
+            --namespace traefik \
+            --create-namespace \
+            -f charts/opencloud/tests/e2e/workflow-configs/traefik-values.yaml \
+            --version 41.0.2 \
+            --wait
+
+      - name: Configure CoreDNS for opencloud domain
+        run: |
+          TRAEFIK_SERVICE=""
+
+          if kubectl get svc traefik -n traefik >/dev/null 2>&1; then
+            TRAEFIK_SERVICE="traefik"
+          else
+            TRAEFIK_SERVICE="$(kubectl get svc -n traefik -l app.kubernetes.io/instance=traefik -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+          fi
+
+          if [ -z "$TRAEFIK_SERVICE" ]; then
+            TRAEFIK_SERVICE="$(kubectl get svc -n traefik -l app.kubernetes.io/name=traefik -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+          fi
+
+          if [ -z "$TRAEFIK_SERVICE" ]; then
+            echo "Could not find Traefik service in namespace traefik"
+            kubectl get svc -n traefik -o wide || true
+            exit 1
+          fi
+
+          TRAEFIK_CLUSTER_IP="$(kubectl get svc "$TRAEFIK_SERVICE" -n traefik -o jsonpath='{.spec.clusterIP}')"
+          if [ -z "$TRAEFIK_CLUSTER_IP" ]; then
+            echo "Could not determine ClusterIP for service $TRAEFIK_SERVICE"
+            kubectl get svc "$TRAEFIK_SERVICE" -n traefik -o yaml || true
+            exit 1
+          fi
+
+          kubectl -n kube-system get configmap coredns -o go-template='{{index .data "Corefile"}}' > Corefile
+
+          rm -f dns-overrides.server
+
+          if ! grep -q "opencloud.127.0.0.1.nip.io:53" Corefile; then
+            printf '%s\n' \
+              'opencloud.127.0.0.1.nip.io:53 {' \
+              '    errors' \
+              '    hosts {' \
+              "      $TRAEFIK_CLUSTER_IP opencloud.127.0.0.1.nip.io" \
+              '      fallthrough' \
+              '    }' \
+              '    cache 30' \
+              '}' \
+              '' >> dns-overrides.server
+          fi
+
+          if ! grep -q "collabora.127.0.0.1.nip.io:53" Corefile; then
+            printf '%s\n' \
+              'collabora.127.0.0.1.nip.io:53 {' \
+              '    errors' \
+              '    hosts {' \
+              "      $TRAEFIK_CLUSTER_IP collabora.127.0.0.1.nip.io" \
+              '      fallthrough' \
+              '    }' \
+              '    cache 30' \
+              '}' \
+              '' >> dns-overrides.server
+          fi
+
+          if ! grep -q "wopiserver.127.0.0.1.nip.io:53" Corefile; then
+            printf '%s\n' \
+              'wopiserver.127.0.0.1.nip.io:53 {' \
+              '    errors' \
+              '    hosts {' \
+              "      $TRAEFIK_CLUSTER_IP wopiserver.127.0.0.1.nip.io" \
+              '      fallthrough' \
+              '    }' \
+              '    cache 30' \
+              '}' \
+              '' >> dns-overrides.server
+          fi
+
+          if [ -f dns-overrides.server ]; then
+            cat dns-overrides.server Corefile > Corefile.patched
+            mv Corefile.patched Corefile
+          fi
+
+          kubectl create configmap coredns \
+            -n kube-system \
+            --from-file=Corefile \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl rollout restart deployment coredns -n kube-system
+          kubectl rollout status deployment coredns -n kube-system --timeout=120s
+
+          kubectl delete pod dns-check --ignore-not-found=true
+          kubectl run dns-check \
+            --restart=Never \
+            --image=busybox:1.36 \
+            --command -- nslookup opencloud.127.0.0.1.nip.io
+          kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/dns-check --timeout=60s
+          kubectl logs dns-check | tee nslookup.out
+          kubectl delete pod dns-check --ignore-not-found=true
+
+          RESOLVED_IP="$(awk '/^Address: / {print $2}' nslookup.out | tail -n1 | cut -d: -f1)"
+          if [ "$RESOLVED_IP" != "$TRAEFIK_CLUSTER_IP" ]; then
+            echo "DNS override check failed: expected $TRAEFIK_CLUSTER_IP, got $RESOLVED_IP"
+            echo "Corefile in cluster:"
+            kubectl -n kube-system get configmap coredns -o go-template='{{index .data "Corefile"}}'
+            exit 1
+          fi
+
+          kubectl delete pod dns-check-collabora --ignore-not-found=true
+          kubectl run dns-check-collabora \
+            --restart=Never \
+            --image=busybox:1.36 \
+            --command -- nslookup collabora.127.0.0.1.nip.io
+          kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/dns-check-collabora --timeout=60s
+          kubectl logs dns-check-collabora | tee nslookup-collabora.out
+          kubectl delete pod dns-check-collabora --ignore-not-found=true
+
+          RESOLVED_IP_COLLABORA="$(awk '/^Address: / {print $2}' nslookup-collabora.out | tail -n1 | cut -d: -f1)"
+          if [ "$RESOLVED_IP_COLLABORA" != "$TRAEFIK_CLUSTER_IP" ]; then
+            echo "DNS override check failed for collabora: expected $TRAEFIK_CLUSTER_IP, got $RESOLVED_IP_COLLABORA"
+            echo "Corefile in cluster:"
+            kubectl -n kube-system get configmap coredns -o go-template='{{index .data "Corefile"}}'
+            exit 1
+          fi
+
+          kubectl delete pod dns-check-wopiserver --ignore-not-found=true
+          kubectl run dns-check-wopiserver \
+            --restart=Never \
+            --image=busybox:1.36 \
+            --command -- nslookup wopiserver.127.0.0.1.nip.io
+          kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/dns-check-wopiserver --timeout=60s
+          kubectl logs dns-check-wopiserver | tee nslookup-wopiserver.out
+          kubectl delete pod dns-check-wopiserver --ignore-not-found=true
+
+          RESOLVED_IP_WOPISERVER="$(awk '/^Address: / {print $2}' nslookup-wopiserver.out | tail -n1 | cut -d: -f1)"
+          if [ "$RESOLVED_IP_WOPISERVER" != "$TRAEFIK_CLUSTER_IP" ]; then
+            echo "DNS override check failed for wopiserver: expected $TRAEFIK_CLUSTER_IP, got $RESOLVED_IP_WOPISERVER"
+            echo "Corefile in cluster:"
+            kubectl -n kube-system get configmap coredns -o go-template='{{index .data "Corefile"}}'
+            exit 1
+          fi
+
+      - name: Create opencloud-test namespace and create tls secret
+        run: |
+          kubectl create namespace opencloud-test || true
+
+          openssl req -x509 -nodes -days 365 \
+            -newkey rsa:2048 \
+            -keyout tls.key \
+            -out tls.crt \
+            -subj "/CN=opencloud.127.0.0.1.nip.io"
+
+          kubectl create secret tls opencloud-tls-secret \
+            --namespace opencloud-test \
+            --cert=tls.crt \
+            --key=tls.key
+
+      # Install Helm chart in test namespace
+      - name: Install Opencloud Helm chart
+        run: |
+          helm install opencloud-test charts/opencloud \
+            -f charts/opencloud/tests/e2e/workflow-configs/opencloud-e2e-values.yaml \
+            --namespace opencloud-test \
+            --wait \
+            --timeout 5m
+
+      # Verify pods become ready
+      - name: Wait for pods to be ready
+        id: pods_wait
+        run: |
+          kubectl wait --for=condition=Ready pod \
+            --all \
+            --namespace opencloud-test \
+            --timeout=180s
+
+      - name: Test opencloud endpoint
+        run: |
+          curl -vk https://opencloud.127.0.0.1.nip.io
+
+      - name: Test collabora endpoint
+        run: |
+          curl -vk https://collabora.127.0.0.1.nip.io
+
+      # Debug if helm install fails
+      - name: Debug pods if failed
+        if: steps.pods_wait.outcome == 'failure'
+        run: |
+          echo "==== Pods ===="
+          kubectl get pods -A
+          echo "==== Describe Pods ===="
+          kubectl describe pods -A
+          echo "==== Events ===="
+          kubectl get events -A
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install e2e dependencies
+        working-directory: charts/opencloud/tests/e2e
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: charts/opencloud/tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        id: e2e_tests
+        run: |      
+          cd charts/opencloud/tests/e2e
+          OPENCLOUD_BASE_URL="https://opencloud.127.0.0.1.nip.io" \
+          OPENCLOUD_USERNAME=admin \
+          OPENCLOUD_PASSWORD=admin \
+          OPENCLOUD_IGNORE_HTTPS_ERRORS='true' \
+          npx playwright test
+
+      # Debug if helm install fails
+      - name: Debug opencloud pod if failed
+        if: steps.e2e_tests.outcome == 'failure'
+        run: |
+          kubectl -n opencloud-test logs deploy/opencloud-test-opencloud
+
+      # Debug if helm install fails
+      - name: Debug collabora pod if failed
+        if: steps.e2e_tests.outcome == 'failure'
+        run: |
+          kubectl -n opencloud-test logs deploy/opencloud-test-collabora
+
+      # Debug if helm install fails
+      - name: Debug collaboration pod if failed
+        if: steps.e2e_tests.outcome == 'failure'
+        run: |
+          kubectl -n opencloud-test logs deploy/opencloud-test-collaboration
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: charts/opencloud/tests/e2e/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7

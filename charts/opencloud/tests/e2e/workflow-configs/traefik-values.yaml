@@ -1,0 +1,23 @@
+providers:
+  kubernetesGateway:
+    enabled: true
+
+gateway:
+  enabled: false
+  
+service:
+  spec:
+    type: NodePort
+
+ports:
+  web:
+    port: 8000
+    expose:
+      default: true
+    nodePort: 30080
+
+  websecure:
+    port: 8443
+    expose:
+      default: true
+    nodePort: 30443
