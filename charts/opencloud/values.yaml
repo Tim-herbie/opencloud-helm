@@ -293,7 +293,7 @@ webExtensions:
     # Arcade extension
     arcade:
       enabled: false
-      tag: arcade-2.1.0
+      tag: arcade-3.0.0
     # Calculator extension
     calculator:
       enabled: false
@@ -305,7 +305,7 @@ webExtensions:
     # Maps extension
     maps:
       enabled: false
-      tag: maps-3.0.0
+      tag: maps-3.1.0
     # Pastebin extension
     pastebin:
       enabled: false
