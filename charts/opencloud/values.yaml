@@ -269,11 +269,11 @@ webExtensions:
     # Draw.io extension
     drawio:
       enabled: true
-      tag: draw-io-2.0.0
+      tag: draw-io-2.1.0
     # External Sites extension
     externalsites:
       enabled: true
-      tag: external-sites-2.0.0
+      tag: external-sites-2.1.0
     # Importer extension
     importer:
       enabled: true
@@ -281,23 +281,23 @@ webExtensions:
     # JSON Viewer extension
     jsonviewer:
       enabled: true
-      tag: json-viewer-2.0.0
+      tag: json-viewer-2.1.0
     # Progress Bars extension
     progressbars:
       enabled: true
-      tag: progress-bars-2.0.0
+      tag: progress-bars-2.1.0
     # Unzip extension
     unzip:
       enabled: true
-      tag: unzip-2.0.0
+      tag: unzip-2.1.0
     # Arcade extension
     arcade:
       enabled: false
-      tag: arcade-2.0.0
+      tag: arcade-2.1.0
     # Calculator extension
     calculator:
       enabled: false
-      tag: calculator-2.0.0
+      tag: calculator-2.1.0
     # Cast extension
     cast:
       enabled: false
@@ -309,7 +309,7 @@ webExtensions:
     # Pastebin extension
     pastebin:
       enabled: false
-      tag: pastebin-2.0.0
+      tag: pastebin-2.1.0
 
 # =====================================================================
 # COLLABORATION (COLLABORA)
