@@ -70,6 +70,11 @@ spec:
       logLevel: info
       migration:
         enabled: false
+      # Using external Keycloak OIDC + external OpenLDAP: the bundled IDM/idp
+      # service must NOT run, so exclude it. Demo users are also disabled.
+      createDemoUsers: false
+      excludeServices:
+        - "idp"
       oidc:
         scope: "openid profile email groups"
       ldap:
