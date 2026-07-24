@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "type": "object",
+          "properties": {
+            "opencloud": { "type": "string", "format": "hostname" },
+            "oidc": { "type": "string", "format": "hostname" },
+            "minio": { "type": "string", "format": "hostname" },
+            "collabora": { "type": "string", "format": "hostname" },
+            "companion": { "type": "string", "format": "hostname" }
+          }
+        },
+        "tls": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "secretName": { "type": "string" }
+          }
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "registry": { "type": "string" },
+            "pullPolicy": { "type": "string", "enum": ["", "Always", "IfNotPresent", "Never"] }
+          }
+        }
+      }
+    },
+    "oidc": {
+      "type": "object",
+      "properties": {
+        "issuerUrl": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
+        "clientId": { "type": "string" },
+        "accountUrl": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
+        "scope": { "type": "string" },
+        "cors": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "allowAllOrigins": { "type": "boolean" },
+            "origins": { "type": "array", "items": { "type": "string" } },
+            "methods": { "type": "string" },
+            "headers": { "type": "string" },
+            "exposedHeaders": { "type": "string" },
+            "allowCredentials": { "type": "string" },
+            "maxAge": { "type": "string" }
+          }
+        }
+      }
+    },
+    "secretRefs": {
+      "type": "object",
+      "properties": {
+        "ldapSecretRef": { "type": "string" },
+        "s3CredentialsSecretRef": { "type": "string" }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "externalUserManagement": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "adminUUID": { "type": "string", "format": "uuid" },
+            "autoprovisionAccounts": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "claimUserName": { "type": "string" }
+              }
+            },
+            "oidc": {
+              "type": "object",
+              "properties": {
+                "domain": { "type": "string" },
+                "issuerURI": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
+                "userIDClaim": { "type": "string" },
+                "userIDClaimAttributeMapping": { "type": "string" },
+                "roleAssignment": {
+                  "type": "object",
+                  "properties": {
+                    "claim": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "ldap": {
+              "type": "object",
+              "properties": {
+                "writeable": { "type": "boolean" },
+                "uri": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
+                "insecure": { "type": "boolean" },
+                "bindDN": { "type": "string" },
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "userNameMatch": { "type": "string" },
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" }
+                      }
+                    }
+                  }
+                },
+                "group": {
+                  "type": "object",
+                  "properties": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "virusscan": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "infectedFileHandling": { "type": "string", "enum": ["abort", "continue", "delete"] },
+            "scannerType": { "type": "string", "enum": ["clamav", "icap"] },
+            "clamavSocket": { "type": "string" },
+            "icapUrl": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
+            "icapService": { "type": "string" }
+          }
+        },
+        "emailNotifications": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "smtp": {
+              "type": "object",
+              "properties": {
+                "host": { "type": "string" },
+                "port": { "type": "string" },
+                "sender": { "type": "string" },
+                "authentication": { "type": "string", "enum": ["none", "plain", "login"] },
+                "encryption": { "type": "string", "enum": ["none", "starttls", "ssltls"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "opencloud": {
+      "type": "object",
+      "properties": {
+        "replicas": { "type": "integer", "minimum": 1 },
+        "logLevel": { "type": "string", "enum": ["panic", "fatal", "error", "warn", "info", "debug", "trace"] },
+        "logColor": { "type": "boolean" },
+        "logPretty": { "type": "boolean" },
+        "insecure": { "type": "boolean" },
+        "adminPassword": { "type": "string" },
+        "createDemoUsers": { "type": "boolean" },
+        "antivirus": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "infectedFileHandling": { "type": "string", "enum": ["abort", "continue", "delete"] },
+            "scannerType": { "type": "string", "enum": ["clamav", "icap"] },
+            "clamavSocket": { "type": "string" },
+            "icapUrl": { "type": "string", "pattern": "^$|^[a-zA-Z][a-zA-Z0-9+.-]*://.+$" },
+            "icapService": { "type": "string" }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "systemDriver": { "type": "string", "enum": ["decomposed"] },
+            "usersDriver": { "type": "string", "enum": ["", "decomposed", "decomposeds3", "posix"] },
+            "mode": { "type": "string", "enum": ["s3", "posixfs", "decomposed"] },
+            "s3": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "rootUser": { "type": "string" },
+                "rootPassword": { "type": "string" },
+                "bucketName": { "type": "string" },
+                "region": { "type": "string" },
+                "persistence": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "size": { "type": "string" },
+                    "storageClass": { "type": "string" },
+                    "accessMode": { "type": "string", "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"] }
+                  }
+                }
+              }
+            },
+            "decomposed": {
+              "type": "object",
+              "properties": {
+                "maxConcurrency": { "type": "integer", "minimum": 1 },
+                "rootPath": { "type": "string" },
+                "persistence": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "size": { "type": "string" },
+                    "storageClass": { "type": "string" },
+                    "accessMode": { "type": "string", "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"] }
+                  }
+                }
+              }
+            },
+            "posixfs": {
+              "type": "object",
+              "properties": {
+                "idCacheStore": { "type": "string", "enum": ["memory", "redis-sentinel", "nats-js-kv", "noop"] },
+                "rootPath": { "type": "string" },
+                "persistence": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "size": { "type": "string" },
+                    "storageClass": { "type": "string" },
+                    "accessMode": { "type": "string", "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"] }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nats": {
+          "type": "object",
+          "properties": {
+            "external": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "endpoint": { "type": "string" },
+                "cluster": { "type": "string" }
+              }
+            }
+          }
+        },
+        "smtp": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "host": { "type": "string" },
+            "port": { "type": "string" },
+            "sender": { "type": "string" },
+            "authentication": { "type": "string", "enum": ["none", "plain", "login"] },
+            "encryption": { "type": "string", "enum": ["none", "starttls", "ssltls"] }
+          }
+        }
+      }
+    },
+    "httpRoute": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "gateway": {
+          "type": "object",
+          "properties": {
+            "create": { "type": "boolean" },
+            "port": { "type": "integer" },
+            "name": { "type": "string" },
+            "className": { "type": "string" },
+            "namespace": { "type": "string" }
+          }
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "ingressClassName": { "type": "string" },
+        "annotations": { "type": "object" }
+      }
+    },
+    "collabora": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "tag": { "type": "string" },
+        "domain": { "type": "string", "format": "hostname" }
+      }
+    }
+  }
+}

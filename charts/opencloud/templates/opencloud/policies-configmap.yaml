@@ -1,0 +1,14 @@
+{{- if .Values.opencloud.policies.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "opencloud.fullname" . }}-policies
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opencloud
+data:
+  {{- range .Values.opencloud.policies.policies }}
+  {{ .fileName }}: |
+    {{- .content | nindent 4 }}
+  {{- end }}
+{{- end }}

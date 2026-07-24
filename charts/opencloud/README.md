@@ -33,7 +33,7 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
 
 This repository is created to **welcome contributions from the community**. It does not contain official charts from OpenCloud GmbH and is **not officially supported by OpenCloud GmbH**. Instead, these charts are maintained by the open-source community.
 
-OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, MinIO for object storage, and options for document editing with Collabora.
+OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for OIDC authentication, OpenLDAP for user directory, ClamAV for virus scanning, and Collabora for document editing.
 
 ## 💬 Community
 
@@ -56,14 +56,56 @@ Please ensure that your PR follows best practices and includes necessary documen
 
 ## Prerequisites
 
-- Kubernetes 1.19+
-- Helm 3.2.0+
+- Kubernetes 1.33+
+- Helm 3.18.0+
 - PV provisioner support in the underlying infrastructure (if persistence is enabled)
-- External ingress controller (e.g., Cilium Gateway API) for routing traffic to the services
+- Gateway API compatible ingress controller (e.g., Cilium Gateway) for HTTPS routing
 
 ## 📦 Installation
 
-To install the chart with the release name `opencloud`:
+To install the full stack using FluxCD (recommended — self-contained HelmReleases in `deployments/flux/`, no Helmfile or Timoni bundle needed):
+
+```bash
+# One command: -R recurses into all subdirectories (keycloak/, openldap/,
+# clamav/, opencloud/) and applies every .yaml in one shot.
+kubectl apply -R -f charts/opencloud/deployments/flux/
+```
+
+Each `HelmRelease` is reconciled by the FluxCD `helm-controller`. The manifests in `deployments/flux/` are self-contained — inline database config, realm import, HTTPRoutes, and HTTP→HTTPS redirects — so no separate Helmfile or Timoni bundle is required.
+
+Reconcile after a change (edit a value, bump the chart, etc.):
+
+```bash
+for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
+```
+
+Remove the full stack in one command (deletes the HelmReleases; Flux's helm-controller then runs `helm uninstall` for each, dropping the chart-rendered Deployments / Services / ConfigMaps / HTTPRoutes / Secrets. The `keycloak/`, `openldap/`, `clamav/` YAMLs also embed their `Namespace` manifest, so those namespaces cascade. The `opencloud` namespace is not declared in `opencloud.yaml`, so it must be deleted explicitly. **PVCs are retained by Helm** to preserve data — delete them manually for a clean slate):
+
+```bash
+kubectl delete -R -f charts/opencloud/deployments/flux/
+kubectl delete ns opencloud                    # only opencloud ns needs manual delete
+# Optional: drop retained PVCs
+kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
+kubectl -n keycloak  delete pvc -l app.kubernetes.io/instance=keycloak-postgresql
+kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
+```
+
+### Choosing a storage backend
+
+The flux deployment defaults to **`decomposed`** (PVC-backed metadata + blobs, no S3/MinIO). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml`:
+
+| Backend | What to change | Effect |
+|---------|---------------|--------|
+| **Decomposed (default)** | nothing — `storage.mode: decomposed` | PVC stores metadata + blobs; no MinIO deployment; `Recreate` rollout strategy (single RWO volume) |
+| **Decomposed + RWX** | under `storage.decomposed.persistence`, comment `ReadWriteOnce`, uncomment `ReadWriteMany` | Same as above but supports RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem) |
+| **S3 / MinIO** | uncomment the `storage.s3` block + uncomment `secretRefs.s3CredentialsSecretRef: s3secret` in opencloud.yaml + uncomment the `s3secret` Secret in `secrets.yaml` | Bundled MinIO pod handles blob storage; `RollingUpdate` rollout strategy (no shared PVC) |
+| **External S3** | uncomment `storage.s3` block (same as MinIO), but set `storage.s3.external.endpoint` instead of relying on bundled MinIO. MinIO pod won't deploy if `external.endpoint` is non-empty | OpenCloud talks to your existing S3 / Ceph / MinIO; no bundled MinIO |
+
+> ⚠️ **PVC access mode → rollout strategy**: `ReadWriteOnce` forces `Recreate` (single pod mounts the volume). `ReadWriteMany` enables `RollingUpdate` (multi-pod). Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
+
+The flux folder's `opencloud.yaml` keeps the `s3` block as a commented-out template — switch back to S3 by uncommenting it and the matching `s3secret` Secret in `secrets.yaml`, then `flux reconcile helmrelease opencloud-oc1 -n opencloud`.
+
+Alternatively, to install just the OpenCloud chart with Helm:
 
 ```bash
 # Navigate to the chart directory first
@@ -74,19 +116,9 @@ helm install opencloud . \
   --namespace opencloud \
   --create-namespace \
   --set httpRoute.enabled=true \
-  --set httpRoute.gateway.name=opencloud-gateway \
-  --set httpRoute.gateway.namespace=kube-system
-```
-
-Alternatively, from the repository root:
-
-```bash
-helm install opencloud ./charts/opencloud \
-  --namespace opencloud \
-  --create-namespace \
-  --set httpRoute.enabled=true \
-  --set httpRoute.gateway.name=opencloud-gateway \
-  --set httpRoute.gateway.namespace=kube-system
+  --set httpRoute.gateway.name=cilium-gateway \
+  --set httpRoute.gateway.namespace=kube-system \
+  --set httpRoute.gateway.sectionName=opencloud
 ```
 
 ## Architecture
@@ -95,8 +127,8 @@ This Helm chart deploys the following components:
 
 1. **OpenCloud** - Main application (fork of ownCloud Infinite Scale)
 2. **Keycloak** - Authentication provider with OpenID Connect
-3. **PostgreSQL** - Database for Keycloak
-4. **MinIO** - S3-compatible object storage
+3. **OpenLDAP** - User directory service
+4. **ClamAV** - Virus scanning for uploaded files
 5. **Collabora** - Online document editor (CODE - Collabora Online Development Edition)
 6. **Collaboration Service** - WOPI server that connects OpenCloud with document editors
 
@@ -250,7 +282,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.smtp.insecure` | SMTP insecure | `false` |
 | `opencloud.smtp.authentication` | SMTP authentication | `plain` |
 | `opencloud.smtp.encryption` | SMTP encryption | `starttls` |
-| `opencloud.storage.mode` | Choice between s3 and posixfs for user files | `s3` |
+| `opencloud.storage.mode` | Choice between `s3`, `posixfs`, or `decomposed` for user files | `s3` |
 | `opencloud.proxyTls` | Use TLS between proxy and OpenCloud | `false` |
 | `opencloud.gatewayGrpcAddr` | gRPC address for the REVA gateway | `0.0.0.0:9142` |
 | `opencloud.proxyEnableBasicAuth` | Enable basic auth for proxy | `false` |
@@ -327,17 +359,29 @@ The following options allow setting up a POSIX-compatible filesystem (such as NF
 
 **Note:** When using `posixfs` mode, ensure that the underlying storage supports the required access mode (e.g., `ReadWriteMany` for multiple replicas). The underlying filesystem must support `flock` and `xattrs` so for NFS the minimum version is 4.2.
 
-### NATS Messaging Configuration
+> **Warning: CephFS and Backup Compatibility**
+>
+> When using `posixfs` with **CephFS** as the underlying storage, be aware that CephFS snapshot and clone operations may not work correctly in some Ceph versions. This can cause backup tools (e.g., Velero, Kasten) to fail when trying to snapshot the PVC.
+>
+> If you rely on PVC-level backups, consider using the **`decomposed`** storage driver instead. The `decomposed` driver stores metadata on the PVC and is more compatible with CephFS snapshot/clone operations.
+>
+> Alternatively, verify that your Ceph version supports CephFS snapshots properly before relying on PVC-level backups with `posixfs`.
 
-| Parameter  | Description | Default |
-| ---------- | ----------- | ------- |
-| `opencloud.nats.external.enabled` | Use an external NATS server (required for high availability) | `false` |
-| `opencloud.nats.external.endpoint` | Endpoint of the external NATS server | `nats.opencloud-nats.svc.cluster.local:4222` |
-| `opencloud.nats.external.cluster` | NATS cluster name | `opencloud-cluster` |
-| `opencloud.nats.external.tls.enabled` | Enable TLS for communication with NATS | `false` |
-| `opencloud.nats.external.tls.certTrusted` | Set to `false` if the external NATS server's certificate is not trusted by default (e.g. self-signed) | `true` |
-| `opencloud.nats.external.tls.insecure` | Disable certificate validation (not recommended for production) | `false` |
-| `opencloud.nats.external.tls.caSecretName` | Name of the Kubernetes Secret containing the CA certificate (only required if `certTrusted` is `false`) | `opencloud-nats-ca` |
+### OpenCloud Decomposed Storage Settings
+
+The `decomposed` storage driver stores all metadata and blobs on a PVC (no S3 required). It is a good alternative to `posixfs` when using CephFS, as it is more compatible with CephFS snapshot/clone operations.
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `opencloud.storage.decomposed.maxConcurrency` | Maximum number of concurrent operations | `100` |
+| `opencloud.storage.decomposed.rootPath` | Path of storage root directory in openCloud pod | `/var/lib/opencloud/storage` |
+| `opencloud.storage.decomposed.persistence.enabled` | Enable persistence for decomposed storage | `true` |
+| `opencloud.storage.decomposed.persistence.existingClaim` | Name of existing PVC instead of the settings below | `""` |
+| `opencloud.storage.decomposed.persistence.size` | Size of the decomposed persistent volume | `30Gi` |
+| `opencloud.storage.decomposed.persistence.storageClass` | Storage class for decomposed volume | `""` |
+| `opencloud.storage.decomposed.persistence.accessMode` | Access mode for decomposed volume | `ReadWriteOnce` |
+
+### NATS Messaging Configuration
 
 > 💡 The secret referenced by `caSecretName` **must contain a key named `ca.crt`** with the root CA certificate used to verify the external NATS server.
 > Example:

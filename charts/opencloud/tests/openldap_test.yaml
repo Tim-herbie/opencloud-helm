@@ -1,0 +1,154 @@
+suite: OpenLDAP / External OIDC Integration Tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  # --- External OIDC Configuration ---
+
+  - it: should set OC_OIDC_ISSUER when issuerUrl is configured
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_OIDC_ISSUER
+            value: "https://keycloak.opencloud.test/realms/openCloud"
+
+  - it: should set WEB_OIDC_METADATA_URL from issuerUrl
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEB_OIDC_METADATA_URL
+            value: "https://keycloak.opencloud.test/realms/openCloud/.well-known/openid-configuration"
+
+  - it: should set WEB_OIDC_CLIENT_ID from clientId
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEB_OIDC_CLIENT_ID
+            value: "web"
+
+  - it: should set WEB_OPTION_ACCOUNT_EDIT_LINK_HREF from issuerUrl
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEB_OPTION_ACCOUNT_EDIT_LINK_HREF
+            value: "https://keycloak.opencloud.test/realms/openCloud/account"
+
+  - it: should use custom accountUrl when provided
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+        clientId: web
+        accountUrl: https://custom.example.com/account
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEB_OPTION_ACCOUNT_EDIT_LINK_HREF
+            value: "https://custom.example.com/account"
+
+  # --- LDAP Bind Secret References ---
+  # The chart now defaults to an external LDAP bind secret named
+  # <release>-opencloud-opencloud-ldap (overridable via opencloud.ldap.secretRef).
+  # The USERS/GROUPS/AUTH_BASIC/IDP LDAP bind passwords share the
+  # reva-ldap-bind-password key; GRAPH uses graph-ldap-bind-password.
+
+  - it: should reference the default LDAP bind secret for LDAP bind passwords by default
+    template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: USERS_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-ldap
+                key: reva-ldap-bind-password
+
+  - it: should use graph-ldap-bind-password key for GRAPH_LDAP_BIND_PASSWORD by default
+    template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GRAPH_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-ldap
+                key: graph-ldap-bind-password
+
+  # --- S3 Credentials Secret References ---
+
+  - it: should reference s3secret for S3 credentials when decomposeds3 is used
+    template: opencloud/deployment.yaml
+    set:
+      secretRefs:
+        s3CredentialsSecretRef: s3secret
+      opencloud:
+        storage:
+          users:
+            driver: decomposeds3
+    asserts:
+      - hasDocuments:
+          count: 1
+
+  # --- External User Management ---
+
+  - it: should configure external user management with admin UUID
+    template: opencloud/deployment.yaml
+    set:
+      features:
+        externalUserManagement:
+          enabled: true
+          adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
+    asserts:
+      - hasDocuments:
+          count: 1
+
+  - it: should configure LDAP connection for external user management
+    template: opencloud/deployment.yaml
+    set:
+      features:
+        externalUserManagement:
+          enabled: true
+          ldap:
+            uri: ldaps://openldap.openldap.svc.cluster.local:636
+            insecure: true
+            bindDN: cn=admin,dc=opencloud,dc=eu
+            user:
+              schema:
+                id: openCloudUUID
+            group:
+              schema:
+                id: openCloudUUID
+    asserts:
+      - hasDocuments:
+          count: 1

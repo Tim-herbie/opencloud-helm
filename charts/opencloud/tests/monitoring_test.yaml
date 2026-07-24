@@ -1,0 +1,163 @@
+suite: Monitoring / Extra Resources / Custom CA / Policies Tests
+templates:
+  - _helpers/tpl.yaml
+  - monitoring/servicemonitor.yaml
+  - extra-resources.yaml
+  - opencloud/policies-configmap.yaml
+
+tests:
+  # --- ServiceMonitor ---
+
+  - it: should not create ServiceMonitor when monitoring is disabled
+    template: monitoring/servicemonitor.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+    set:
+      monitoring:
+        enabled: false
+
+  - it: should create ServiceMonitor when monitoring is enabled
+    template: monitoring/servicemonitor.yaml
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-opencloud
+    set:
+      monitoring:
+        enabled: true
+
+  - it: should set custom labels on ServiceMonitor
+    template: monitoring/servicemonitor.yaml
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            release: prometheus
+    set:
+      monitoring:
+        enabled: true
+        labels:
+          release: prometheus
+
+  - it: should set custom interval and scrapeTimeout on ServiceMonitor
+    template: monitoring/servicemonitor.yaml
+    asserts:
+      - equal:
+          path: spec.endpoints[0].interval
+          value: "60s"
+      - equal:
+          path: spec.endpoints[0].scrapeTimeout
+          value: "30s"
+    set:
+      monitoring:
+        enabled: true
+        interval: "60s"
+        scrapeTimeout: "30s"
+
+  # --- Extra Resources ---
+
+  - it: should not create extra resources when extraResources is empty
+    template: extra-resources.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+    set:
+      extraResources: []
+
+  - it: should create extra resources when extraResources is set
+    template: extra-resources.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+    set:
+      extraResources:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: my-config
+          data:
+            key: value
+
+  - it: should create multiple extra resources
+    template: extra-resources.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+    set:
+      extraResources:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: config1
+          data:
+            key: value1
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: config2
+          data:
+            key: value2
+
+  # --- OPA Rego Policies ---
+
+  - it: should not create policies ConfigMap when policies are disabled
+    template: opencloud/policies-configmap.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+    set:
+      opencloud:
+        policies:
+          enabled: false
+
+  - it: should create policies ConfigMap when policies are enabled
+    template: opencloud/policies-configmap.yaml
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-opencloud-policies
+    set:
+      opencloud:
+        policies:
+          enabled: true
+          policies:
+            - fileName: proxy.rego
+              content: |
+                package proxy
+                default granted := true
+
+  - it: should create multiple policy files
+    template: opencloud/policies-configmap.yaml
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - exists:
+          path: data["proxy.rego"]
+      - exists:
+          path: data["postprocessing.rego"]
+      - exists:
+          path: data["utils.rego"]
+    set:
+      opencloud:
+        policies:
+          enabled: true
+          policies:
+            - fileName: proxy.rego
+              content: |
+                package proxy
+                default granted := true
+            - fileName: postprocessing.rego
+              content: |
+                package postprocessing
+                default granted := true
+            - fileName: utils.rego
+              content: |
+                package utils
+                RESTRICTED_EXTENSIONS := {".exe"}

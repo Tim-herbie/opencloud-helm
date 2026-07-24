@@ -7,79 +7,109 @@ To learn more about the release, try:
   $ helm status {{ .Release.Name }}
   $ helm get all {{ .Release.Name }}
 
-IMPORTANT: This is a development deployment. For production use, you MUST change the following default credentials:
+=====================================================
+  DEVELOPMENT DEPLOYMENT - DO NOT USE IN PRODUCTION
+=====================================================
 
-1. Keycloak Admin: adminUser: admin, adminPassword: admin
-2. OpenCloud Admin: adminPassword: admin
-3. PostgreSQL: user: keycloak, password: keycloak
-4. MinIO: rootUser: opencloud, rootPassword: opencloud-secret-key
+Default credentials that MUST be changed for production:
+
+  1. OpenCloud Admin:  admin / admin
+  2. Keycloak Admin:   admin / admin (realm: openCloud)
+  3. OpenLDAP Admin:   cn=admin,dc=opencloud,dc=eu / admin
 
 Using default credentials in production environments poses significant security risks.
 
-The following services have been deployed:
+=====================================================
+  SERVICES DEPLOYED
+=====================================================
 
-1. OpenCloud (Main Application):
-   - Service: {{ include "opencloud.opencloud.fullname" . }}
-   - Port: 9200
-   - Storage Driver: decomposeds3
-   - System Storage Driver: decomposed
-   - S3 Storage: {{- if .Values.opencloud.storage.s3.external.endpoint }}{{ .Values.opencloud.storage.s3.external.endpoint }}{{- else if .Values.opencloud.storage.s3.enabled }}MinIO ({{ include "opencloud.minio.fullname" . }}){{- else }}Not configured{{- end }}
-   - S3 Bucket: {{- if .Values.opencloud.storage.s3.external.endpoint }}{{ .Values.opencloud.storage.s3.external.bucket }}{{- else if .Values.opencloud.storage.s3.enabled }}{{ .Values.opencloud.storage.s3.bucketName }}{{- else }}Not configured{{- end }}
+{{- if not .Values.oidc.issuerUrl }}
 
-{{- if .Values.oidc.enabled }}
-2. Keycloak (Authentication):
-   - Service: {{ include "opencloud.keycloak.fullname" . }}
-   - Port: 8080
-   - Username: {{ .Values.oidc.adminUser }}
-   - Password: {{ .Values.oidc.adminPassword }}
-{{- else }}
-2. External OIDC Provider:
-   - Issuer: {{ .Values.oidc.external.issuerUrl }}
-   - Client ID: {{ .Values.oidc.external.clientId }}
+  Keycloak (OIDC Provider):
+    - Namespace: keycloak
+    - URL: https://keycloak.opencloud.test
+    - Admin Console: https://keycloak.opencloud.test/admin
 {{- end }}
 
-{{- if .Values.opencloud.storage.s3.enabled }}
-3. MinIO (Object Storage):
-   - Service: {{ include "opencloud.minio.fullname" . }}
-   - API Port: 9000
-   - Console Port: 9001
-   - Username: {{ .Values.opencloud.storage.s3.rootUser }}
-   - Password: {{ .Values.opencloud.storage.s3.rootPassword }}
+  OpenCloud:
+    - Namespace: opencloud
+    - URL: https://cloud.opencloud.test
+
+  OpenLDAP (phpldapadmin):
+    - Namespace: openldap
+    - URL: https://openldap.opencloud.test
+
+=====================================================
+  STORAGE
+=====================================================
+  - Storage Mode: {{ .Values.opencloud.storage.mode }}
+  - StorageClass: ceph-cephfs (RWX)
+  - PersistentVolumes: dynamically provisioned
+
+{{- if eq .Values.opencloud.storage.mode "posixfs" }}
+
+  WARNING: CephFS + posixfs Backup Compatibility
+  -----------------------------------------------
+  When using posixfs with CephFS, snapshot/clone operations
+  may not work correctly in some Ceph versions. This can
+  cause backup tools (Velero, Kasten) to fail.
+
+  If you rely on PVC-level backups, consider switching to
+  the "decomposed" storage driver instead:
+    opencloud.storage.mode: decomposed
 {{- end }}
 
-{{- if or .Values.collabora.enabled .Values.collabora.external.enabled}}
-4. Collabora Collaboration Service:
-   - Service: {{ include "opencloud.fullname" . }}-collaboration
-   - HTTP Port: 9300
-   - gRPC Port: 9301
+=====================================================
+  ENABLED FEATURES
+=====================================================
+  ✓ HTTPS with TLS termination (cilium-gateway)
+  ✓ OIDC authentication (Keycloak)
+  ✓ User directory (OpenLDAP)
+  ✓ Virus scanning (ClamAV)
+  ✓ Document editing (Collabora)
+  ✓ OPA policies (file type restrictions)
+
+=====================================================
+  IMPORTANT: Production Readiness Checklist
+=====================================================
+  [ ] Change all default passwords
+  [ ] Change OpenLDAP admin password:
+      - Update openldap.adminPassword in helmfile
+      - Update opencloud.ldap.adminPassword in helmfile (must match)
+      - Run: helmfile sync
+  [ ] Switch Keycloak to PostgreSQL (remove --import-realm, use start --optimized)
+  [ ] Configure SMTP for email notifications
+  [ ] Set up proper backup strategy for PVs
+  [ ] Review and customize OPA policies for your organization
+  [ ] Configure monitoring and alerting
+
+=====================================================
+  SECURITY: Insecure Options to Disable in Production
+=====================================================
+The following insecure options are currently ENABLED for development
+and MUST be disabled (set to false) in production:
+
+{{- if .Values.oidc }}
+  - oidc.oidcIdpInsecure: {{ .Values.oidc.oidcIdpInsecure }}
+    (Disables TLS certificate validation for OIDC provider)
 {{- end }}
 
-{{- if .Values.httpRoute.enabled }}
-IMPORTANT: This chart includes HTTPRoute resources that route traffic to the OpenCloud, Keycloak, and MinIO services.
-All HTTPRoutes are configured to use the Gateway named "{{ .Values.httpRoute.gateway.name }}" in the
-{{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }} namespace.
-
-Make sure the Gateway exists and is properly configured to accept traffic for the following domains:
-- OpenCloud: {{ include "opencloud.domain" . }} (Service: {{ include "opencloud.opencloud.fullname" . }}, Port: 9200)
-{{- if .Values.oidc.enabled }}
-- Keycloak: {{ include "opencloud.keycloak.domain" . }} (Service: {{ include "opencloud.keycloak.fullname" . }}, Port: 8080)
-{{- end }}
-{{- if .Values.opencloud.storage.s3.enabled }}
-- MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
+{{- if .Values.opencloud }}
+  - opencloud.ocHttpApiInsecure: {{ .Values.opencloud.ocHttpApiInsecure }}
+    (Disables TLS certificate validation for OpenCloud HTTP APIs)
 {{- end }}
 
-{{- else }}
-IMPORTANT: The HTTPRoutes are disabled. You need to configure your own ingress controller
-to expose these services externally.
+{{- if and .Values.opencloud .Values.opencloud.ldap }}
+  - opencloud.ldap.insecure: {{ .Values.opencloud.ldap.insecure }}
+    (Disables TLS certificate validation for LDAP connections)
+{{- end }}
 
-Example domains for your ingress configuration:
-- OpenCloud: {{ include "opencloud.domain" . }} (Service: {{ include "opencloud.opencloud.fullname" . }}, Port: 9200)
-{{- if .Values.oidc.enabled }}
-- Keycloak: {{ include "opencloud.keycloak.domain" . }} (Service: {{ include "opencloud.keycloak.fullname" . }}, Port: 8080)
-{{- end }}
-{{- if .Values.opencloud.storage.s3.enabled }}
-- MinIO Console: {{ include "opencloud.minio.domain" . }} (Service: {{ include "opencloud.minio.fullname" . }}, Port: 9001)
-{{- end }}
+{{- if and .Values.features .Values.features.appsIntegration .Values.features.appsIntegration.wopiIntegration .Values.features.appsIntegration.wopiIntegration.officeSuites }}
+  - collabora.insecure: {{ index .Values.features.appsIntegration.wopiIntegration.officeSuites 0 "insecure" }}
+    (Disables TLS certificate validation for Collabora)
+
+  - collabora.disableProof: {{ index .Values.features.appsIntegration.wopiIntegration.officeSuites 0 "disableProof" }}
+    (Disables WOPI proof key verification)
 {{- end }}
 
 For more information, please refer to the OpenCloud documentation:
