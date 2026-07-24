@@ -416,6 +416,11 @@ spec:
                 secretKeyRef:
                   name: {{ $initSecretName }}
                   key: idmIdpServicePassword
+            - name: OC_ADMIN_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: adminUserID
             - name: COLLABORATION_WOPI_SECRET
               valueFrom:
                 secretKeyRef:
