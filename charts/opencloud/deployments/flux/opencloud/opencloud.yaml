@@ -61,7 +61,6 @@ spec:
       domain:
         opencloud: cloud.opencloud.test
         oidc: keycloak.opencloud.test
-        minio: minio.opencloud.test
         wopi: wopiserver.opencloud.test
         collabora: collabora.opencloud.test
         companion: companion.opencloud.test
@@ -76,8 +75,8 @@ spec:
       ldap:
         secretRef: ldap-bind-secrets
       storage:
-        # Default: posixfs (PVC-backed POSIX filesystem, no MinIO/S3). Switch to "s3" or
-        # "decomposed" below to use the alternatives.
+        # Default: posixfs (PVC-backed POSIX filesystem, no S3). Switch to "s3"
+        # (external S3) or "decomposed" below to use the alternatives.
         mode: decomposed
         # usersDriver: posix       # auto-derived from mode=posixfs; uncomment to override
         # systemDriver: decomposed # only "decomposed"/"decomposeds3" valid; system has no posix option
@@ -94,17 +93,18 @@ spec:
             size: 60Gi
             # accessMode: ReadWriteOnce
             accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
-        # --- S3 / MinIO alternative (uncomment to switch) ---
+        # --- External S3 alternative (uncomment to switch) ---
+        # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
+        # Reference it via `storage.s3.external.existingSecret` (below) and
+        # `secretRefs.s3CredentialsSecretRef` (top-level) so OpenCloud can read it.
         # s3:
         #   enabled: true
-        #   rootUser: opencloud
-        #   rootPassword: opencloud-secret-key
-        #   bucketName: opencloud-bucket
-        #   region: "default"
-        #   persistence:
-        #     enabled: true
-        #     size: 30Gi
-        #     accessMode: ReadWriteOnce
+        #   external:
+        #     endpoint: https://s3.example.com       # your S3 / Ceph / external MinIO endpoint
+        #     region: default
+        #     existingSecret: s3secret                # Secret with accessKey/secretKey keys
+        #     bucket: opencloud-bucket
+        #     createBucket: true
     # secretRefs:
     #   s3CredentialsSecretRef: s3secret  # only needed when storage.mode = s3
     oidc:
