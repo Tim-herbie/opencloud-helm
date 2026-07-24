@@ -10,7 +10,6 @@
           "properties": {
             "opencloud": { "type": "string", "format": "hostname" },
             "oidc": { "type": "string", "format": "hostname" },
-            "minio": { "type": "string", "format": "hostname" },
             "collabora": { "type": "string", "format": "hostname" },
             "companion": { "type": "string", "format": "hostname" }
           }
@@ -49,6 +48,15 @@
             "exposedHeaders": { "type": "string" },
             "allowCredentials": { "type": "string" },
             "maxAge": { "type": "string" }
+          }
+        },
+        "httpRoute": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "serviceName": { "type": "string" },
+            "serviceNamespace": { "type": "string" },
+            "port": { "type": "integer" }
           }
         }
       }
@@ -184,17 +192,16 @@
               "type": "object",
               "properties": {
                 "enabled": { "type": "boolean" },
-                "rootUser": { "type": "string" },
-                "rootPassword": { "type": "string" },
-                "bucketName": { "type": "string" },
-                "region": { "type": "string" },
-                "persistence": {
+                "external": {
                   "type": "object",
                   "properties": {
-                    "enabled": { "type": "boolean" },
-                    "size": { "type": "string" },
-                    "storageClass": { "type": "string" },
-                    "accessMode": { "type": "string", "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"] }
+                    "endpoint": { "type": "string" },
+                    "region": { "type": "string" },
+                    "existingSecret": { "type": "string" },
+                    "accessKey": { "type": "string" },
+                    "secretKey": { "type": "string" },
+                    "bucket": { "type": "string" },
+                    "createBucket": { "type": "boolean" }
                   }
                 }
               }

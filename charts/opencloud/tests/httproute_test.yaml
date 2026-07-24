@@ -33,15 +33,14 @@ tests:
       - isKind:
           of: HTTPRoute
 
-  - it: MinIO HTTPRoute is created when httpRoute, s3 storage and minio httpRoute are enabled
-    template: minio/httproute.yaml
+  - it: Keycloak HTTPRoute is created when httpRoute, external oidc and keycloak httproute are enabled
+    template: keycloak/httproute.yaml
     set:
       httpRoute.enabled: true
-      opencloud.storage.mode: s3
-      opencloud.storage.s3.enabled: true
-      opencloud.storage.s3.httpRoute.enabled: true
+      oidc.issuerUrl: "https://keycloak.example.com/realms/openCloud"
+      oidc.httpRoute.enabled: true
     asserts:
       - hasDocuments:
-          count: 1
+          count: 2
       - isKind:
           of: HTTPRoute

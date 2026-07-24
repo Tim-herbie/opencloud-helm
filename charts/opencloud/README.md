@@ -92,14 +92,13 @@ kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
 
 ### Choosing a storage backend
 
-The flux deployment defaults to **`decomposed`** (PVC-backed metadata + blobs, no S3/MinIO). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml`:
+The chart defaults to **`posixfs`** (integrated IDM, no external dependencies). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml` (Flux) or `values.yaml` (Helm):
 
 | Backend | What to change | Effect |
 |---------|---------------|--------|
 | **Decomposed (default)** | nothing — `storage.mode: decomposed` | PVC stores metadata + blobs; no MinIO deployment; `Recreate` rollout strategy (single RWO volume) |
 | **Decomposed + RWX** | under `storage.decomposed.persistence`, comment `ReadWriteOnce`, uncomment `ReadWriteMany` | Same as above but supports RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem) |
-| **S3 / MinIO** | uncomment the `storage.s3` block + uncomment `secretRefs.s3CredentialsSecretRef: s3secret` in opencloud.yaml + uncomment the `s3secret` Secret in `secrets.yaml` | Bundled MinIO pod handles blob storage; `RollingUpdate` rollout strategy (no shared PVC) |
-| **External S3** | uncomment `storage.s3` block (same as MinIO), but set `storage.s3.external.endpoint` instead of relying on bundled MinIO. MinIO pod won't deploy if `external.endpoint` is non-empty | OpenCloud talks to your existing S3 / Ceph / MinIO; no bundled MinIO |
+| **S3 / external S3** | set `storage.mode: s3`, `storage.s3.enabled: true`, and `storage.s3.external.endpoint` in opencloud.yaml + uncomment the `s3secret` Secret in `secrets.yaml` | OpenCloud talks to your external S3 / Ceph / MinIO; `RollingUpdate` rollout strategy (no shared PVC) |
 
 > ⚠️ **PVC access mode → rollout strategy**: `ReadWriteOnce` forces `Recreate` (single pod mounts the volume). `ReadWriteMany` enables `RollingUpdate` (multi-pod). Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
 
@@ -147,14 +146,13 @@ graph TD
         Gateway -->|collabora.opencloud.test| Collabora[Collabora Pod]
         Gateway -->|collaboration.opencloud.test| Collaboration[Collaboration Pod]
         Gateway -->|wopiserver.opencloud.test| Collaboration
-        Gateway -->|keycloak.opencloud.test| Keycloak[Keycloak Pod]
-        Gateway -->|minio.opencloud.test| MinIO[MinIO Pod]
+        Gateway -->|keycloak.opencloud.test| Keycloak[Keycloak Pod - external]
         
         OpenCloud -->|Authentication| Keycloak
-        OpenCloud -->|File Storage| MinIO
+        OpenCloud -->|File Storage| Storage[(PVC / External S3)]
         
         Collabora -->|WOPI Protocol| Collaboration
-        Collaboration -->|File Access| MinIO
+        Collaboration -->|File Access| Storage
         
         Collaboration -->|Authentication| Keycloak
         
@@ -164,10 +162,10 @@ graph TD
     classDef pod fill:#f9f,stroke:#333,stroke-width:2px;
     classDef gateway fill:#bbf,stroke:#333,stroke-width:2px;
     classDef user fill:#bfb,stroke:#333,stroke-width:2px;
-    classDef db fill:#dfd,stroke:#333,stroke-width:2px;
+    classDef storage fill:#ffd,stroke:#333,stroke-width:2px;
     
-    class OpenCloud,Collabora,Collaboration,Keycloak,MinIO pod;
-    class PostgreSQL,Redis db;
+    class OpenCloud,Collabora,Collaboration,Keycloak pod;
+    class Storage storage;
     class Gateway gateway;
     class User user;
 ```
@@ -179,8 +177,8 @@ Key interactions:
 
 2. **OpenCloud Pod**:
    - Main application that users interact with
-   - Authenticates users via Keycloak
-   - Stores files in MinIO
+   - Authenticates users via Keycloak (external OIDC) or integrated IDM (default)
+   - Stores files in a PVC (posixfs/decomposed) or external S3
    - Communicates with Collaboration service for collaborative editing
 
 3. **Collabora Pod**:
@@ -192,15 +190,11 @@ Key interactions:
    - Implements WOPI server functionality
    - Acts as intermediary between document editors and file storage
    - Handles collaborative editing sessions
-   - Accesses files from MinIO
+   - Accesses files via OpenCloud storage (PVC or external S3)
 
-5. **Keycloak Pod**:
-   - Handles authentication for all services
-   - Manages user identities and permissions
-
-6. **MinIO Pod**:
-   - Object storage for all files
-   - Accessed by OpenCloud and Collaboration pods
+5. **Keycloak Pod** (external, optional):
+   - Handles authentication for all services (when `oidc.issuerUrl` is set)
+   - Deployed separately; this chart only manages its HTTPRoute when `oidc.httpRoute.enabled`
 
 ## Configuration
 
@@ -232,7 +226,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `namespace` | Deprecated: Namespace is now controlled by Helm (.Release.Namespace) | (removed) |
 | `global.domain.opencloud` | Domain for OpenCloud | `cloud.opencloud.test` |
 | `global.domain.oidc` | Domain for Keycloak/OIDC provider | `keycloak.opencloud.test` |
-| `global.domain.minio` | Domain for MinIO | `minio.opencloud.test` |
+| `global.domain.oidc` | Domain for Keycloak (external OIDC, when `oidc.issuerUrl` set) | `keycloak.opencloud.test` |
 | `global.domain.collabora` | Domain for Collabora | `collabora.opencloud.test` |
 | `global.domain.companion` | Domain for Companion | `companion.opencloud.test` |
 | `global.domain.wopi` | Domain for WOPI server | `wopiserver.opencloud.test` |
@@ -310,38 +304,20 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 
 ### OpenCloud S3 Storage Settings
 
-The following options configure S3 for user file storage, either with the internal MinIO instance or with an external S3 provider.
+The following options configure an external S3-compatible provider (AWS S3, Ceph, MinIO deployed externally, etc.) for user file storage. The chart no longer ships a bundled MinIO instance — deploy MinIO/S3 separately if you need object storage.
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `opencloud.storage.s3.enabled` | Enable internal MinIO instance | `true` |
-| `opencloud.storage.s3.image.registry` | MinIO image registry | `docker.io` |
-| `opencloud.storage.s3.image.repository` | MinIO image repository | `minio/minio` |
-| `opencloud.storage.s3.image.tag` | MinIO image tag | `latest` |
-| `opencloud.storage.s3.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `opencloud.storage.s3.httpRoute.enabled` | Enable HTTPRoute for MinIO | `false` |
-| `opencloud.storage.s3.existingSecret` | Name of the existing secret | `` |
-| `opencloud.storage.s3.rootUser` | MinIO root user | `opencloud` |
-| `opencloud.storage.s3.rootPassword` | MinIO root password | `opencloud-secret-key` |
-| `opencloud.storage.s3.bucketName` | MinIO bucket name | `opencloud-bucket` |
-| `opencloud.storage.s3.region` | MinIO region | `default` |
-| `opencloud.storage.s3.resources` | CPU/Memory resource requests/limits | See values.yaml |
-| `opencloud.storage.s3.persistence.enabled` | Enable MinIO persistence | `true` |
-| `opencloud.storage.s3.persistence.existingClaim` | Name of existing PVC instead of the settings below | `` |
-| `opencloud.storage.s3.persistence.size` | Size of the MinIO persistent volume | `30Gi` |
-| `opencloud.storage.s3.persistence.storageClass` | MinIO storage class | `""` |
-| `opencloud.storage.s3.persistence.accessMode` | MinIO access mode | `ReadWriteOnce` |
+| `opencloud.storage.s3.enabled` | Enable external S3 storage | `false` |
 | `opencloud.storage.s3.external.endpoint` | External S3 endpoint URL | `""` |
 | `opencloud.storage.s3.external.region` | External S3 region | `default` |
-| `opencloud.storage.s3.external.existingSecret` | Name of the existing secret | `` |
-| `opencloud.storage.s3.external.accessKey` | External S3 access key | `""` |
-| `opencloud.storage.s3.external.secretKey` | External S3 secret key | `""` |
+| `opencloud.storage.s3.external.existingSecret` | Name of the existing secret (keys: `accessKey`, `secretKey`) | `""` |
+| `opencloud.storage.s3.external.accessKey` | External S3 access key (inline; use existingSecret for production) | `""` |
+| `opencloud.storage.s3.external.secretKey` | External S3 secret key (inline; use existingSecret for production) | `""` |
 | `opencloud.storage.s3.external.bucket` | External S3 bucket | `""` |
 | `opencloud.storage.s3.external.createBucket` | Create bucket if it doesn't exist | `true` |
 
-**Note:**  
-- The `internal` key under `storage.s3` has been removed. All MinIO/internal S3 settings are now directly under `storage.s3`.
-- The `enabled` field under `storage.s3.external` has been removed. To use external S3, set the `endpoint` and other required fields.
+To use external S3, set `opencloud.storage.mode: s3`, `opencloud.storage.s3.enabled: true`, and configure the `storage.s3.external.*` fields (or reference a pre-created Secret via `existingSecret`).
 
 ### OpenCloud PosixFS Storage Settings
 
@@ -597,7 +573,7 @@ This chart supports standard Kubernetes Ingress resources for exposing services.
 
 ## Gateway API Configuration
 
-This chart includes HTTPRoute resources that can be used to expose the OpenCloud, Keycloak, and MinIO services externally. The HTTPRoutes are configured to route traffic to the respective services.
+This chart includes HTTPRoute resources that can be used to expose the OpenCloud and (optionally) Keycloak services externally. The HTTPRoutes are configured to route traffic to the respective services.
 
 ### HTTPRoute Settings
 
@@ -622,9 +598,9 @@ The following HTTPRoutes are created when `httpRoute.enabled` is set to `true`:
    - Port: 8080
    - Headers: Adds Permissions-Policy header to prevent browser features like interest-based advertising
 
-3. **MinIO HTTPRoute** (when `opencloud.storage.mode` is `s3` and `opencloud.storage.s3.enabled` is `true`):
-   - Hostname: `global.domain.minio`
-   - Service: `{{ release-name }}-minio`
+3. **Keycloak HTTPRoute** (when `oidc.issuerUrl` is set and `oidc.httpRoute.enabled` is `true`):
+   - Hostname: `global.domain.oidc`
+   - Service: configured via `oidc.httpRoute.serviceName` (defaults to `keycloak`)
    - Port: 9001
    - Headers: Adds Permissions-Policy header to prevent browser features like interest-based advertising
 
@@ -741,7 +717,7 @@ Alternatively, for local testing, you can add entries to your `/etc/hosts` file:
 ```
 192.168.178.77  cloud.opencloud.test
 192.168.178.77  keycloak.opencloud.test
-192.168.178.77  minio.opencloud.test
+192.168.178.77  keycloak.opencloud.test
 192.168.178.77  collabora.opencloud.test
 192.168.178.77  collaboration.opencloud.test
 192.168.178.77  wopiserver.opencloud.test

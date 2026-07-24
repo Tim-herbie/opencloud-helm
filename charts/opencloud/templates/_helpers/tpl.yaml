@@ -69,24 +69,10 @@ Create a fully qualified OpenCloud name.
 {{- end }}
 
 {{/*
-Create a fully qualified MinIO name.
-*/}}
-{{- define "opencloud.minio.fullname" -}}
-{{- printf "%s-minio" (include "opencloud.fullname" .) | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
 Return the OpenCloud domain
 */}}
 {{- define "opencloud.domain" -}}
 {{- .Values.global.domain.opencloud }}
-{{- end }}
-
-{{/*
-Return the MinIO domain
-*/}}
-{{- define "opencloud.minio.domain" -}}
-{{- .Values.global.domain.minio }}
 {{- end }}
 
 {{/*
@@ -215,10 +201,8 @@ Return the S3 user storage endpoint.
 {{- define "opencloud.s3.user.endpoint" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
-{{- .Values.opencloud.storage.s3.external.endpoint | quote -}}
 {{- else -}}
-{{- printf "http://%s:9000" (include "opencloud.minio.fullname" .) | quote -}}
+{{- .Values.opencloud.storage.s3.external.endpoint | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -228,10 +212,8 @@ Return the S3 user storage region.
 {{- define "opencloud.s3.user.region" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
-{{- .Values.opencloud.storage.s3.external.region | quote -}}
 {{- else -}}
-{{- .Values.opencloud.storage.s3.region | default "default" | quote -}}
+{{- .Values.opencloud.storage.s3.external.region | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -241,10 +223,8 @@ Return the S3 user storage bucket.
 {{- define "opencloud.s3.user.bucket" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
-{{- .Values.opencloud.storage.s3.external.bucket | quote -}}
 {{- else -}}
-{{- .Values.opencloud.storage.s3.bucketName | quote -}}
+{{- .Values.opencloud.storage.s3.external.bucket | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -254,10 +234,8 @@ Return the S3 user storage createBucket flag.
 {{- define "opencloud.s3.user.createBucket" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
-{{- .Values.opencloud.storage.s3.external.createBucket | default true | quote -}}
 {{- else -}}
-"true"
+{{- .Values.opencloud.storage.s3.external.createBucket | default true | quote -}}
 {{- end -}}
 {{- end -}}
 
@@ -267,10 +245,8 @@ Return the S3 user storage accessKey secret name.
 {{- define "opencloud.s3.user.accessKeySecretName" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
-{{- .Values.opencloud.storage.s3.external.existingSecret | default (printf "%s-s3" (include "opencloud.opencloud.fullname" .)) -}}
 {{- else -}}
-{{- .Values.opencloud.storage.s3.existingSecret | default (include "opencloud.minio.fullname" .) -}}
+{{- .Values.opencloud.storage.s3.external.existingSecret | default (printf "%s-s3" (include "opencloud.opencloud.fullname" .)) -}}
 {{- end -}}
 {{- end -}}
 
@@ -280,10 +256,8 @@ Return the S3 user storage accessKey secret key.
 {{- define "opencloud.s3.user.accessKeySecretKey" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
-accessKey
 {{- else -}}
-rootUser
+accessKey
 {{- end -}}
 {{- end -}}
 
@@ -293,10 +267,8 @@ Return the S3 user storage secretKey secret name.
 {{- define "opencloud.s3.user.secretKeySecretName" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
-{{- .Values.opencloud.storage.s3.external.existingSecret | default (printf "%s-s3" (include "opencloud.opencloud.fullname" .)) -}}
 {{- else -}}
-{{- .Values.opencloud.storage.s3.existingSecret | default (include "opencloud.minio.fullname" .) -}}
+{{- .Values.opencloud.storage.s3.external.existingSecret | default (printf "%s-s3" (include "opencloud.opencloud.fullname" .)) -}}
 {{- end -}}
 {{- end -}}
 
@@ -306,10 +278,8 @@ Return the S3 user storage secretKey secret key.
 {{- define "opencloud.s3.user.secretKeySecretKey" -}}
 {{- if eq .Values.opencloud.storage.mode "posixfs" -}}
 {{- "" -}}
-{{- else if and (eq .Values.opencloud.storage.mode "s3") (not .Values.opencloud.storage.s3.enabled) -}}
-secretKey
 {{- else -}}
-rootPassword
+secretKey
 {{- end -}}
 {{- end -}}
 

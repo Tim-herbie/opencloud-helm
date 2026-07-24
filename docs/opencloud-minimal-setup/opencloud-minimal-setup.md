@@ -15,7 +15,7 @@ Create the namespace and install OpenCloud using Helm:
 ```bash
 helm install opencloud \
   oci://ghcr.io/tim-herbie/opencloud-helm/opencloud \
-  --version 2.4.6 \
+  --version 2.4.7 \
   --namespace opencloud \
   --create-namespace \
   -f opencloud-minimal-values.yaml

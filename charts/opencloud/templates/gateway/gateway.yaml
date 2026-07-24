@@ -29,7 +29,8 @@ spec:
           selector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-    # Keycloak - HTTP redirect listener
+    # Keycloak - HTTP redirect listener (conditional, only when external OIDC is configured)
+    {{- if .Values.oidc.issuerUrl }}
     - name: {{ $prefix }}-keycloak-http
       protocol: HTTP
       port: 80
@@ -37,6 +38,7 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    {{- end }}
     # WOPI - HTTP redirect listener
     - name: {{ $prefix }}-wopi-http
       protocol: HTTP
@@ -51,19 +53,6 @@ spec:
       protocol: HTTP
       port: 80
       hostname: {{ .Values.global.domain.collabora | quote }}
-      allowedRoutes:
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-    {{- end }}
-    # MinIO - HTTP redirect listener (conditional, only for internal s3 mode)
-    {{- if and (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
-    - name: {{ $prefix }}-minio-http
-      protocol: HTTP
-      port: 80
-      hostname: {{ .Values.global.domain.minio | quote }}
       allowedRoutes:
         namespaces:
           from: Selector

@@ -1,50 +1,53 @@
-{{- if and .Values.httpRoute.enabled (eq .Values.opencloud.storage.mode "s3") .Values.opencloud.storage.s3.enabled .Values.opencloud.storage.s3.httpRoute.enabled }}
+{{- if and .Values.httpRoute.enabled .Values.oidc.issuerUrl .Values.oidc.httpRoute.enabled }}
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
-  name: {{ include "opencloud.fullname" . }}-minio-http-redirect
+  name: {{ include "opencloud.fullname" . }}-keycloak-http-redirect
+  namespace: {{ .Values.oidc.httpRoute.serviceNamespace | default .Release.Namespace }}
   labels:
     {{- include "opencloud.labels" . | nindent 4 }}
-    app.kubernetes.io/component: minio
+    app.kubernetes.io/component: keycloak
 spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
       {{- with .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ . }}-minio-http
+      sectionName: {{ . }}-keycloak-http
       {{- end }}
   hostnames:
-    - {{ include "opencloud.minio.domain" . | quote }}
+    - {{ .Values.global.domain.oidc | quote }}
   rules:
     - filters:
         - type: RequestRedirect
           requestRedirect:
             scheme: https
-            hostname: {{ include "opencloud.minio.domain" . }}
+            hostname: {{ .Values.global.domain.oidc }}
             statusCode: 301
 ---
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
-  name: {{ include "opencloud.fullname" . }}-minio-httproute
+  name: {{ include "opencloud.fullname" . }}-keycloak-httproute
+  namespace: {{ .Values.oidc.httpRoute.serviceNamespace | default .Release.Namespace }}
   labels:
     {{- include "opencloud.labels" . | nindent 4 }}
-    app.kubernetes.io/component: minio
+    app.kubernetes.io/component: keycloak
 spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
       {{- with .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ . }}-minio-https
+      sectionName: {{ . }}-keycloak-https
       {{- end }}
   hostnames:
-    - {{ include "opencloud.minio.domain" . | quote }}
+    - {{ .Values.global.domain.oidc | quote }}
   rules:
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: {{ include "opencloud.minio.fullname" . }}
-          port: 9001
+        - name: {{ .Values.oidc.httpRoute.serviceName | default "keycloak" }}
+          namespace: {{ .Values.oidc.httpRoute.serviceNamespace | default .Release.Namespace }}
+          port: {{ .Values.oidc.httpRoute.port | default 80 }}
 {{- end }}

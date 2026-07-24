@@ -9,10 +9,7 @@
 # Using these default values in production is a significant security risk.
 #
 # Credentials that need to be changed:
-# 1. Keycloak Admin: adminUser: admin, adminPassword: admin
-# 2. OpenCloud Admin: adminPassword: admin
-# 3. PostgreSQL: user: keycloak, password: keycloak
-# 4. MinIO: rootUser: opencloud, rootPassword: opencloud-secret-key
+# 1. OpenCloud Admin: adminPassword: admin (integrated IDM demo user)
 
 
 # =====================================================================
@@ -25,10 +22,8 @@ global:
   domain:
     # Main domain for OpenCloud
     opencloud: cloud.opencloud.test
-    # Domain for Keycloak
+    # Domain for Keycloak (used only when oidc.issuerUrl is set for external OIDC)
     oidc: keycloak.opencloud.test
-    # Domain for MinIO
-    minio: minio.opencloud.test
     # Domain for WOPI server
     wopi: wopiserver.opencloud.test
     # Domain for Collabora CODE
@@ -78,14 +73,13 @@ busybox:
 # =====================================================================
 
 # OIDC (OpenID Connect) settings for identity and access management
-# OpenCloud requires an OIDC provider for authentication.
-# Deploy Keycloak separately (e.g., via bitnami/keycloak chart in helmfile)
-# and configure the external OIDC settings below.
-# Supports any OIDC-compliant provider (Keycloak, Auth0, Okta, Azure AD, etc.)
+# Leave oidc.issuerUrl empty to use the integrated IDM (built-in identity provider).
+# Set oidc.issuerUrl to an external OIDC provider (e.g., Keycloak, Auth0, Okta, Azure AD)
+# to use external authentication instead.
 oidc:
-  # OIDC Issuer URL (required)
-  # This is the base URL of your OIDC provider's authorization server
-  # Examples:
+  # OIDC Issuer URL (optional)
+  # Leave empty to use the integrated IDM (no external OIDC provider required).
+  # Set to the base URL of your external OIDC provider when using external auth:
   #   Keycloak: https://keycloak.example.com/realms/openCloud
   #   Auth0: https://your-tenant.auth0.com
   #   Okta: https://your-org.okta.com/oauth2/default
@@ -129,8 +123,21 @@ oidc:
     exposedHeaders: "Access-Control-Allow-Origin,Access-Control-Allow-Credentials"
     # Allow credentials
     allowCredentials: "true"
-    # Max age in seconds
-    maxAge: "3600"
+# Max age in seconds
+  maxAge: "3600"
+
+  # HTTPRoute for the external OIDC provider (Keycloak, etc.)
+  # Only rendered when oidc.issuerUrl is set.
+  # Use this when the external OIDC provider is reachable via the same gateway
+  # and you want this chart to manage its HTTPRoute (redirect + backend).
+  httpRoute:
+    enabled: false
+    # Name of the backend Service (the OIDC provider service, e.g. "keycloak")
+    serviceName: "keycloak"
+    # Namespace of the backend Service (defaults to the release namespace)
+    serviceNamespace: ""
+    # Port of the backend Service
+    port: 80
 
 
 # =====================================================================
@@ -437,13 +444,13 @@ opencloud:
   initSecrets:
     existingSecret: ""
   
-  # Create demo users
-  createDemoUsers: false
+  # Create demo users (set true for integrated IDM; default admin user is created)
+  createDemoUsers: true
   # Additional services to start
   additionalServices: []
   # Services to exclude from starting
-  excludeServices:
-    - "idp"
+  # Leave empty so the built-in IDP runs when using integrated IDM
+  excludeServices: [] # necessary that idp runs
   env: []
   envFrom: []
   # Resources allocation
@@ -589,45 +596,18 @@ opencloud:
   # Storage configuration
   storage:
     systemDriver: "decomposed"
-    # Storage driver for user files: "decomposeds3" (default), "posix", or "decomposed"
-    # If not set, defaults to "decomposeds3" when mode is "s3", or "posix" when mode is "posixfs"
+    # Storage driver for user files: "posix" (default), "decomposeds3", or "decomposed"
+    # If not set, defaults to "posix" when mode is "posixfs", or "decomposeds3" when mode is "s3"
     usersDriver: ""
-    # Storage mode for user files, can be "s3" (default) or "posixfs"
+    # Storage mode for user files: "posixfs" (default), "s3", or "decomposed"
     # This is a convenience setting that sets usersDriver if usersDriver is not explicitly set
-    mode: s3
-    # S3 storage configuration
+    mode: posixfs
+    # External S3 storage configuration (no bundled MinIO; deploy MinIO/S3 externally if needed)
     s3:
-      enabled: true
-      # MinIO image settings
-      image:
-        registry: docker.io
-        repository: minio/minio
-        tag: latest
-        pullPolicy: IfNotPresent
-      # httpRoute configuration
-      httpRoute:
-        enabled: false
-      existingSecret: ""
-      rootUser: opencloud
-      rootPassword: opencloud-secret-key
-      bucketName: opencloud-bucket
-      region: "default"
-      resources:
-        requests:
-          cpu: 100m
-          memory: 256Mi
-        limits:
-          cpu: 1000m
-          memory: 2Gi
-      persistence:
-        enabled: true
-        existingClaim: ""
-        size: 30Gi
-        storageClass: ""
-        accessMode: ReadWriteOnce
+      enabled: false
       # External S3 (can be S3, Ceph, or external MinIO)
       external:
-        # External S3 endpoint URL (no 'enabled' field anymore)
+        # External S3 endpoint URL
         endpoint: ""
         region: "default"
         existingSecret: ""
