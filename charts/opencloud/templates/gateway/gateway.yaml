@@ -60,4 +60,69 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
     {{- end }}
+    {{- if .Values.global.tls.enabled }}
+    # --- HTTPS listeners (TLS termination at this Gateway) ---
+    # OpenCloud (proxy) - HTTPS listener
+    - name: {{ $prefix }}-proxy-https
+      protocol: HTTPS
+      port: {{ .Values.httpRoute.gateway.port }}
+      hostname: {{ .Values.global.domain.opencloud | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.global.tls.secretName }}
+            namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+    {{- if .Values.oidc.issuerUrl }}
+    # Keycloak - HTTPS listener (conditional, only when external OIDC is configured)
+    - name: {{ $prefix }}-keycloak-https
+      protocol: HTTPS
+      port: {{ .Values.httpRoute.gateway.port }}
+      hostname: {{ .Values.global.domain.oidc | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.global.tls.secretName }}
+            namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+      allowedRoutes:
+        namespaces:
+          from: All
+    {{- end }}
+    # WOPI - HTTPS listener
+    - name: {{ $prefix }}-wopi-https
+      protocol: HTTPS
+      port: {{ .Values.httpRoute.gateway.port }}
+      hostname: {{ .Values.global.domain.wopi | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.global.tls.secretName }}
+            namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+      allowedRoutes:
+        namespaces:
+          from: All
+    {{- if .Values.collabora.enabled }}
+    # Collabora - HTTPS listener (conditional)
+    - name: {{ $prefix }}-collabora-https
+      protocol: HTTPS
+      port: {{ .Values.httpRoute.gateway.port }}
+      hostname: {{ .Values.global.domain.collabora | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.global.tls.secretName }}
+            namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+    {{- end }}
+    {{- end }}
 {{- end }}
