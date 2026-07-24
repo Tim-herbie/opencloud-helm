@@ -16,35 +16,34 @@ spec:
       app.kubernetes.io/component: opencloud
   strategy:
     {{- if or (eq .Values.opencloud.storage.mode "posixfs") (eq .Values.opencloud.storage.mode "decomposed") }}
+      {{- $storageRwx := false }}
       {{- if eq .Values.opencloud.storage.mode "posixfs" }}
-        {{- if eq .Values.opencloud.storage.posixfs.persistence.accessMode "ReadWriteMany" }}
-    # RWX access mode allows multiple pods to mount the volume simultaneously
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-        {{- else }}
-    # RWO access mode only allows one pod to mount at a time, so use Recreate
-    type: Recreate
-        {{- end }}
+        {{- $storageRwx = eq .Values.opencloud.storage.posixfs.persistence.accessMode "ReadWriteMany" }}
       {{- else }}
-        {{- if eq .Values.opencloud.storage.decomposed.persistence.accessMode "ReadWriteMany" }}
+        {{- $storageRwx = eq .Values.opencloud.storage.decomposed.persistence.accessMode "ReadWriteMany" }}
+      {{- end }}
+      {{- $dataRwx := eq .Values.opencloud.persistence.data.accessMode "ReadWriteMany" }}
+      {{- if and $storageRwx $dataRwx }}
     # RWX access mode allows multiple pods to mount the volume simultaneously
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-        {{- else }}
-    # RWO access mode only allows one pod to mount at a time, so use Recreate
+      {{- else }}
+    # At least one PVC is RWO (data or storage); only one pod can mount at a time, so use Recreate
     type: Recreate
-        {{- end }}
       {{- end }}
     {{- else }}
-    # S3 mode doesn't use PVCs, so RollingUpdate is safe
+    # S3 mode doesn't use storage PVCs, but the data PVC may still be RWO
+    {{- if eq .Values.opencloud.persistence.data.accessMode "ReadWriteMany" }}
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
+    {{- else }}
+    # RWO data PVC only allows one pod to mount at a time, so use Recreate
+    type: Recreate
+    {{- end }}
     {{- end }}
   template:
     metadata:

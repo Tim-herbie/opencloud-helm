@@ -75,6 +75,9 @@ spec:
       createDemoUsers: false
       excludeServices:
         - "idp"
+      persistence:
+        data:
+          accessMode: ReadWriteMany  # RWX so the data PVC (/var/lib/opencloud) also allows RollingUpdate + multi-replica (match decomposed RWX)
       oidc:
         scope: "openid profile email groups"
       ldap:
