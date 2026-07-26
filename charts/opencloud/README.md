@@ -128,13 +128,13 @@ kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
 
 ### Choosing a storage backend
 
-The chart defaults to **`posixfs`** (integrated IDM, no external dependencies). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml` (Flux) or `values.yaml` (Helm):
+The chart defaults to **`decomposed`** (PVC-backed metadata + blobs, no external S3). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml` (Flux) or `values.yaml` (Helm):
 
 | Backend | What to change | Effect |
 |---------|---------------|--------|
-| **PosixFS (default)** | nothing — `storage.mode: posixfs` | PVC stores user files; no S3/MinIO; `Recreate` rollout strategy (single RWO volume) |
-| **Decomposed** | `storage.mode: decomposed` | PVC stores metadata + blobs; `Recreate` (RWO) or `RollingUpdate` (RWX) |
+| **Decomposed (default)** | nothing — `storage.mode: decomposed` | PVC stores metadata + blobs; no S3; `Recreate` rollout strategy (single RWO volume) |
 | **Decomposed + RWX** | under `storage.decomposed.persistence`, set `accessMode: ReadWriteMany` | Supports RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem) |
+| **PosixFS** | `storage.mode: posixfs` | PVC stores user files directly; simpler but no decomposed metadata tree |
 | **S3 / external S3** | set `storage.mode: s3`, `storage.s3.enabled: true`, and `storage.s3.external.endpoint` | OpenCloud talks to your external S3 / Ceph / MinIO; `RollingUpdate` (no shared PVC) |
 
 > ⚠️ **PVC access mode → rollout strategy**: `ReadWriteOnce` forces `Recreate` (single pod mounts the volume). `ReadWriteMany` enables `RollingUpdate` (multi-pod). Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
@@ -304,7 +304,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.smtp.insecure` | SMTP insecure | `false` |
 | `opencloud.smtp.authentication` | SMTP authentication | `plain` |
 | `opencloud.smtp.encryption` | SMTP encryption | `starttls` |
-| `opencloud.storage.mode` | Choice between `s3`, `posixfs`, or `decomposed` for user files | `posixfs` |
+| `opencloud.storage.mode` | Choice between `s3`, `posixfs`, or `decomposed` for user files | `decomposed` |
 | `opencloud.proxyTls` | Use TLS between proxy and OpenCloud | `false` |
 | `opencloud.gatewayGrpcAddr` | gRPC address for the REVA gateway | `0.0.0.0:9142` |
 | `opencloud.proxyEnableBasicAuth` | Enable basic auth for proxy | `false` |

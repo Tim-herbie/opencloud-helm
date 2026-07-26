@@ -582,13 +582,15 @@ opencloud:
   
   # Storage configuration
   storage:
+    # Storage driver for the system (metadata) storage.
+    # Only "decomposed" (default) or "decomposeds3" are valid — the system driver has no posix option.
     systemDriver: "decomposed"
-    # Storage driver for user files: "posix" (default), "decomposeds3", or "decomposed"
-    # If not set, defaults to "posix" when mode is "posixfs", or "decomposeds3" when mode is "s3"
+    # Storage driver for user files: "posix", "decomposeds3", or "decomposed"
+    # If not set, derives from mode: posix (posixfs), decomposed (decomposed), decomposeds3 (s3)
     usersDriver: ""
-    # Storage mode for user files: "posixfs" (default), "s3", or "decomposed"
+    # Storage mode for user files: "decomposed" (default), "s3", or "posixfs"
     # This is a convenience setting that sets usersDriver if usersDriver is not explicitly set
-    mode: posixfs
+    mode: decomposed
     # External S3 storage configuration (no bundled MinIO; deploy MinIO/S3 externally if needed)
     s3:
       enabled: false

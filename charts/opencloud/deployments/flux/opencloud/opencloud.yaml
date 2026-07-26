@@ -83,8 +83,8 @@ spec:
       ldap:
         secretRef: ldap-bind-secrets
       storage:
-        # Default: posixfs (PVC-backed POSIX filesystem, no S3). Switch to "s3"
-        # (external S3) or "decomposed" below to use the alternatives.
+        # Default: decomposed (PVC-backed metadata + blobs, no S3). Switch to "s3"
+        # (external S3) or "posixfs" below to use the alternatives.
         mode: decomposed
         # usersDriver: posix       # auto-derived from mode=posixfs; uncomment to override
         # systemDriver: decomposed # only "decomposed"/"decomposeds3" valid; system has no posix option
