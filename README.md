@@ -18,7 +18,7 @@ Welcome to the **Opencloud Helm Chart** repository! This repository is intended 
 
 This repository is created to **welcome contributions from the community**. It does not contain official charts from OpenCloud GmbH and is **not officially supported by OpenCloud GmbH**. Instead, these charts are maintained by the open-source community.
 
-OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, OpenLDAP for user management, ClamAV for virus scanning, and Collabora for document editing.
+OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with the **integrated identity manager (IDM)** by default — no external Keycloak, PostgreSQL, or MinIO required. Collabora (document editing) is bundled. Optionally, external OIDC (Keycloak, Auth0, etc.), external S3 storage, and ClamAV virus scanning can be configured.
 
 ## 🚀 Version table
 
@@ -62,14 +62,12 @@ This repository contains the following charts:
 
 ### Production Chart (`charts/opencloud`)
 
-The complete OpenCloud deployment with all components for production use:
+The complete OpenCloud deployment:
 
-- Full microservices architecture
-- Keycloak for OIDC authentication
-- OpenLDAP for user directory
-- ClamAV for virus scanning
-- Document editing with Collabora
-- OPA policies for file type restrictions
+- OpenCloud with integrated IDM (default) or external OIDC
+- Collabora for document editing
+- PVC-backed storage (posixfs/decomposed) or external S3
+- Optional: ClamAV virus scanning, OPA policies, external LDAP user management
 
 [View Production Chart Documentation](./charts/opencloud/README.md)
 
@@ -79,31 +77,36 @@ This project is licensed under the **AGPLv3** license. See the [LICENSE](LICENSE
 
 ## ⚡ Quick Start
 
-Deploy the full stack (Keycloak + PostgreSQL, OpenLDAP, ClamAV, OpenCloud, Collabora) with a single CLI command. Each manifest in `charts/opencloud/deployments/flux/` is self-contained (inline database config, realm import, HTTPRoutes, HTTP→HTTPS redirects) — no Helmfile or Timoni bundle required.
+Deploy OpenCloud with the integrated IDM (no external Keycloak, PostgreSQL, or MinIO) in a single `helm install`. Works out of the box with a Gateway API-compatible ingress controller (e.g., Cilium Gateway).
 
-1. **Deploy the full stack:**
-   ```sh
-   kubectl apply -R -f charts/opencloud/deployments/flux/
-   ```
+```bash
+# Navigate to the chart directory first
+cd /path/to/helm-repo/charts/opencloud
 
-   `-R` recurses into the `flux/` subdirectories (`keycloak/`, `openldap/`, `clamav/`, `opencloud/`) and applies every `*.yaml` in one shot. Each `HelmRelease` is then reconciled by FluxCD's `helm-controller`.
+# Then run the installation command
+helm install opencloud . \
+  --namespace opencloud \
+  --create-namespace \
+  --set httpRoute.enabled=true \
+  --set httpRoute.gateway.name=cilium-gateway \
+  --set httpRoute.gateway.namespace=kube-system \
+  --set httpRoute.gateway.sectionName=opencloud
+```
 
-2. **Verify the deployment:**
-   ```sh
-   kubectl get pods -A | grep -E "opencloud|keycloak|openldap|clamav"
-   ```
+Verify the deployment:
 
-3. **Reconcile after a change** (edit a value, bump the chart, etc.):
-   ```sh
-   for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
-   ```
+```bash
+kubectl get pods -n opencloud
+```
 
-4. **Remove the full stack** (one command — deletes the HelmReleases; Flux's helm-controller then runs `helm uninstall` for each, dropping the chart-rendered resources. The `keycloak/`, `openldap/`, `clamav/` YAMLs embed their `Namespace` manifest so those namespaces cascade; `opencloud` isn't declared in `opencloud.yaml` so it must be deleted explicitly. **PVCs are retained by Helm** to preserve data — delete them manually for a clean slate):
-   ```sh
-   kubectl delete -R -f charts/opencloud/deployments/flux/
-   kubectl delete ns opencloud                    # only opencloud ns needs manual delete
-   # Optional: drop retained PVCs
-   kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
-   kubectl -n keycloak  delete pvc -l app.kubernetes.io/instance=keycloak-postgresql
-   kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
-   ```
+Uninstall (PVCs are retained by Helm to preserve data — delete them manually if you want a clean slate):
+
+```bash
+helm uninstall opencloud -n opencloud
+# Optional: drop retained PVCs
+kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
+```
+
+> **Note:** Never delete the namespace — only use `helm uninstall` (or delete the HelmRelease if using Flux). This ensures PVCs always stay.
+
+For deploying the full stack with FluxCD (external Keycloak, OpenLDAP, ClamAV), see the [chart documentation](./charts/opencloud/README.md) — self-contained HelmReleases live in `charts/opencloud/deployments/flux/`.

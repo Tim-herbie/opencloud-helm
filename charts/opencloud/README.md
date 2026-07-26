@@ -33,7 +33,7 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
 
 This repository is created to **welcome contributions from the community**. It does not contain official charts from OpenCloud GmbH and is **not officially supported by OpenCloud GmbH**. Instead, these charts are maintained by the open-source community.
 
-OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for OIDC authentication, OpenLDAP for user directory, ClamAV for virus scanning, and Collabora for document editing.
+OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with the **integrated identity manager (IDM)** by default — no external Keycloak, PostgreSQL, or MinIO required. Collabora (document editing) is bundled. Optionally, external OIDC (Keycloak, Auth0, etc.), external S3 storage, and ClamAV virus scanning can be configured.
 
 ## 💬 Community
 
@@ -63,48 +63,9 @@ Please ensure that your PR follows best practices and includes necessary documen
 
 ## 📦 Installation
 
-To install the full stack using FluxCD (recommended — self-contained HelmReleases in `deployments/flux/`, no Helmfile or Timoni bundle needed):
+### Quick Start (Helm)
 
-```bash
-# One command: -R recurses into all subdirectories (keycloak/, openldap/,
-# clamav/, opencloud/) and applies every .yaml in one shot.
-kubectl apply -R -f charts/opencloud/deployments/flux/
-```
-
-Each `HelmRelease` is reconciled by the FluxCD `helm-controller`. The manifests in `deployments/flux/` are self-contained — inline database config, realm import, HTTPRoutes, and HTTP→HTTPS redirects — so no separate Helmfile or Timoni bundle is required.
-
-Reconcile after a change (edit a value, bump the chart, etc.):
-
-```bash
-for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
-```
-
-Remove the full stack in one command (deletes the HelmReleases; Flux's helm-controller then runs `helm uninstall` for each, dropping the chart-rendered Deployments / Services / ConfigMaps / HTTPRoutes / Secrets. The `keycloak/`, `openldap/`, `clamav/` YAMLs also embed their `Namespace` manifest, so those namespaces cascade. The `opencloud` namespace is not declared in `opencloud.yaml`, so it must be deleted explicitly. **PVCs are retained by Helm** to preserve data — delete them manually for a clean slate):
-
-```bash
-kubectl delete -R -f charts/opencloud/deployments/flux/
-kubectl delete ns opencloud                    # only opencloud ns needs manual delete
-# Optional: drop retained PVCs
-kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
-kubectl -n keycloak  delete pvc -l app.kubernetes.io/instance=keycloak-postgresql
-kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
-```
-
-### Choosing a storage backend
-
-The chart defaults to **`posixfs`** (integrated IDM, no external dependencies). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml` (Flux) or `values.yaml` (Helm):
-
-| Backend | What to change | Effect |
-|---------|---------------|--------|
-| **Decomposed (default)** | nothing — `storage.mode: decomposed` | PVC stores metadata + blobs; no MinIO deployment; `Recreate` rollout strategy (single RWO volume) |
-| **Decomposed + RWX** | under `storage.decomposed.persistence`, comment `ReadWriteOnce`, uncomment `ReadWriteMany` | Same as above but supports RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem) |
-| **S3 / external S3** | set `storage.mode: s3`, `storage.s3.enabled: true`, and `storage.s3.external.endpoint` in opencloud.yaml + uncomment the `s3secret` Secret in `secrets.yaml` | OpenCloud talks to your external S3 / Ceph / MinIO; `RollingUpdate` rollout strategy (no shared PVC) |
-
-> ⚠️ **PVC access mode → rollout strategy**: `ReadWriteOnce` forces `Recreate` (single pod mounts the volume). `ReadWriteMany` enables `RollingUpdate` (multi-pod). Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
-
-The flux folder's `opencloud.yaml` keeps the `s3` block as a commented-out template — switch back to S3 by uncommenting it and the matching `s3secret` Secret in `secrets.yaml`, then `flux reconcile helmrelease opencloud-oc1 -n opencloud`.
-
-Alternatively, to install just the OpenCloud chart with Helm:
+Deploy OpenCloud with the integrated IDM (no external Keycloak, PostgreSQL, or MinIO) in a single `helm install`. Works out of the box with a Gateway API-compatible ingress controller (e.g., Cilium Gateway).
 
 ```bash
 # Navigate to the chart directory first
@@ -120,16 +81,81 @@ helm install opencloud . \
   --set httpRoute.gateway.sectionName=opencloud
 ```
 
+Verify the deployment:
+
+```bash
+kubectl get pods -n opencloud
+```
+
+Uninstall (PVCs are retained by Helm to preserve data — delete them manually if you want a clean slate):
+
+```bash
+helm uninstall opencloud -n opencloud
+# Optional: drop retained PVCs
+kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
+```
+
+> **Note:** Never delete the namespace — only use `helm uninstall`. This ensures PVCs always stay.
+
+### Full Stack with FluxCD
+
+For deploying the full stack with external Keycloak (OIDC), OpenLDAP (user management), and ClamAV (virus scanning), self-contained FluxCD HelmReleases live in `deployments/flux/`. No Helmfile or Timoni bundle required — each manifest is self-contained (inline database config, realm import, HTTPRoutes, HTTP→HTTPS redirects).
+
+```bash
+# One command: -R recurses into all subdirectories (keycloak/, openldap/,
+# clamav/, opencloud/) and applies every .yaml in one shot.
+kubectl apply -R -f charts/opencloud/deployments/flux/
+```
+
+Each `HelmRelease` is reconciled by the FluxCD `helm-controller`.
+
+Reconcile after a change (edit a value, bump the chart, etc.):
+
+```bash
+for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
+```
+
+Remove the full stack (deletes the HelmReleases; Flux's helm-controller then runs `helm uninstall` for each, dropping the chart-rendered Deployments / Services / ConfigMaps / HTTPRoutes / Secrets. **PVCs are retained by Helm** to preserve data — delete them manually if you want a clean slate):
+
+```bash
+kubectl delete -R -f charts/opencloud/deployments/flux/
+# Optional: drop retained PVCs
+kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
+kubectl -n keycloak  delete pvc -l app.kubernetes.io/instance=keycloak-postgresql
+kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
+```
+
+> **Note:** Never delete the namespace — only flux-delete the HelmReleases or `helm uninstall`. This ensures PVCs always stay.
+
+### Choosing a storage backend
+
+The chart defaults to **`posixfs`** (integrated IDM, no external dependencies). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml` (Flux) or `values.yaml` (Helm):
+
+| Backend | What to change | Effect |
+|---------|---------------|--------|
+| **PosixFS (default)** | nothing — `storage.mode: posixfs` | PVC stores user files; no S3/MinIO; `Recreate` rollout strategy (single RWO volume) |
+| **Decomposed** | `storage.mode: decomposed` | PVC stores metadata + blobs; `Recreate` (RWO) or `RollingUpdate` (RWX) |
+| **Decomposed + RWX** | under `storage.decomposed.persistence`, set `accessMode: ReadWriteMany` | Supports RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem) |
+| **S3 / external S3** | set `storage.mode: s3`, `storage.s3.enabled: true`, and `storage.s3.external.endpoint` | OpenCloud talks to your external S3 / Ceph / MinIO; `RollingUpdate` (no shared PVC) |
+
+> ⚠️ **PVC access mode → rollout strategy**: `ReadWriteOnce` forces `Recreate` (single pod mounts the volume). `ReadWriteMany` enables `RollingUpdate` (multi-pod). Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
+
+The flux folder's `opencloud.yaml` keeps the `s3` block as a commented-out template — switch back to S3 by uncommenting it and the matching `s3secret` Secret in `secrets.yaml`, then `flux reconcile helmrelease opencloud-oc1 -n opencloud`.
+
 ## Architecture
 
 This Helm chart deploys the following components:
 
-1. **OpenCloud** - Main application (fork of ownCloud Infinite Scale)
-2. **Keycloak** - Authentication provider with OpenID Connect
-3. **OpenLDAP** - User directory service
-4. **ClamAV** - Virus scanning for uploaded files
-5. **Collabora** - Online document editor (CODE - Collabora Online Development Edition)
-6. **Collaboration Service** - WOPI server that connects OpenCloud with document editors
+1. **OpenCloud** - Main application (ownCloud Infinite Scale fork) with integrated IDM
+2. **Collabora** - Online document editor (CODE - Collabora Online Development Edition)
+3. **Collaboration Service** - WOPI server that connects OpenCloud with document editors
+4. **Tika** - Full-text search extractor
+
+The following are **optional external** dependencies (deploy separately, e.g., via FluxCD):
+- **Keycloak** - OIDC authentication (when `oidc.issuerUrl` is set)
+- **OpenLDAP** - User directory for external user management
+- **ClamAV** - Virus scanning (when `antivirus.enabled` is true)
+- **External S3** - Object storage (when `storage.mode` is `s3`)
 
 All services are deployed with `ClusterIP` type, which means they are only accessible within the Kubernetes cluster. You need to configure your own ingress controller (e.g., Cilium Gateway API) to expose the services externally.
 
