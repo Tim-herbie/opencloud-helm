@@ -24,7 +24,6 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
 - [Gateway API Configuration](#gateway-api-configuration)
   - [HTTPRoute Settings](#httproute-settings)
 - [Setting Up Gateway API with Talos, Cilium, and cert-manager](#setting-up-gateway-api-with-talos-cilium-and-cert-manager)
-- [Development Chart](#-evelopment-chart)
 - [License](#-license)
 - [Community Maintained](#community-maintained)
 
@@ -243,8 +242,8 @@ helm install opencloud ./charts/opencloud \
 ```
 
 This will prepend `my-registry.com/` to all image references in the chart. For example:
-- `keycloak/keycloak:26.1.4` becomes `my-registry.com/keycloak/keycloak:26.1.4`
-- `opencloudeu/opencloud-rolling:latest` becomes `my-registry.com/opencloudeu/opencloud-rolling:latest`
+- `collabora/code:26.04.2.1.1` becomes `my-registry.com/collabora/code:26.04.2.1.1`
+- `opencloudeu/opencloud-rolling:7.3.0` becomes `my-registry.com/opencloudeu/opencloud-rolling:7.3.0`
 
 ### Global Settings
 
@@ -283,6 +282,8 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.logColor` | Enable log color | `false` |
 | `opencloud.logPretty` | Enable pretty logging | `false` |
 | `opencloud.insecure` | Insecure mode (for self-signed certificates) | `true` |
+| `opencloud.ocHttpApiInsecure` | Disable TLS certificate validation for OpenCloud HTTP API connections | `false` |
+| `opencloud.frontendCheckForUpdates` | Enable frontend update checks | `false` |
 | `opencloud.existingSecret` | Name of the existing secret | `` |
 | `opencloud.adminPassword` | Admin password | `admin` |
 | `opencloud.createDemoUsers` | Create demo users (default `true` for integrated IDM) | `true` |
@@ -318,7 +319,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.proxyOidcRewriteWellknown` | Rewrite OIDC .well-known endpoint | `true` |
 | `opencloud.proxyUserOidcClaim` | OIDC claim for user | `preferred_username` |
 | `opencloud.proxyUserCs3Claim` | CS3 claim for user | `username` |
-| `opencloud.adminUserId` | Admin user id | `""` |
+| `opencloud.adminUserId` | Admin user id (legacy; `OC_ADMIN_USER_ID` now sourced from init secret `adminUserID` key) | `""` |
 | `opencloud.graphAssignDefaultUserRole` | Assign default user role in graph | `false` |
 | `opencloud.graphUsernameMatch` | Username match strategy for graph | `none` |
 | `opencloud.proxyRoleAssignmentOidcClaim` | OIDC claim for role assignment | `roles` |
@@ -732,10 +733,6 @@ You can also check the status of the HTTPRoutes:
 ```bash
 kubectl get httproutes -n opencloud
 ```
-
-## 📦 Development Chart
-
-For a simplified development version of OpenCloud using a single Docker container, please refer to the [Development Chart Documentation](../opencloud-dev/README.md).
 
 ## 📜 License
 
