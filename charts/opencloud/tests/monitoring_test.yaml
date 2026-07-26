@@ -1,7 +1,7 @@
 suite: Monitoring / Extra Resources / Custom CA / Policies Tests
 templates:
   - _helpers/tpl.yaml
-  - monitoring/servicemonitor.yaml
+  - opencloud/servicemonitor.yaml
   - extra-resources.yaml
   - opencloud/policies-configmap.yaml
 
@@ -9,7 +9,7 @@ tests:
   # --- ServiceMonitor ---
 
   - it: should not create ServiceMonitor when monitoring is disabled
-    template: monitoring/servicemonitor.yaml
+    template: opencloud/servicemonitor.yaml
     asserts:
       - hasDocuments:
           count: 0
@@ -18,7 +18,7 @@ tests:
         enabled: false
 
   - it: should create ServiceMonitor when monitoring is enabled
-    template: monitoring/servicemonitor.yaml
+    template: opencloud/servicemonitor.yaml
     asserts:
       - isKind:
           of: ServiceMonitor
@@ -30,7 +30,7 @@ tests:
         enabled: true
 
   - it: should set custom labels on ServiceMonitor
-    template: monitoring/servicemonitor.yaml
+    template: opencloud/servicemonitor.yaml
     asserts:
       - isSubset:
           path: metadata.labels
@@ -43,7 +43,7 @@ tests:
           release: prometheus
 
   - it: should set custom interval and scrapeTimeout on ServiceMonitor
-    template: monitoring/servicemonitor.yaml
+    template: opencloud/servicemonitor.yaml
     asserts:
       - equal:
           path: spec.endpoints[0].interval

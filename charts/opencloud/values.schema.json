@@ -49,15 +49,6 @@
             "allowCredentials": { "type": "string" },
             "maxAge": { "type": "string" }
           }
-        },
-        "httpRoute": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "serviceName": { "type": "string" },
-            "serviceNamespace": { "type": "string" },
-            "port": { "type": "integer" }
-          }
         }
       }
     },

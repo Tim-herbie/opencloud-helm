@@ -126,19 +126,6 @@ oidc:
 # Max age in seconds
   maxAge: "3600"
 
-  # HTTPRoute for the external OIDC provider (Keycloak, etc.)
-  # Only rendered when oidc.issuerUrl is set.
-  # Use this when the external OIDC provider is reachable via the same gateway
-  # and you want this chart to manage its HTTPRoute (redirect + backend).
-  httpRoute:
-    enabled: false
-    # Name of the backend Service (the OIDC provider service, e.g. "keycloak")
-    serviceName: "keycloak"
-    # Namespace of the backend Service (defaults to the release namespace)
-    serviceNamespace: ""
-    # Port of the backend Service
-    port: 80
-
 
 # =====================================================================
 # EXTENSIONS

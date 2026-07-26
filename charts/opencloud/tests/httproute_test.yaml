@@ -32,15 +32,3 @@ tests:
           count: 2
       - isKind:
           of: HTTPRoute
-
-  - it: Keycloak HTTPRoute is created when httpRoute, external oidc and keycloak httproute are enabled
-    template: keycloak/httproute.yaml
-    set:
-      httpRoute.enabled: true
-      oidc.issuerUrl: "https://keycloak.example.com/realms/openCloud"
-      oidc.httpRoute.enabled: true
-    asserts:
-      - hasDocuments:
-          count: 2
-      - isKind:
-          of: HTTPRoute

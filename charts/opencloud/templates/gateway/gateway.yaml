@@ -29,16 +29,6 @@ spec:
           selector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-    # Keycloak - HTTP redirect listener (conditional, only when external OIDC is configured)
-    {{- if .Values.oidc.issuerUrl }}
-    - name: {{ $prefix }}-keycloak-http
-      protocol: HTTP
-      port: 80
-      hostname: {{ .Values.global.domain.oidc | quote }}
-      allowedRoutes:
-        namespaces:
-          from: All
-    {{- end }}
     # WOPI - HTTP redirect listener
     - name: {{ $prefix }}-wopi-http
       protocol: HTTP
@@ -78,21 +68,6 @@ spec:
           selector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-    {{- if .Values.oidc.issuerUrl }}
-    # Keycloak - HTTPS listener (conditional, only when external OIDC is configured)
-    - name: {{ $prefix }}-keycloak-https
-      protocol: HTTPS
-      port: {{ .Values.httpRoute.gateway.port }}
-      hostname: {{ .Values.global.domain.oidc | quote }}
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.global.tls.secretName }}
-            namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      allowedRoutes:
-        namespaces:
-          from: All
-    {{- end }}
     # WOPI - HTTPS listener
     - name: {{ $prefix }}-wopi-https
       protocol: HTTPS
