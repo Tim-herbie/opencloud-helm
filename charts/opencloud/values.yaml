@@ -586,7 +586,7 @@ opencloud:
     # Only "decomposed" (default) or "decomposeds3" are valid — the system driver has no posix option.
     systemDriver: "decomposed"
     # Storage driver for user files: "posix", "decomposeds3", or "decomposed"
-    # If not set, derives from mode: posix (posixfs), decomposed (decomposed), decomposeds3 (s3)
+    # Default is "" (empty) — derives from mode: "posix" when posixfs, "decomposed" when decomposed, "decomposeds3" when s3
     usersDriver: ""
     # Storage mode for user files: "decomposed" (default), "s3", or "posixfs"
     # This is a convenience setting that sets usersDriver if usersDriver is not explicitly set
