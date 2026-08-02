@@ -1428,10 +1428,14 @@ spec:
                   "redirectUris": [
                     "https://cloud.opencloud.test/",
                     "https://cloud.opencloud.test/oidc-callback.html",
-                    "https://cloud.opencloud.test/oidc-silent-redirect.html"
+                    "https://cloud.opencloud.test/oidc-silent-redirect.html",
+                    "https://cloud2.opencloud.test/",
+                    "https://cloud2.opencloud.test/oidc-callback.html",
+                    "https://cloud2.opencloud.test/oidc-silent-redirect.html"
                   ],
                   "webOrigins": [
-                    "https://cloud.opencloud.test"
+                    "https://cloud.opencloud.test",
+                    "https://cloud2.opencloud.test"
                   ],
                   "notBefore": 0,
                   "bearerOnly": false,
