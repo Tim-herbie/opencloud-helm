@@ -288,6 +288,10 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.adminPassword` | Admin password | `admin` |
 | `opencloud.createDemoUsers` | Create demo users (default `true` for integrated IDM) | `true` |
 | `opencloud.excludeServices` | Services to exclude from starting (set `["idp"]` when using external OIDC). The external LDAP env vars (`OC_LDAP_*`, `GRAPH_LDAP_*`, `FRONTEND_LDAP_SERVER_WRITE_ENABLED`) are only set when `idp` is excluded; with the built-in IDP running they are omitted. | `[]` |
+| `opencloud.theme.urls.imprint` | Imprint URL shown in the web UI footer (empty = hidden) | `""` |
+| `opencloud.theme.urls.privacy` | Privacy policy URL shown in the web UI footer (empty = hidden) | `""` |
+| `opencloud.theme.urls.accessibility` | Accessibility statement URL shown in the web UI footer (empty = hidden) | `""` |
+| `opencloud.theme.urls.accessDeniedHelp` | Help URL shown on the "access denied" page (empty = hidden) | `""` |
 | `opencloud.resources` | CPU/Memory resource requests/limits | `128m/128Mi` requests, `4/10Gi` limits |
 | `opencloud.persistence.data.enabled` | Enable persistence for data | `true` |
 | `opencloud.persistence.data.existingClaim` | Name of existing PVC to use | `""` |

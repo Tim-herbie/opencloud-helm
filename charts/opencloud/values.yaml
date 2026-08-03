@@ -440,6 +440,21 @@ opencloud:
   excludeServices: [] # necessary that idp runs
   env: []
   envFrom: []
+  # Web UI theme customization.
+  # The URLs below are merged over the built-in theme via the OpenCloud
+  # "_branding" mechanism and are shown as footer/help links in the web UI.
+  # Leave empty to hide the links. Changes take effect after a pod restart
+  # (triggered automatically via the config checksum annotation).
+  theme:
+    urls:
+      # Imprint URL (shown in the web UI footer)
+      imprint: ""
+      # Privacy policy URL (shown in the web UI footer)
+      privacy: ""
+      # Accessibility statement URL (shown in the web UI footer)
+      accessibility: ""
+      # Help URL shown on the "access denied" page
+      accessDeniedHelp: ""
   # Resources allocation
   resources:
     requests:

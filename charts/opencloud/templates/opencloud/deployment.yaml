@@ -54,6 +54,7 @@ spec:
         checksum/config-json: {{ include (print $.Template.BasePath "/opencloud/config-json-configmap.yaml") . | sha256sum }}
         checksum/configmap: {{ include (print $.Template.BasePath "/opencloud/configmap.yaml") . | sha256sum }}
         checksum/web-extensions-init: {{ include (print $.Template.BasePath "/opencloud/web-extensions-init.yaml") . | sha256sum }}
+        checksum/theme-branding: {{ include (print $.Template.BasePath "/opencloud/theme-branding-configmap.yaml") . | sha256sum }}
     spec:
       securityContext:
         fsGroup: 1000
@@ -62,10 +63,12 @@ spec:
         - name: init-config
           image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
-          command: ['sh', '-c', 'mkdir -p /etc/opencloud /var/lib/opencloud']
+          command: ['sh', '-c', 'mkdir -p /etc/opencloud /var/lib/opencloud && mkdir -p /var/lib/opencloud/web/assets/themes/_branding && cp /theme-branding/theme.json /var/lib/opencloud/web/assets/themes/_branding/theme.json']
           volumeMounts:
             - name: data
               mountPath: /var/lib/opencloud
+            - name: theme-branding
+              mountPath: /theme-branding
         {{- if .Values.webExtensions.enabled }}
         # Web extensions init containers
         {{- if .Values.webExtensions.extensions.drawio.enabled }}
@@ -684,6 +687,9 @@ spec:
         - name: config-files
           configMap:
             name: {{ include "opencloud.opencloud.fullname" . }}-config
+        - name: theme-branding
+          configMap:
+            name: {{ include "opencloud.opencloud.fullname" . }}-theme-branding
         {{ if and (.Values.opencloud.nats.external.enabled) (not .Values.opencloud.nats.external.tls.certTrusted) }}
         - name: nats-ca
           secret:

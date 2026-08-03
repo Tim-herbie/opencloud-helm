@@ -1,0 +1,23 @@
+{{- if .Values.opencloud.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "opencloud.opencloud.fullname" . }}-theme-branding
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opencloud
+data:
+  # Merged over the built-in theme by the OpenCloud web service
+  # (themeDefaults < base theme < _branding/theme.json).
+  theme.json: |
+    {
+      "common": {
+        "urls": {
+          "accessDeniedHelp": {{ .Values.opencloud.theme.urls.accessDeniedHelp | quote }},
+          "imprint": {{ .Values.opencloud.theme.urls.imprint | quote }},
+          "privacy": {{ .Values.opencloud.theme.urls.privacy | quote }},
+          "accessibility": {{ .Values.opencloud.theme.urls.accessibility | quote }}
+        }
+      }
+    }
+{{- end }}

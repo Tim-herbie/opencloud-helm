@@ -547,6 +547,28 @@
               ]
             }
           }
+        },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "urls": {
+              "type": "object",
+              "properties": {
+                "imprint": {
+                  "type": "string"
+                },
+                "privacy": {
+                  "type": "string"
+                },
+                "accessibility": {
+                  "type": "string"
+                },
+                "accessDeniedHelp": {
+                  "type": "string"
+                }
+              }
+            }
+          }
         }
       }
     },
