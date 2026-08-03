@@ -221,7 +221,11 @@
           "type": "object",
           "properties": {
             "enabled": {
-              "type": "boolean"
+              "type": "string",
+              "enum": [
+                "enable",
+                "disable"
+              ]
             },
             "infectedFileHandling": {
               "type": "string",
