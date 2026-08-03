@@ -447,13 +447,13 @@ opencloud:
   # (triggered automatically via the config checksum annotation).
   theme:
     urls:
-      # Imprint URL (shown in the web UI footer)
-      imprint: ""
-      # Privacy policy URL (shown in the web UI footer)
-      privacy: ""
-      # Accessibility statement URL (shown in the web UI footer)
-      accessibility: ""
-      # Help URL shown on the "access denied" page
+      # Imprint URL (shown in the web UI footer; empty = hidden)
+      imprint: "https://opencloud.eu/en/legal-notice"
+      # Privacy policy URL (shown in the web UI footer; empty = hidden)
+      privacy: "https://opencloud.eu/en/data-protection-notice"
+      # Accessibility statement URL (shown in the web UI footer; empty = hidden)
+      accessibility: "https://opencloud.eu/en/accessibility-statement"
+      # Help URL shown on the "access denied" page (empty = hidden)
       accessDeniedHelp: ""
   # Resources allocation
   resources:
