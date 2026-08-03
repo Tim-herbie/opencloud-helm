@@ -85,6 +85,14 @@ spec:
           accessMode: ReadWriteMany  # RWX so the data PVC (/var/lib/opencloud) also allows RollingUpdate + multi-replica (match decomposed RWX)
       oidc:
         scope: "openid profile email groups"
+      # Web UI footer/help links (merged over the built-in theme).
+      # Same as the chart defaults; adjust per instance as needed. Empty = hidden.
+      theme:
+        urls:
+          imprint: "https://opencloud.eu/en/legal-notice"
+          privacy: "https://opencloud.eu/en/data-protection-notice"
+          accessibility: "https://opencloud.eu/en/accessibility-statement"
+          accessDeniedHelp: ""
       ldap:
         secretRef: ldap-bind-secrets
       storage:
