@@ -339,6 +339,8 @@ spec:
               value: {{ printf "%s/.well-known/openid-configuration" (include "opencloud.oidc.issuer" .) | quote }}
             - name: WEB_OIDC_SCOPE
               value: {{ .Values.opencloud.oidc.scope | quote }}
+            {{- /* External LDAP settings are only needed when the built-in IDP is excluded (external OIDC/LDAP setup) */}}
+            {{- if has "idp" (.Values.opencloud.excludeServices | default (list)) }}
             - name: OC_LDAP_SERVER_WRITE_ENABLED
               value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
             - name: GRAPH_LDAP_SERVER_WRITE_ENABLED
@@ -367,6 +369,7 @@ spec:
               value: {{ .Values.opencloud.ldap.group.schema.id | default "opencloudUUID" | quote }}
             - name: OC_LDAP_DISABLE_USER_MECHANISM
               value: {{ .Values.opencloud.ldap.disableUserMechanism | default "attribute" | quote }}
+            {{- end }}
             - name: SETTINGS_SETUP_DEFAULT_ASSIGNMENTS
               value: {{ .Values.opencloud.settingsSetupDefaultAssignments | default "false" | quote }}
             - name: PROXY_AUTOPROVISION_CLAIM_USERNAME

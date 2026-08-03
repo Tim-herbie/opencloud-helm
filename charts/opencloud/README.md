@@ -287,7 +287,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.existingSecret` | Name of the existing secret | `` |
 | `opencloud.adminPassword` | Admin password | `admin` |
 | `opencloud.createDemoUsers` | Create demo users (default `true` for integrated IDM) | `true` |
-| `opencloud.excludeServices` | Services to exclude from starting (set `["idp"]` when using external OIDC) | `[]` |
+| `opencloud.excludeServices` | Services to exclude from starting (set `["idp"]` when using external OIDC). The external LDAP env vars (`OC_LDAP_*`, `GRAPH_LDAP_*`, `FRONTEND_LDAP_SERVER_WRITE_ENABLED`) are only set when `idp` is excluded; with the built-in IDP running they are omitted. | `[]` |
 | `opencloud.resources` | CPU/Memory resource requests/limits | `128m/128Mi` requests, `4/10Gi` limits |
 | `opencloud.persistence.data.enabled` | Enable persistence for data | `true` |
 | `opencloud.persistence.data.existingClaim` | Name of existing PVC to use | `""` |
@@ -567,24 +567,32 @@ This chart includes HTTPRoute resources that can be used to expose the OpenCloud
 | `httpRoute.gateway.name` | Gateway name | `opencloud-gateway` |
 | `httpRoute.gateway.namespace` | Gateway namespace | `""` (defaults to Release.Namespace) |
 | `httpRoute.gateway.sectionName` | Gateway section name | `""` (defaults to multiple route-specific section names for the routes listed below) |
+| `httpRoute.opencloud.routeName` | Name of the OpenCloud HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-httproute`) |
+| `httpRoute.opencloud.redirectRouteName` | Name of the OpenCloud HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-http-redirect`) |
+| `httpRoute.collabora.routeName` | Name of the Collabora HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-collabora-httproute`) |
+| `httpRoute.collabora.redirectRouteName` | Name of the Collabora HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-collabora-http-redirect`) |
+| `httpRoute.collaboration.routeName` | Name of the Collaboration (WOPI) HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-collaboration-httproute`) |
+| `httpRoute.collaboration.redirectRouteName` | Name of the Collaboration (WOPI) HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-collaboration-http-redirect`) |
 
 The following HTTPRoutes are created when `httpRoute.enabled` is set to `true`:
 
-1. **OpenCloud HTTPRoute**:
+1. **OpenCloud HTTPRoute** (default names: `{{ release-name }}-httproute` and `{{ release-name }}-http-redirect`):
    - Hostname: `global.domain.opencloud`
    - Service: `{{ release-name }}-opencloud`
    - Port: 9200
    - Headers: HTTP→HTTPS redirect and Permissions-Policy header
 
-2. **Collabora HTTPRoute** (when `collabora.enabled` is `true`):
+2. **Collabora HTTPRoute** (when `collabora.enabled` is `true`; default names: `{{ release-name }}-collabora-httproute` and `{{ release-name }}-collabora-http-redirect`):
    - Hostname: `global.domain.collabora`
    - Service: `{{ release-name }}-collabora`
    - Port: 9980
 
-3. **Collaboration (WOPI) HTTPRoute** (when `collaboration.enabled` is `true`):
+3. **Collaboration (WOPI) HTTPRoute** (when `collaboration.enabled` is `true`; default names: `{{ release-name }}-collaboration-httproute` and `{{ release-name }}-collaboration-http-redirect`):
    - Hostname: `global.domain.wopi`
    - Service: `{{ release-name }}-collaboration`
    - Port: 9300
+
+The HTTPRoute resource names can be customized via the `httpRoute.<component>.routeName` / `httpRoute.<component>.redirectRouteName` values listed above. If left empty, the default names are used.
 
 > **Note:** This chart no longer manages a Keycloak HTTPRoute. When using external OIDC, deploy and manage the Keycloak HTTPRoute alongside your Keycloak deployment (see `deployments/flux/keycloak/keycloak.yaml` for an example using `extraManifests`).
 

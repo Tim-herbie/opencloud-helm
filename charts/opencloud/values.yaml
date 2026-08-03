@@ -691,6 +691,24 @@ httpRoute:
   # Enable HTTPRoute resources (set to true to create Gateway API routes)
   enabled: false
 
+  # Optional custom resource names for the HTTPRoutes.
+  # Leave empty to use the default names ("<release-fullname>-<suffix>").
+  opencloud:
+    # Name of the OpenCloud HTTPS HTTPRoute (default: "<release-fullname>-httproute")
+    routeName: ""
+    # Name of the OpenCloud HTTP->HTTPS redirect HTTPRoute (default: "<release-fullname>-http-redirect")
+    redirectRouteName: ""
+  collabora:
+    # Name of the Collabora HTTPS HTTPRoute (default: "<release-fullname>-collabora-httproute")
+    routeName: ""
+    # Name of the Collabora HTTP->HTTPS redirect HTTPRoute (default: "<release-fullname>-collabora-http-redirect")
+    redirectRouteName: ""
+  collaboration:
+    # Name of the Collaboration (WOPI) HTTPS HTTPRoute (default: "<release-fullname>-collaboration-httproute")
+    routeName: ""
+    # Name of the Collaboration (WOPI) HTTP->HTTPS redirect HTTPRoute (default: "<release-fullname>-collaboration-http-redirect")
+    redirectRouteName: ""
+
   # Gateway configuration
   gateway:
     # Create the gateway

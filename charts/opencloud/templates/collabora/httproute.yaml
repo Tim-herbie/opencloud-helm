@@ -2,7 +2,7 @@
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
-  name: {{ include "opencloud.fullname" . }}-collabora-http-redirect
+  name: {{ .Values.httpRoute.collabora.redirectRouteName | default (printf "%s-collabora-http-redirect" (include "opencloud.fullname" .)) }}
   labels:
     {{- include "opencloud.labels" . | nindent 4 }}
     app.kubernetes.io/component: collabora
@@ -26,7 +26,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
-  name: {{ include "opencloud.fullname" . }}-collabora-httproute
+  name: {{ .Values.httpRoute.collabora.routeName | default (printf "%s-collabora-httproute" (include "opencloud.fullname" .)) }}
   labels:
     {{- include "opencloud.labels" . | nindent 4 }}
     app.kubernetes.io/component: collabora
