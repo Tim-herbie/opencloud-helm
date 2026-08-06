@@ -82,7 +82,7 @@ spec:
         - "idp"
       persistence:
         data:
-          accessMode: ReadWriteMany  # RWX so the data PVC (/var/lib/opencloud) also allows RollingUpdate + multi-replica (match decomposed RWX)
+          accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
       oidc:
         scope: "openid profile email groups"
       # Web UI footer/help links (merged over the built-in theme).
@@ -112,8 +112,8 @@ spec:
           persistence:
             enabled: true
             size: 60Gi
-            # accessMode: ReadWriteOnce
-            accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+            accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
+            # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
         # --- External S3 alternative (uncomment to switch) ---
         # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
         # Reference it via `storage.s3.external.existingSecret` (below) and
@@ -340,7 +340,7 @@ spec:
 #         - "idp"
 #       persistence:
 #         data:
-#           accessMode: ReadWriteMany  # RWX so the data PVC (/var/lib/opencloud) also allows RollingUpdate + multi-replica (match decomposed RWX)
+#           accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
 #       oidc:
 #         scope: "openid profile email groups"
 #       ldap:
@@ -362,8 +362,8 @@ spec:
 #           persistence:
 #             enabled: true
 #             size: 60Gi
-#             # accessMode: ReadWriteOnce
-#             accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+#             accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
+#             # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
 #         # --- External S3 alternative (uncomment to switch) ---
 #         # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
 #         # Reference it via `storage.s3.external.existingSecret` (below) and

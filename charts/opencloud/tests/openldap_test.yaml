@@ -4,6 +4,8 @@ templates:
   - opencloud/deployment.yaml
   - opencloud/config-json-configmap.yaml
   - opencloud/configmap.yaml
+  - opencloud/secrets.yaml
+  - opencloud/theme-branding-configmap.yaml
   - opencloud/web-extensions-init.yaml
 
 tests:
@@ -76,13 +78,46 @@ tests:
             value: "https://custom.example.com/account"
 
   # --- LDAP Bind Secret References ---
-  # The chart now defaults to an external LDAP bind secret named
+  # With the built-in IDP (default), the per-service LDAP bind passwords come from
+  # the generated init secret (<release>-opencloud-opencloud-init) — no external
+  # LDAP secret is needed. When the built-in IDP is excluded (external OIDC/LDAP
+  # setup), they come from the external LDAP bind secret
   # <release>-opencloud-opencloud-ldap (overridable via opencloud.ldap.secretRef).
-  # The USERS/GROUPS/AUTH_BASIC/IDP LDAP bind passwords share the
-  # reva-ldap-bind-password key; GRAPH uses graph-ldap-bind-password.
 
-  - it: should reference the default LDAP bind secret for LDAP bind passwords by default
+  - it: should use the init secret for LDAP bind passwords with the built-in IDP (default)
     template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: USERS_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-init
+                key: idmRevaServicePassword
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: IDP_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-init
+                key: idmIdpServicePassword
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GRAPH_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-init
+                key: idmServicePassword
+
+  - it: should reference the external LDAP bind secret when the built-in IDP is excluded
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        excludeServices:
+          - idp
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -92,10 +127,6 @@ tests:
               secretKeyRef:
                 name: RELEASE-NAME-opencloud-opencloud-ldap
                 key: reva-ldap-bind-password
-
-  - it: should use graph-ldap-bind-password key for GRAPH_LDAP_BIND_PASSWORD by default
-    template: opencloud/deployment.yaml
-    asserts:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
@@ -104,6 +135,66 @@ tests:
               secretKeyRef:
                 name: RELEASE-NAME-opencloud-opencloud-ldap
                 key: graph-ldap-bind-password
+
+  # --- OC_URL scheme ---
+  # The built-in IDP requires an https issuer URL, so OC_URL must be https
+  # whenever the IDP runs (Gateway terminates TLS), even if global.tls.enabled
+  # is false. http is only used with external OIDC (idp excluded) + TLS disabled.
+
+  - it: should use https OC_URL with the built-in IDP (default)
+    template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_URL
+            value: https://cloud.opencloud.test
+
+  - it: should use http OC_URL when the built-in IDP is excluded and TLS is disabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        excludeServices:
+          - idp
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_URL
+            value: http://cloud.opencloud.test
+
+  - it: should not render the external LDAP bind secret with the built-in IDP (default)
+    template: opencloud/secrets.yaml
+    set:
+      opencloud:
+        existingSecret: existing
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render the external LDAP bind secret when the built-in IDP is excluded
+    template: opencloud/secrets.yaml
+    set:
+      opencloud:
+        existingSecret: existing
+        excludeServices:
+          - idp
+        ldap:
+          adminPassword: s3cret
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Secret
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-opencloud-opencloud-ldap
+      - equal:
+          path: stringData.reva-ldap-bind-password
+          value: s3cret
+      - equal:
+          path: stringData.graph-ldap-bind-password
+          value: s3cret
 
   # --- S3 Credentials Secret References ---
 

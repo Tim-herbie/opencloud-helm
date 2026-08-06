@@ -192,8 +192,9 @@ spec:
           {{- end }}
           env:
             # OpenCloud URL
+            {{- /* The built-in IDP requires an https issuer URL. With Gateway TLS termination the public URL is https even when internal TLS (global.tls.enabled) is off, so only fall back to http when the IDP is excluded (external OIDC). */}}
             - name: OC_URL
-              value: "{{ if .Values.global.tls.enabled }}https{{ else }}http{{ end }}://{{ include "opencloud.domain" . }}"
+              value: "{{ if or .Values.global.tls.enabled (not (has "idp" (.Values.opencloud.excludeServices | default (list)))) }}https{{ else }}http{{ end }}://{{ include "opencloud.domain" . }}"
             # Available roles
             - name: GRAPH_AVAILABLE_ROLES
               value: {{ .Values.opencloud.graphAvailableRoles | quote }}
@@ -473,6 +474,10 @@ spec:
                   name: {{ $initSecretName }}
                   key: serviceAccountID
             # Per-service LDAP bind passwords
+            {{- if has "idp" (.Values.opencloud.excludeServices | default (list)) }}
+            # External LDAP (built-in IDP excluded): bind against the external
+            # directory using the shared bind secret (opencloud.ldap.secretRef,
+            # or the chart-generated <release-name>-opencloud-ldap).
             - name: USERS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -498,6 +503,36 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
                   key: graph-ldap-bind-password
+            {{- else }}
+            # Built-in IDP (default): bind against the internal IDM LDAP using the
+            # generated service user passwords from the init secret — no external
+            # LDAP secret needed.
+            - name: USERS_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmRevaServicePassword
+            - name: GROUPS_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmRevaServicePassword
+            - name: AUTH_BASIC_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmRevaServicePassword
+            - name: IDP_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmIdpServicePassword
+            - name: GRAPH_LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $initSecretName }}
+                  key: idmServicePassword
+            {{- end }}
             - name: IDM_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:

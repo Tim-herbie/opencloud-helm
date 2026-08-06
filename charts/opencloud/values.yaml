@@ -373,8 +373,11 @@ opencloud:
     insecure: true
     bindDN: "cn=admin,dc=opencloud,dc=eu"
     adminPassword: "admin"  # Must match OpenLDAP adminPassword
-    # Name of the secret containing LDAP bind password (key: reva-ldap-bind-password)
-    # If not set, defaults to <release-name>-opencloud-ldap
+    # Name of the secret containing LDAP bind passwords (keys: reva-ldap-bind-password,
+    # graph-ldap-bind-password). Only used when the built-in IDP is excluded
+    # (opencloud.excludeServices contains "idp", i.e. external OIDC/LDAP setup).
+    # If not set, defaults to <release-name>-opencloud-ldap, which the chart
+    # generates from adminPassword in that case.
     secretRef: ""
     user:
       baseDN: "ou=users,dc=opencloud,dc=eu"
