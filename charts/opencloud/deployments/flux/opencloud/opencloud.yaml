@@ -24,6 +24,26 @@ spec:
   ref:
     branch: main
 ---
+# --- Production alternative: pinned chart version from GHCR (OCI) -------------
+# For production use, comment out the GitRepository above and use this pinned
+# OCIRepository instead (fixed chart version instead of tracking the latest
+# main branch). In the HelmRelease below, also switch `chart:` to the commented
+# `chartRef:` block.
+# Chart reference:
+#   helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version 2.4.7-pre-release-191a345
+# apiVersion: source.toolkit.fluxcd.io/v1
+# kind: OCIRepository
+# metadata:
+#   name: opencloud-helm
+#   namespace: opencloud
+# spec:
+#   interval: 5m
+#   url: oci://ghcr.io/tim-herbie/opencloud-helm/opencloud
+#   ref:
+#     # pre-release build from release-bot/main; for production use a release
+#     # tag (e.g. 2.4.7) or pin by digest (sha256:a87f1084b443d3d09e61a33b1f0b5feb4de2fa0cfca054d2d24bc24277254769)
+#     tag: 2.4.7-pre-release-191a345
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -41,6 +61,12 @@ spec:
         name: opencloud-helm
         namespace: opencloud
       interval: 5m
+  # Production (pinned OCI): comment out the whole `chart:` block above and use
+  # chartRef instead (requires the OCIRepository above to be uncommented):
+  # chartRef:
+  #   kind: OCIRepository
+  #   name: opencloud-helm
+  #   namespace: opencloud
   releaseName: opencloud
   install:
     remediation:
