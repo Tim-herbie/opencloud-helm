@@ -5,6 +5,7 @@ Base: changes since 2.4.6.
 OpenCloud version from values.yaml: 7.4.0
 
 ### Pull Requests
+- [#125](https://github.com/Tim-herbie/opencloud-helm/pull/125) chore(release): v2.4.7
 - [#136](https://github.com/Tim-herbie/opencloud-helm/pull/136) chore(deps): update docker.io/collabora/code docker tag to v26.04.2.4.1
 - [#139](https://github.com/Tim-herbie/opencloud-helm/pull/139) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.4.0
 - [#140](https://github.com/Tim-herbie/opencloud-helm/pull/140) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.7.1
@@ -32,6 +33,7 @@ OpenCloud version from values.yaml: 7.4.0
 - [#129](https://github.com/Tim-herbie/opencloud-helm/pull/129) fix: improve httproute and gateway usability
 
 ### Chore / Docs / CI / Other
+- [#125](https://github.com/Tim-herbie/opencloud-helm/pull/125) chore(release): v2.4.7
 - [#136](https://github.com/Tim-herbie/opencloud-helm/pull/136) chore(deps): update docker.io/collabora/code docker tag to v26.04.2.4.1
 - [#139](https://github.com/Tim-herbie/opencloud-helm/pull/139) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.4.0
 - [#140](https://github.com/Tim-herbie/opencloud-helm/pull/140) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.7.1
