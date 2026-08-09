@@ -22,9 +22,6 @@ spec:
         - name: collabora
           image: {{ include "opencloud.image" (dict "imageValues" .Values.collabora.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.collabora.image.pullPolicy "global" .Values.global) }}
-          command: ['/bin/bash', '-c']
-          args:
-            - 'coolconfig generate-proof-key && /start-collabora-online.sh'
           env:
             - name: aliasgroup1
               value: "http://{{ include "opencloud.fullname" . }}-collaboration:9300,https://{{ .Values.global.domain.wopi }}"
