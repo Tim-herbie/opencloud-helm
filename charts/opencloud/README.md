@@ -17,15 +17,13 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
   - [Global Settings](#global-settings)
   - [Image Settings](#image-settings)
   - [OpenCloud Settings](#opencloud-settings)
-  - [Keycloak Settings](#keycloak-settings)
-  - [PostgreSQL Settings](#postgresql-settings)
+  - [OIDC Settings](#oidc-settings)
   - [Collabora Settings](#collabora-settings)
   - [Collaboration Service Settings](#collaboration-service-settings)
   - [Web Extensions Settings](#web-extensions-settings)
 - [Gateway API Configuration](#gateway-api-configuration)
   - [HTTPRoute Settings](#httproute-settings)
 - [Setting Up Gateway API with Talos, Cilium, and cert-manager](#setting-up-gateway-api-with-talos-cilium-and-cert-manager)
-- [Development Chart](#-development-chart)
 - [License](#-license)
 - [Community Maintained](#community-maintained)
 
@@ -33,7 +31,7 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
 
 This repository is created to **welcome contributions from the community**. It does not contain official charts from OpenCloud GmbH and is **not officially supported by OpenCloud GmbH**. Instead, these charts are maintained by the open-source community.
 
-OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with Keycloak for authentication, MinIO for object storage, and options for document editing with Collabora.
+OpenCloud is a cloud collaboration platform that provides file sync and share, document collaboration, and more. This Helm chart deploys OpenCloud with the **integrated identity manager (IDM)** by default — no external Keycloak, PostgreSQL, or MinIO required. Collabora (document editing) is bundled. Optionally, external OIDC (Keycloak, Auth0, etc.), external S3 storage, and ClamAV virus scanning can be configured.
 
 ## 💬 Community
 
@@ -56,14 +54,16 @@ Please ensure that your PR follows best practices and includes necessary documen
 
 ## Prerequisites
 
-- Kubernetes 1.19+
-- Helm 3.2.0+
+- Kubernetes 1.33+
+- Helm 3.18.0+
 - PV provisioner support in the underlying infrastructure (if persistence is enabled)
-- External ingress controller (e.g., Cilium Gateway API) for routing traffic to the services
+- Gateway API compatible ingress controller (e.g., Cilium Gateway) for HTTPS routing
 
 ## 📦 Installation
 
-To install the chart with the release name `opencloud`:
+### Quick Start (Helm)
+
+Deploy OpenCloud with the integrated IDM (no external Keycloak, PostgreSQL, or MinIO) in a single `helm install`. Works out of the box with a Gateway API-compatible ingress controller (e.g., Cilium Gateway).
 
 ```bash
 # Navigate to the chart directory first
@@ -74,31 +74,86 @@ helm install opencloud . \
   --namespace opencloud \
   --create-namespace \
   --set httpRoute.enabled=true \
-  --set httpRoute.gateway.name=opencloud-gateway \
-  --set httpRoute.gateway.namespace=kube-system
+  --set httpRoute.gateway.name=cilium-gateway \
+  --set httpRoute.gateway.namespace=kube-system \
+  --set httpRoute.gateway.sectionName=opencloud
 ```
 
-Alternatively, from the repository root:
+Verify the deployment:
 
 ```bash
-helm install opencloud ./charts/opencloud \
-  --namespace opencloud \
-  --create-namespace \
-  --set httpRoute.enabled=true \
-  --set httpRoute.gateway.name=opencloud-gateway \
-  --set httpRoute.gateway.namespace=kube-system
+kubectl get pods -n opencloud
 ```
+
+Uninstall (PVCs are retained by Helm to preserve data — delete them manually if you want a clean slate):
+
+```bash
+helm uninstall opencloud -n opencloud
+# Optional: drop retained PVCs
+kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
+```
+
+> **Note:** Never delete the namespace — only use `helm uninstall`. This ensures PVCs always stay.
+
+### Full Stack with FluxCD
+
+For deploying the full stack with external Keycloak (OIDC), OpenLDAP (user management), and ClamAV (virus scanning), self-contained FluxCD HelmReleases live in `deployments/flux/`. No Helmfile or Timoni bundle required — each manifest is self-contained (inline database config, realm import, HTTPRoutes, HTTP→HTTPS redirects).
+
+```bash
+# One command: -R recurses into all subdirectories (keycloak/, openldap/,
+# clamav/, opencloud/) and applies every .yaml in one shot.
+kubectl apply -R -f charts/opencloud/deployments/flux/
+```
+
+Each `HelmRelease` is reconciled by the FluxCD `helm-controller`.
+
+Reconcile after a change (edit a value, bump the chart, etc.):
+
+```bash
+for hr in $(kubectl get hr -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{" "}{end}'); do flux reconcile helmrelease "$(echo $hr | cut -d/ -f2)" -n "$(echo $hr | cut -d/ -f1)"; done
+```
+
+Remove the full stack (deletes the HelmReleases; Flux's helm-controller then runs `helm uninstall` for each, dropping the chart-rendered Deployments / Services / ConfigMaps / HTTPRoutes / Secrets. **PVCs are retained by Helm** to preserve data — delete them manually if you want a clean slate):
+
+```bash
+kubectl delete -R -f charts/opencloud/deployments/flux/
+# Optional: drop retained PVCs
+kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
+kubectl -n keycloak  delete pvc -l app.kubernetes.io/instance=keycloak-postgresql
+kubectl -n openldap  delete pvc -l app.kubernetes.io/instance=openldap
+```
+
+> **Note:** Never delete the namespace — only flux-delete the HelmReleases or `helm uninstall`. This ensures PVCs always stay.
+
+### Choosing a storage backend
+
+The chart defaults to **`decomposed`** (PVC-backed metadata + blobs, no external S3). To switch, edit `charts/opencloud/deployments/flux/opencloud/opencloud.yaml` (Flux) or `values.yaml` (Helm):
+
+| Backend | What to change | Effect |
+|---------|---------------|--------|
+| **Decomposed (default)** | nothing — `storage.mode: decomposed` | PVC stores metadata + blobs; no S3; `Recreate` rollout strategy (single RWO volume) |
+| **Decomposed + RWX** | under `storage.decomposed.persistence`, set `accessMode: ReadWriteMany` | Supports RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem) |
+| **PosixFS** | `storage.mode: posixfs` | PVC stores user files directly; simpler but no decomposed metadata tree |
+| **S3 / external S3** | set `storage.mode: s3`, `storage.s3.enabled: true`, and `storage.s3.external.endpoint` | OpenCloud talks to your external S3 / Ceph / MinIO; `RollingUpdate` (no shared PVC) |
+
+> ⚠️ **PVC access mode → rollout strategy**: `ReadWriteOnce` forces `Recreate` (single pod mounts the volume). `ReadWriteMany` enables `RollingUpdate` (multi-pod). Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
+
+The flux folder's `opencloud.yaml` keeps the `s3` block as a commented-out template — switch back to S3 by uncommenting it and the matching `s3secret` Secret in `secrets.yaml`, then `flux reconcile helmrelease opencloud-oc1 -n opencloud`.
 
 ## Architecture
 
 This Helm chart deploys the following components:
 
-1. **OpenCloud** - Main application (fork of ownCloud Infinite Scale)
-2. **Keycloak** - Authentication provider with OpenID Connect
-3. **PostgreSQL** - Database for Keycloak
-4. **MinIO** - S3-compatible object storage
-5. **Collabora** - Online document editor (CODE - Collabora Online Development Edition)
-6. **Collaboration Service** - WOPI server that connects OpenCloud with document editors
+1. **OpenCloud** - Main application (ownCloud Infinite Scale fork) with integrated IDM
+2. **Collabora** - Online document editor (CODE - Collabora Online Development Edition)
+3. **Collaboration Service** - WOPI server that connects OpenCloud with document editors
+4. **Tika** - Full-text search extractor
+
+The following are **optional external** dependencies (deploy separately, e.g., via FluxCD):
+- **Keycloak** - OIDC authentication (when `oidc.issuerUrl` is set)
+- **OpenLDAP** - User directory for external user management
+- **ClamAV** - Virus scanning (when `antivirus.enabled` is true)
+- **External S3** - Object storage (when `storage.mode` is `s3`)
 
 All services are deployed with `ClusterIP` type, which means they are only accessible within the Kubernetes cluster. You need to configure your own ingress controller (e.g., Cilium Gateway API) to expose the services externally.
 
@@ -115,14 +170,13 @@ graph TD
         Gateway -->|collabora.opencloud.test| Collabora[Collabora Pod]
         Gateway -->|collaboration.opencloud.test| Collaboration[Collaboration Pod]
         Gateway -->|wopiserver.opencloud.test| Collaboration
-        Gateway -->|keycloak.opencloud.test| Keycloak[Keycloak Pod]
-        Gateway -->|minio.opencloud.test| MinIO[MinIO Pod]
+        Gateway -->|keycloak.opencloud.test| Keycloak[Keycloak Pod - external]
         
         OpenCloud -->|Authentication| Keycloak
-        OpenCloud -->|File Storage| MinIO
+        OpenCloud -->|File Storage| Storage[(PVC / External S3)]
         
         Collabora -->|WOPI Protocol| Collaboration
-        Collaboration -->|File Access| MinIO
+        Collaboration -->|File Access| Storage
         
         Collaboration -->|Authentication| Keycloak
         
@@ -132,10 +186,10 @@ graph TD
     classDef pod fill:#f9f,stroke:#333,stroke-width:2px;
     classDef gateway fill:#bbf,stroke:#333,stroke-width:2px;
     classDef user fill:#bfb,stroke:#333,stroke-width:2px;
-    classDef db fill:#dfd,stroke:#333,stroke-width:2px;
+    classDef storage fill:#ffd,stroke:#333,stroke-width:2px;
     
-    class OpenCloud,Collabora,Collaboration,Keycloak,MinIO pod;
-    class PostgreSQL,Redis db;
+    class OpenCloud,Collabora,Collaboration,Keycloak pod;
+    class Storage storage;
     class Gateway gateway;
     class User user;
 ```
@@ -147,8 +201,8 @@ Key interactions:
 
 2. **OpenCloud Pod**:
    - Main application that users interact with
-   - Authenticates users via Keycloak
-   - Stores files in MinIO
+   - Authenticates users via Keycloak (external OIDC) or integrated IDM (default)
+   - Stores files in a PVC (posixfs/decomposed) or external S3
    - Communicates with Collaboration service for collaborative editing
 
 3. **Collabora Pod**:
@@ -160,15 +214,13 @@ Key interactions:
    - Implements WOPI server functionality
    - Acts as intermediary between document editors and file storage
    - Handles collaborative editing sessions
-   - Accesses files from MinIO
+   - Accesses files via OpenCloud storage (PVC or external S3)
 
-5. **Keycloak Pod**:
-   - Handles authentication for all services
-   - Manages user identities and permissions
-
-6. **MinIO Pod**:
-   - Object storage for all files
-   - Accessed by OpenCloud and Collaboration pods
+5. **Keycloak Pod** (external, optional):
+   - Handles authentication for all services (when `oidc.issuerUrl` is set)
+   - Deployed separately (e.g., via FluxCD HelmRelease); this chart does not
+     manage its HTTPRoute — deploy and configure it alongside your Keycloak
+     installation (see `deployments/flux/keycloak/keycloak.yaml` for an example)
 
 ## Configuration
 
@@ -190,8 +242,8 @@ helm install opencloud ./charts/opencloud \
 ```
 
 This will prepend `my-registry.com/` to all image references in the chart. For example:
-- `keycloak/keycloak:26.1.4` becomes `my-registry.com/keycloak/keycloak:26.1.4`
-- `opencloudeu/opencloud-rolling:latest` becomes `my-registry.com/opencloudeu/opencloud-rolling:latest`
+- `collabora/code:26.04.2.1.1` becomes `my-registry.com/collabora/code:26.04.2.1.1`
+- `opencloudeu/opencloud-rolling:7.3.0` becomes `my-registry.com/opencloudeu/opencloud-rolling:7.3.0`
 
 ### Global Settings
 
@@ -199,8 +251,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | --------- | ----------- | ------- |
 | `namespace` | Deprecated: Namespace is now controlled by Helm (.Release.Namespace) | (removed) |
 | `global.domain.opencloud` | Domain for OpenCloud | `cloud.opencloud.test` |
-| `global.domain.oidc` | Domain for Keycloak/OIDC provider | `keycloak.opencloud.test` |
-| `global.domain.minio` | Domain for MinIO | `minio.opencloud.test` |
+| `global.domain.oidc` | Domain for OIDC provider (used when `oidc.issuerUrl` is set) | `keycloak.opencloud.test` |
 | `global.domain.collabora` | Domain for Collabora | `collabora.opencloud.test` |
 | `global.domain.companion` | Domain for Companion | `companion.opencloud.test` |
 | `global.domain.wopi` | Domain for WOPI server | `wopiserver.opencloud.test` |
@@ -216,7 +267,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | --------- | ----------- | ------- |
 | `image.registry` | OpenCloud image registry | `docker.io` |
 | `image.repository` | OpenCloud image repository | `opencloudeu/opencloud-rolling` |
-| `image.tag` | OpenCloud image tag | `latest` |
+| `image.tag` | OpenCloud image tag | `7.3.0` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `image.pullSecrets` | Image pull secrets | `[]` |
 
@@ -231,14 +282,22 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.logColor` | Enable log color | `false` |
 | `opencloud.logPretty` | Enable pretty logging | `false` |
 | `opencloud.insecure` | Insecure mode (for self-signed certificates) | `true` |
+| `opencloud.ocHttpApiInsecure` | Disable TLS certificate validation for OpenCloud HTTP API connections | `false` |
+| `opencloud.frontendCheckForUpdates` | Enable frontend update checks | `false` |
 | `opencloud.existingSecret` | Name of the existing secret | `` |
 | `opencloud.adminPassword` | Admin password | `admin` |
-| `opencloud.createDemoUsers` | Create demo users | `false` |
-| `opencloud.resources` | CPU/Memory resource requests/limits | `{}` |
-| `opencloud.persistence.enabled` | Enable persistence | `true` |
-| `opencloud.persistence.size` | Size of the persistent volume | `10Gi` |
-| `opencloud.persistence.storageClass` | Storage class | `""` |
-| `opencloud.persistence.accessMode` | Access mode | `ReadWriteOnce` |
+| `opencloud.createDemoUsers` | Create demo users (default `true` for integrated IDM) | `true` |
+| `opencloud.excludeServices` | Services to exclude from starting (set `["idp"]` when using external OIDC). The external LDAP env vars (`OC_LDAP_*`, `GRAPH_LDAP_*`, `FRONTEND_LDAP_SERVER_WRITE_ENABLED`) and the external LDAP bind secret (`opencloud.ldap.secretRef`, default `<release-name>-opencloud-ldap`, chart-generated from `opencloud.ldap.adminPassword`) are only used when `idp` is excluded; with the built-in IDP running they are omitted and the bind passwords come from the generated init secret. | `[]` |
+| `opencloud.theme.urls.imprint` | Imprint URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/legal-notice` |
+| `opencloud.theme.urls.privacy` | Privacy policy URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/data-protection-notice` |
+| `opencloud.theme.urls.accessibility` | Accessibility statement URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/accessibility-statement` |
+| `opencloud.theme.urls.accessDeniedHelp` | Help URL shown on the "access denied" page (empty = hidden) | `""` |
+| `opencloud.resources` | CPU/Memory resource requests/limits | `128m/128Mi` requests, `4/10Gi` limits |
+| `opencloud.persistence.data.enabled` | Enable persistence for data | `true` |
+| `opencloud.persistence.data.existingClaim` | Name of existing PVC to use | `""` |
+| `opencloud.persistence.data.size` | Size of the persistent volume for data | `30Gi` |
+| `opencloud.persistence.data.storageClass` | Storage class | `""` |
+| `opencloud.persistence.data.accessMode` | Access mode (RWO or RWX) | `ReadWriteOnce` |
 | `opencloud.initSecrets.existingSecret` | Use a pre-created Secret for init credentials (see [Init Secrets](#init-secrets)) | `""` |
 | `opencloud.smtp.enabled` | Enable smtp for opencloud | `false` |
 | `opencloud.smtp.host` | SMTP host | `` |
@@ -250,7 +309,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.smtp.insecure` | SMTP insecure | `false` |
 | `opencloud.smtp.authentication` | SMTP authentication | `plain` |
 | `opencloud.smtp.encryption` | SMTP encryption | `starttls` |
-| `opencloud.storage.mode` | Choice between s3 and posixfs for user files | `s3` |
+| `opencloud.storage.mode` | Choice between `s3`, `posixfs`, or `decomposed` for user files | `decomposed` |
 | `opencloud.proxyTls` | Use TLS between proxy and OpenCloud | `false` |
 | `opencloud.gatewayGrpcAddr` | gRPC address for the REVA gateway | `0.0.0.0:9142` |
 | `opencloud.proxyEnableBasicAuth` | Enable basic auth for proxy | `false` |
@@ -264,7 +323,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.proxyOidcRewriteWellknown` | Rewrite OIDC .well-known endpoint | `true` |
 | `opencloud.proxyUserOidcClaim` | OIDC claim for user | `preferred_username` |
 | `opencloud.proxyUserCs3Claim` | CS3 claim for user | `username` |
-| `opencloud.adminUserId` | Admin user id | `""` |
+| `opencloud.adminUserId` | Admin user id (legacy; `OC_ADMIN_USER_ID` now sourced from init secret `adminUserID` key) | `""` |
 | `opencloud.graphAssignDefaultUserRole` | Assign default user role in graph | `false` |
 | `opencloud.graphUsernameMatch` | Username match strategy for graph | `none` |
 | `opencloud.proxyRoleAssignmentOidcClaim` | OIDC claim for role assignment | `roles` |
@@ -278,38 +337,20 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 
 ### OpenCloud S3 Storage Settings
 
-The following options configure S3 for user file storage, either with the internal MinIO instance or with an external S3 provider.
+The following options configure an external S3-compatible provider (AWS S3, Ceph, MinIO deployed externally, etc.) for user file storage. The chart no longer ships a bundled MinIO instance — deploy MinIO/S3 separately if you need object storage.
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `opencloud.storage.s3.enabled` | Enable internal MinIO instance | `true` |
-| `opencloud.storage.s3.image.registry` | MinIO image registry | `docker.io` |
-| `opencloud.storage.s3.image.repository` | MinIO image repository | `minio/minio` |
-| `opencloud.storage.s3.image.tag` | MinIO image tag | `latest` |
-| `opencloud.storage.s3.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `opencloud.storage.s3.httpRoute.enabled` | Enable HTTPRoute for MinIO | `false` |
-| `opencloud.storage.s3.existingSecret` | Name of the existing secret | `` |
-| `opencloud.storage.s3.rootUser` | MinIO root user | `opencloud` |
-| `opencloud.storage.s3.rootPassword` | MinIO root password | `opencloud-secret-key` |
-| `opencloud.storage.s3.bucketName` | MinIO bucket name | `opencloud-bucket` |
-| `opencloud.storage.s3.region` | MinIO region | `default` |
-| `opencloud.storage.s3.resources` | CPU/Memory resource requests/limits | See values.yaml |
-| `opencloud.storage.s3.persistence.enabled` | Enable MinIO persistence | `true` |
-| `opencloud.storage.s3.persistence.existingClaim` | Name of existing PVC instead of the settings below | `` |
-| `opencloud.storage.s3.persistence.size` | Size of the MinIO persistent volume | `30Gi` |
-| `opencloud.storage.s3.persistence.storageClass` | MinIO storage class | `""` |
-| `opencloud.storage.s3.persistence.accessMode` | MinIO access mode | `ReadWriteOnce` |
+| `opencloud.storage.s3.enabled` | Enable external S3 storage | `false` |
 | `opencloud.storage.s3.external.endpoint` | External S3 endpoint URL | `""` |
 | `opencloud.storage.s3.external.region` | External S3 region | `default` |
-| `opencloud.storage.s3.external.existingSecret` | Name of the existing secret | `` |
-| `opencloud.storage.s3.external.accessKey` | External S3 access key | `""` |
-| `opencloud.storage.s3.external.secretKey` | External S3 secret key | `""` |
+| `opencloud.storage.s3.external.existingSecret` | Name of the existing secret (keys: `accessKey`, `secretKey`) | `""` |
+| `opencloud.storage.s3.external.accessKey` | External S3 access key (inline; use existingSecret for production) | `""` |
+| `opencloud.storage.s3.external.secretKey` | External S3 secret key (inline; use existingSecret for production) | `""` |
 | `opencloud.storage.s3.external.bucket` | External S3 bucket | `""` |
 | `opencloud.storage.s3.external.createBucket` | Create bucket if it doesn't exist | `true` |
 
-**Note:**  
-- The `internal` key under `storage.s3` has been removed. All MinIO/internal S3 settings are now directly under `storage.s3`.
-- The `enabled` field under `storage.s3.external` has been removed. To use external S3, set the `endpoint` and other required fields.
+To use external S3, set `opencloud.storage.mode: s3`, `opencloud.storage.s3.enabled: true`, and configure the `storage.s3.external.*` fields (or reference a pre-created Secret via `existingSecret`).
 
 ### OpenCloud PosixFS Storage Settings
 
@@ -323,21 +364,33 @@ The following options allow setting up a POSIX-compatible filesystem (such as NF
 | `opencloud.storage.posixfs.persistence.existingClaim` | Name of existing PVC instead of the settings below | `""` |
 | `opencloud.storage.posixfs.persistence.size` | Size of the PosixFS persistent volume | `30Gi` |
 | `opencloud.storage.posixfs.persistence.storageClass` | Storage class for PosixFS volume | `""` |
-| `opencloud.storage.posixfs.persistence.accessMode` | Access mode for PosixFS volume | `ReadWriteMany` |
+| `opencloud.storage.posixfs.persistence.accessMode` | Access mode for PosixFS volume | `ReadWriteOnce` |
 
 **Note:** When using `posixfs` mode, ensure that the underlying storage supports the required access mode (e.g., `ReadWriteMany` for multiple replicas). The underlying filesystem must support `flock` and `xattrs` so for NFS the minimum version is 4.2.
 
-### NATS Messaging Configuration
+> **Warning: CephFS and Backup Compatibility**
+>
+> When using `posixfs` with **CephFS** as the underlying storage, be aware that CephFS snapshot and clone operations may not work correctly in some Ceph versions. This can cause backup tools (e.g., Velero, Kasten) to fail when trying to snapshot the PVC.
+>
+> If you rely on PVC-level backups, consider using the **`decomposed`** storage driver instead. The `decomposed` driver stores metadata on the PVC and is more compatible with CephFS snapshot/clone operations.
+>
+> Alternatively, verify that your Ceph version supports CephFS snapshots properly before relying on PVC-level backups with `posixfs`.
 
-| Parameter  | Description | Default |
-| ---------- | ----------- | ------- |
-| `opencloud.nats.external.enabled` | Use an external NATS server (required for high availability) | `false` |
-| `opencloud.nats.external.endpoint` | Endpoint of the external NATS server | `nats.opencloud-nats.svc.cluster.local:4222` |
-| `opencloud.nats.external.cluster` | NATS cluster name | `opencloud-cluster` |
-| `opencloud.nats.external.tls.enabled` | Enable TLS for communication with NATS | `false` |
-| `opencloud.nats.external.tls.certTrusted` | Set to `false` if the external NATS server's certificate is not trusted by default (e.g. self-signed) | `true` |
-| `opencloud.nats.external.tls.insecure` | Disable certificate validation (not recommended for production) | `false` |
-| `opencloud.nats.external.tls.caSecretName` | Name of the Kubernetes Secret containing the CA certificate (only required if `certTrusted` is `false`) | `opencloud-nats-ca` |
+### OpenCloud Decomposed Storage Settings
+
+The `decomposed` storage driver stores all metadata and blobs on a PVC (no S3 required). It is a good alternative to `posixfs` when using CephFS, as it is more compatible with CephFS snapshot/clone operations.
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `opencloud.storage.decomposed.maxConcurrency` | Maximum number of concurrent operations | `100` |
+| `opencloud.storage.decomposed.rootPath` | Path of storage root directory in openCloud pod | `/var/lib/opencloud/storage` |
+| `opencloud.storage.decomposed.persistence.enabled` | Enable persistence for decomposed storage | `true` |
+| `opencloud.storage.decomposed.persistence.existingClaim` | Name of existing PVC instead of the settings below | `""` |
+| `opencloud.storage.decomposed.persistence.size` | Size of the decomposed persistent volume | `30Gi` |
+| `opencloud.storage.decomposed.persistence.storageClass` | Storage class for decomposed volume | `""` |
+| `opencloud.storage.decomposed.persistence.accessMode` | Access mode for decomposed volume | `ReadWriteOnce` |
+
+### NATS Messaging Configuration
 
 > 💡 The secret referenced by `caSecretName` **must contain a key named `ca.crt`** with the root CA certificate used to verify the external NATS server.
 > Example:
@@ -389,7 +442,7 @@ The job and its RBAC resources (ServiceAccount, Role, RoleBinding) are cleaned u
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `opencloud.migration.enabled` | Enable the credential migration job hook | `true` |
+| `opencloud.migration.enabled` | Enable the credential migration job hook | `false` |
 | `opencloud.migration.configPvcClaimName` | Name of the legacy config PVC to read credentials from | `<release>-opencloud-config` |
 
 **Example:**
@@ -405,23 +458,17 @@ opencloud:
 
 
 
-By default the chart deploys an internal Keycloak. It can be disabled and replaced with an external OIDC provider.
+The chart uses the **integrated IDM** by default. To use an external OIDC provider, set `oidc.issuerUrl` and exclude the `idp` service.
 
-#### Internal Keycloak
+### OIDC Settings
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `oidc.enabled` | Enable internal Keycloak deployment | `true` |
-| `oidc.image.registry` | Keycloak image registry | `quay.io` |
-| `oidc.image.repository` | Keycloak image repository | `keycloak/keycloak` |
-| `oidc.image.tag` | Keycloak image tag | `26.5.2` |
-| `oidc.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `oidc.replicas` | Number of replicas | `1` |
-| `oidc.existingSecret` | Name of the existing secret | `` |
-| `oidc.adminUser` | Admin user | `admin` |
-| `oidc.adminPassword` | Admin password | `admin` |
-| `oidc.realm` | Realm name | `openCloud` |
-| `oidc.resources` | CPU/Memory resource requests/limits | `{}` |
+| `oidc.issuerUrl` | OIDC Issuer URL (leave empty for integrated IDM) | `""` |
+| `oidc.clientId` | OIDC Client ID | `"web"` |
+| `oidc.accountUrl` | Account management URL (optional; derived from `issuerUrl` if empty) | `""` |
+| `oidc.oidcIdpInsecure` | Disable TLS certificate validation for OIDC provider | `false` |
+| `oidc.scope` | OIDC scope for web client | `"openid profile email groups roles"` |
 | `oidc.cors.enabled` | Enable CORS | `true` |
 | `oidc.cors.allowAllOrigins` | Allow all origins | `true` |
 | `oidc.cors.origins` | Allowed origins (if `allowAllOrigins` is `false`) | `[]` |
@@ -431,57 +478,18 @@ By default the chart deploys an internal Keycloak. It can be disabled and replac
 | `oidc.cors.allowCredentials` | Allow credentials | `"true"` |
 | `oidc.cors.maxAge` | Max age in seconds | `"3600"` |
 
-> **Note**: When using internal Keycloak with multiple OpenCloud replicas (`opencloud.replicas > 1`), you must use an external shared database or LDAP. The embedded IDM does not support replication.
-
-#### External OIDC Provider
-
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `oidc.enabled` | Deploy internal Keycloak (`true`) or use external OIDC (`false`) | `true` |
-| `oidc.external.issuerUrl` | OIDC Issuer URL (e.g., `https://keycloak.example.com/realms/openCloud`) | `""` |
-| `oidc.external.clientId` | OIDC Client ID | `"web"` |
-| `oidc.external.accountUrl` | Account management URL (optional) | `""` |
-
 #### Example: Using External OIDC Provider
 
 ```yaml
 oidc:
-  enabled: false
-  external:
-    issuerUrl: "https://keycloak.example.com/realms/openCloud"
-    clientId: "opencloud-web"
-    accountUrl: "https://keycloak.example.com/realms/openCloud/account"
-```
+  issuerUrl: "https://keycloak.example.com/realms/openCloud"
+  clientId: "opencloud-web"
+  accountUrl: "https://keycloak.example.com/realms/openCloud/account"
 
-### PostgreSQL Settings
-
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `postgres.enabled` | Enable PostgreSQL | `true` |
-| `postgres.database` | Database name | `keycloak` |
-| `postgres.existingSecret` | Name of the existing secret | `` |
-| `postgres.user` | Database user | `keycloak` |
-| `postgres.password` | Database password | `keycloak` |
-| `postgres.resources` | CPU/Memory resource requests/limits | `{}` |
-| `postgres.persistence.enabled` | Enable persistence | `true` |
-| `postgres.persistence.size` | Size of the persistent volume | `1Gi` |
-| `postgres.persistence.storageClass` | Storage class | `""` |
-| `postgres.persistence.accessMode` | Access mode | `ReadWriteOnce` |
-| `postgres.external.host` | External PostgreSQL hostname (used when `postgres.enabled` is `false`) | `""` |
-| `postgres.external.port` | External PostgreSQL port | `5432` |
-
-#### Example: Using External PostgreSQL with Internal Keycloak
-
-When you already run a PostgreSQL operator (e.g., CloudNativePG) and want to reuse it instead of deploying another PostgreSQL instance:
-
-```yaml
-postgres:
-  enabled: false
-  database: keycloak
-  existingSecret: "my-pg-credentials"   # keys: username, password
-  external:
-    host: "my-cluster-pooler-rw.cnpg.svc.cluster.local"
-    port: 5432
+opencloud:
+  createDemoUsers: false
+  excludeServices:
+    - "idp"
 ```
 
 ### Collabora Settings
@@ -490,21 +498,21 @@ postgres:
 | --------- | ----------- | ------- |
 | `collabora.enabled` | Enable Collabora | `true` |
 | `collabora.image.repository` | Collabora image repository | `collabora/code` |
-| `collabora.image.tag` | Collabora image tag | `24.04.13.2.1` |
+| `collabora.image.tag` | Collabora image tag | `26.04.2.1.1` |
 | `collabora.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `collabora.existingSecret` | Name of the existing secret | `` |
 | `collabora.admin.username` | Admin username | `admin` |
 | `collabora.admin.password` | Admin password | `admin` |
-| `collabora.ssl.enabled` | Enable SSL | `true` |
+| `collabora.ssl.enabled` | Enable SSL | `false` |
 | `collabora.ssl.verification` | SSL verification | `true` |
-| `collabora.resources` | CPU/Memory resource requests/limits | `{}` |
+| `collabora.resources` | CPU/Memory resource requests/limits | `100m/256Mi` requests, `4/10Gi` limits |
 
 ### Collaboration Service Settings
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `collaboration.enabled` | Enable collaboration service | `true` |
-| `collaboration.resources` | CPU/Memory resource requests/limits | `{}` |
+| `collaboration.resources` | CPU/Memory resource requests/limits | `100m/256Mi` requests, `4/10Gi` limits |
 
 ### Web Extensions Settings
 
@@ -515,27 +523,27 @@ postgres:
 | `webExtensions.image.repository` | Repository for web extensions images | `opencloudeu/web-extensions` |
 | `webExtensions.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `webExtensions.extensions.drawio.enabled` | Enable Draw.io extension | `true` |
-| `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-2.0.0` |
+| `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-2.1.0` |
 | `webExtensions.extensions.externalsites.enabled` | Enable External Sites extension | `true` |
-| `webExtensions.extensions.externalsites.tag` | External Sites image tag | `external-sites-2.0.0` |
+| `webExtensions.extensions.externalsites.tag` | External Sites image tag | `external-sites-2.1.0` |
 | `webExtensions.extensions.importer.enabled` | Enable Importer extension | `true` |
 | `webExtensions.extensions.importer.tag` | Importer image tag | `importer-1.0.0` |
 | `webExtensions.extensions.jsonviewer.enabled` | Enable JSON Viewer extension | `true` |
-| `webExtensions.extensions.jsonviewer.tag` | JSON Viewer image tag | `json-viewer-2.0.0` |
+| `webExtensions.extensions.jsonviewer.tag` | JSON Viewer image tag | `json-viewer-2.1.0` |
 | `webExtensions.extensions.progressbars.enabled` | Enable Progress Bars extension | `true` |
-| `webExtensions.extensions.progressbars.tag` | Progress Bars image tag | `progress-bars-2.0.0` |
+| `webExtensions.extensions.progressbars.tag` | Progress Bars image tag | `progress-bars-2.1.0` |
 | `webExtensions.extensions.unzip.enabled` | Enable Unzip extension | `true` |
-| `webExtensions.extensions.unzip.tag` | Unzip image tag | `unzip-2.0.0` |
+| `webExtensions.extensions.unzip.tag` | Unzip image tag | `unzip-2.1.0` |
 | `webExtensions.extensions.arcade.enabled` | Enable Arcade extension | `false` |
-| `webExtensions.extensions.arcade.tag` | Arcade image tag | `arcade-2.0.0` |
+| `webExtensions.extensions.arcade.tag` | Arcade image tag | `arcade-3.0.0` |
 | `webExtensions.extensions.calculator.enabled` | Enable Calculator extension | `false` |
-| `webExtensions.extensions.calculator.tag` | Calculator image tag | `calculator-2.0.0` |
+| `webExtensions.extensions.calculator.tag` | Calculator image tag | `calculator-2.1.0` |
 | `webExtensions.extensions.cast.enabled` | Enable Cast extension | `false` |
 | `webExtensions.extensions.cast.tag` | Cast image tag | `cast-1.0.0` |
 | `webExtensions.extensions.maps.enabled` | Enable Maps extension | `false` |
-| `webExtensions.extensions.maps.tag` | Maps image tag | `maps-3.0.0` |
+| `webExtensions.extensions.maps.tag` | Maps image tag | `maps-3.1.0` |
 | `webExtensions.extensions.pastebin.enabled` | Enable Pastebin extension | `false` |
-| `webExtensions.extensions.pastebin.tag` | Pastebin image tag | `pastebin-2.0.0` |
+| `webExtensions.extensions.pastebin.tag` | Pastebin image tag | `pastebin-2.1.0` |
 
 ## Ingress Configuration
 
@@ -553,53 +561,46 @@ This chart supports standard Kubernetes Ingress resources for exposing services.
 
 ## Gateway API Configuration
 
-This chart includes HTTPRoute resources that can be used to expose the OpenCloud, Keycloak, and MinIO services externally. The HTTPRoutes are configured to route traffic to the respective services.
+This chart includes HTTPRoute resources that can be used to expose the OpenCloud and (optionally) Keycloak services externally. The HTTPRoutes are configured to route traffic to the respective services.
 
 ### HTTPRoute Settings
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `httpRoute.enabled` | Enable HTTPRoutes | `true` |
+| `httpRoute.enabled` | Enable HTTPRoutes | `false` |
 | `httpRoute.gateway.name` | Gateway name | `opencloud-gateway` |
 | `httpRoute.gateway.namespace` | Gateway namespace | `""` (defaults to Release.Namespace) |
 | `httpRoute.gateway.sectionName` | Gateway section name | `""` (defaults to multiple route-specific section names for the routes listed below) |
+| `httpRoute.opencloud.routeName` | Name of the OpenCloud HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-httproute`) |
+| `httpRoute.opencloud.redirectRouteName` | Name of the OpenCloud HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-http-redirect`) |
+| `httpRoute.collabora.routeName` | Name of the Collabora HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-collabora-httproute`) |
+| `httpRoute.collabora.redirectRouteName` | Name of the Collabora HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-collabora-http-redirect`) |
+| `httpRoute.collaboration.routeName` | Name of the Collaboration (WOPI) HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-collaboration-httproute`) |
+| `httpRoute.collaboration.redirectRouteName` | Name of the Collaboration (WOPI) HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-collaboration-http-redirect`) |
 
 The following HTTPRoutes are created when `httpRoute.enabled` is set to `true`:
 
-1. **OpenCloud HTTPRoute**:
+1. **OpenCloud HTTPRoute** (default names: `{{ release-name }}-httproute` and `{{ release-name }}-http-redirect`):
    - Hostname: `global.domain.opencloud`
    - Service: `{{ release-name }}-opencloud`
    - Port: 9200
-   - Headers: Removes Permissions-Policy header to prevent browser console errors
+   - Headers: HTTP→HTTPS redirect and Permissions-Policy header
 
-2. **Keycloak HTTPRoute** (when `oidc.enabled` is `true`):
-   - Hostname: `global.domain.oidc`
-   - Service: `{{ release-name }}-keycloak`
-   - Port: 8080
-   - Headers: Adds Permissions-Policy header to prevent browser features like interest-based advertising
-
-3. **MinIO HTTPRoute** (when `opencloud.storage.mode` is `s3` and `opencloud.storage.s3.enabled` is `true`):
-   - Hostname: `global.domain.minio`
-   - Service: `{{ release-name }}-minio`
-   - Port: 9001
-   - Headers: Adds Permissions-Policy header to prevent browser features like interest-based advertising
-
-   default user: opencloud
-   pass: opencloud-secret-key
-
-4. **Collabora HTTPRoute** (when `collabora.enabled` is `true`):
+2. **Collabora HTTPRoute** (when `collabora.enabled` is `true`; default names: `{{ release-name }}-collabora-httproute` and `{{ release-name }}-collabora-http-redirect`):
    - Hostname: `global.domain.collabora`
    - Service: `{{ release-name }}-collabora`
    - Port: 9980
-   - Headers: Adds Permissions-Policy header to prevent browser features like interest-based advertising
 
-5. **Collaboration (WOPI) HTTPRoute** (when `collaboration.enabled` is `true`):
+3. **Collaboration (WOPI) HTTPRoute** (when `collaboration.enabled` is `true`; default names: `{{ release-name }}-collaboration-httproute` and `{{ release-name }}-collaboration-http-redirect`):
    - Hostname: `global.domain.wopi`
    - Service: `{{ release-name }}-collaboration`
    - Port: 9300
-   - Headers: Adds Permissions-Policy header to prevent browser features like interest-based advertising
 
-All HTTPRoutes are configured to use the same Gateway specified by `httpRoute.gateway.name` and `httpRoute.gateway.namespace`. If `httpRoute.gateway.sectionName` is set, they also all use a single section (e.g. `https`) in the gateway resource (useful when `httpRoute.gateway.create` is `false` because a gateway already exists). Otherwise, when `httpRoute.gateway.sectionName` is left empty, each route gets its own generated `sectionName` that points to a section in the gateway resource that is automatically set up when `httpRoute.gateway.create` is `true`.
+The HTTPRoute resource names can be customized via the `httpRoute.<component>.routeName` / `httpRoute.<component>.redirectRouteName` values listed above. If left empty, the default names are used.
+
+> **Note:** This chart no longer manages a Keycloak HTTPRoute. When using external OIDC, deploy and manage the Keycloak HTTPRoute alongside your Keycloak deployment (see `deployments/flux/keycloak/keycloak.yaml` for an example using `extraManifests`).
+
+All HTTPRoutes use the Gateway specified by `httpRoute.gateway.name` and `httpRoute.gateway.namespace`. If `httpRoute.gateway.sectionName` is set, all routes use `${sectionName}-<component>-http/https` as their listener section names (useful when `httpRoute.gateway.create` is `false` and you reference an existing gateway). If `httpRoute.gateway.sectionName` is empty and `httpRoute.gateway.create` is `true`, the chart creates the Gateway with per-component listeners.
 
 ## Setting Up Gateway API with Talos, Cilium, and cert-manager
 
@@ -697,10 +698,10 @@ Alternatively, for local testing, you can add entries to your `/etc/hosts` file:
 ```
 192.168.178.77  cloud.opencloud.test
 192.168.178.77  keycloak.opencloud.test
-192.168.178.77  minio.opencloud.test
 192.168.178.77  collabora.opencloud.test
 192.168.178.77  collaboration.opencloud.test
 192.168.178.77  wopiserver.opencloud.test
+192.168.178.77  companion.opencloud.test
 ```
 
 ### Step 5: Install OpenCloud
@@ -709,8 +710,7 @@ Finally, install OpenCloud using Helm. This will create the necessary HTTPRoute
 and Gateway resources:
 
 ```bash
-helm install opencloud oci://ghcr.io/opencloud-eu/helm-charts/opencloud \
-  --version 0.1.5 \
+helm install opencloud . \
   --namespace opencloud \
   --create-namespace \
   --set httpRoute.enabled=true \
@@ -745,10 +745,6 @@ You can also check the status of the HTTPRoutes:
 ```bash
 kubectl get httproutes -n opencloud
 ```
-
-## 📦 Development Chart
-
-For a simplified development version of OpenCloud using a single Docker container, please refer to the [Development Chart Documentation](../opencloud-dev/README.md).
 
 ## 📜 License
 

@@ -1,0 +1,34 @@
+suite: HTTPRoute Tests
+
+tests:
+  - it: OpenCloud HTTPRoute is created when httpRoute is enabled
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: HTTPRoute
+
+  - it: Collabora HTTPRoute is created when httpRoute and collabora are enabled
+    template: collabora/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collabora.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: HTTPRoute
+
+  - it: Collaboration HTTPRoute is created when httpRoute and collaboration are enabled
+    template: collaboration/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collaboration.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: HTTPRoute

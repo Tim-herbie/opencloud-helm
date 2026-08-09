@@ -1,0 +1,145 @@
+suite: ClamAV / Antivirus Tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  # --- Antivirus Configuration ---
+
+  - it: should not set antivirus env vars when antivirus is disabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_ENABLED
+
+  - it: should set ANTIVIRUS_ENABLED when antivirus is enabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+          infectedFileHandling: abort
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_ENABLED
+            value: "true"
+
+  - it: should set ANTIVIRUS_SCANNER_TYPE when antivirus is enabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+          infectedFileHandling: abort
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_SCANNER_TYPE
+            value: "clamav"
+
+  - it: should set ANTIVIRUS_CLAMAV_SOCKET when scanner type is clamav
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+          infectedFileHandling: abort
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_CLAMAV_SOCKET
+            value: "tcp://clamav.clamav.svc.cluster.local:3310"
+
+  - it: should set ANTIVIRUS_INFECTED_FILE_HANDLING when antivirus is enabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+          infectedFileHandling: delete
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_INFECTED_FILE_HANDLING
+            value: "delete"
+
+  - it: should set ANTIVIRUS_ICAP_URL when scanner type is icap
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: icap
+          icapUrl: "http://icap-server:1344"
+          icapService: "avscan"
+          infectedFileHandling: abort
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_ICAP_URL
+            value: "http://icap-server:1344"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_ICAP_SERVICE
+            value: "avscan"
+
+  - it: should not set CLAMAV_SOCKET when scanner type is icap
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: icap
+          icapUrl: "http://icap-server:1344"
+          icapService: "avscan"
+          infectedFileHandling: abort
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_CLAMAV_SOCKET
+
+  - it: should not set ICAP vars when scanner type is clamav
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+          icapUrl: "http://icap-server:1344"
+          icapService: "avscan"
+          infectedFileHandling: abort
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_ICAP_URL
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_ICAP_SERVICE
