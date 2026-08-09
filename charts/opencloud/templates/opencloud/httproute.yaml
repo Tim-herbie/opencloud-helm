@@ -2,16 +2,38 @@
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
-  name: {{ include "opencloud.fullname" . }}-httproute
+  name: {{ .Values.httpRoute.opencloud.redirectRouteName | default (printf "%s-http-redirect" (include "opencloud.fullname" .)) }}
   labels:
     {{- include "opencloud.labels" . | nindent 4 }}
 spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- $sectionName := include "opencloud.httpRoute.sectionName" (dict "root" . "route" "opencloud") }}
-      {{- if $sectionName }}
-      sectionName: {{ $sectionName }}
+      {{- with .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ . }}-proxy-http
+      {{- end }}
+  hostnames:
+    - {{ include "opencloud.domain" . | quote }}
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            hostname: {{ include "opencloud.domain" . }}
+            statusCode: 301
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: {{ .Values.httpRoute.opencloud.routeName | default (printf "%s-httproute" (include "opencloud.fullname" .)) }}
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.httpRoute.gateway.name }}
+      namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
+      {{- with .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ . }}-proxy-https
       {{- end }}
   hostnames:
     - {{ include "opencloud.domain" . | quote }}

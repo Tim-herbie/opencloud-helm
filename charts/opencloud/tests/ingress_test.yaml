@@ -11,17 +11,6 @@ tests:
       - isKind:
           of: Ingress
 
-  - it: Keycloak Ingress is created when ingress and oidc are enabled
-    template: keycloak/ingress.yaml
-    set:
-      ingress.enabled: true
-      oidc.enabled: true
-    asserts:
-      - hasDocuments:
-          count: 1
-      - isKind:
-          of: Ingress
-
   - it: Collabora Ingress is created when ingress and collabora are enabled
     template: collabora/ingress.yaml
     set:

@@ -33,12 +33,6 @@ spec:
       name: {{ include "opencloud.fullname" . }}-opencloud-tls
     - group: ""
       kind: Secret
-      name: {{ include "opencloud.fullname" . }}-opencloud-minio-tls
-    - group: ""
-      kind: Secret
-      name: {{ include "opencloud.fullname" . }}-keycloak-tls
-    - group: ""
-      kind: Secret
       name: {{ include "opencloud.fullname" . }}-collabora-tls
     - group: ""
       kind: Secret

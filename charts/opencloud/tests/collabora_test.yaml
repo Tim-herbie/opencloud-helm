@@ -1,0 +1,181 @@
+suite: Collabora Tests
+templates:
+  - _helpers/tpl.yaml
+  - collabora/deployment.yaml
+
+tests:
+  # --- Mutual Exclusion ---
+
+  - it: should fail when both internal and external Collabora are enabled
+    template: collabora/deployment.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: "Cannot enable both internal and external Collabora. Set either collabora.enabled=true or collabora.external.enabled=true, not both."
+    set:
+      collabora:
+        enabled: true
+        external:
+          enabled: true
+
+  - it: should create internal Collabora deployment when only internal is enabled
+    template: collabora/deployment.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-opencloud-collabora
+    set:
+      collabora:
+        enabled: true
+        external:
+          enabled: false
+
+  - it: should not create internal Collabora deployment when only external is enabled
+    template: collabora/deployment.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+    set:
+      collabora:
+        enabled: false
+        external:
+          enabled: true
+
+  - it: should not create internal Collabora deployment when both are disabled
+    template: collabora/deployment.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+    set:
+      collabora:
+        enabled: false
+        external:
+          enabled: false
+
+  # --- WOPI Proof Key Generation ---
+
+  - it: should generate WOPI proof key on startup
+    template: collabora/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: "coolconfig generate-proof-key && /start-collabora-online.sh"
+    set:
+      collabora:
+        enabled: true
+        external:
+          enabled: false
+
+  # --- WOPI Alias Group ---
+
+  - it: should set WOPI alias group to collaboration service
+    template: collabora/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: aliasgroup1
+            value: "http://RELEASE-NAME-opencloud-collaboration:9300,https://wopiserver.opencloud.test"
+    set:
+      collabora:
+        enabled: true
+        external:
+          enabled: false
+      global:
+        domain:
+          wopi: wopiserver.opencloud.test
+
+  # --- SSL Configuration ---
+
+  - it: should disable SSL by default
+    template: collabora/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: extra_params
+            value: |
+              --o:ssl.enable=false \
+              --o:ssl.ssl_verification=true \
+              --o:ssl.termination=true \
+              --o:welcome.enable=false \
+              --o:update.enable=false \
+              --o:net.frame_ancestors=cloud.opencloud.test \
+              --o:security.capabilities=false \
+              --o:child_root_path=/tmp/coolwsd-child-roots \
+              --o:cache_files.path=/tmp/coolwsd-cache \
+              --o:logging.disable_server_audit=true
+    set:
+      collabora:
+        enabled: true
+        external:
+          enabled: false
+      global:
+        domain:
+          opencloud: cloud.opencloud.test
+
+  - it: should enable SSL when configured
+    template: collabora/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: extra_params
+            value: |
+              --o:ssl.enable=true \
+              --o:ssl.ssl_verification=true \
+              --o:ssl.termination=true \
+              --o:welcome.enable=false \
+              --o:update.enable=false \
+              --o:net.frame_ancestors=cloud.opencloud.test \
+              --o:security.capabilities=false \
+              --o:child_root_path=/tmp/coolwsd-child-roots \
+              --o:cache_files.path=/tmp/coolwsd-cache \
+              --o:logging.disable_server_audit=true
+    set:
+      collabora:
+        enabled: true
+        external:
+          enabled: false
+        ssl:
+          enabled: true
+          verification: true
+      global:
+        domain:
+          opencloud: cloud.opencloud.test
+
+  # --- Security Context ---
+
+  - it: should drop all capabilities for Collabora
+    template: collabora/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop[0]
+          value: ALL
+    set:
+      collabora:
+        enabled: true
+        external:
+          enabled: false
+
+  # --- Probes ---
+
+  - it: should have liveness and readiness probes
+    template: collabora/deployment.yaml
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.containers[0].livenessProbe
+      - isNotNull:
+          path: spec.template.spec.containers[0].readinessProbe
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /hosting/discovery
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /hosting/discovery
+    set:
+      collabora:
+        enabled: true
+        external:
+          enabled: false

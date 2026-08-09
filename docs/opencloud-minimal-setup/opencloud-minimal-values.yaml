@@ -12,7 +12,7 @@ collabora:
     enabled: false
 
 oidc:
-  enabled: false
+  issuerUrl: "" # leave empty to use the integrated IDM (no external OIDC provider)
 
 opencloud:
   

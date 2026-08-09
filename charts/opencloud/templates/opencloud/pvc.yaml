@@ -49,3 +49,29 @@ spec:
   {{- end }}
   {{- end }}
 {{- end }}
+
+{{- if and (eq .Values.opencloud.storage.mode "decomposed") (and .Values.opencloud.storage.decomposed.persistence.enabled (not .Values.opencloud.storage.decomposed.persistence.existingClaim)) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "opencloud.opencloud.fullname" . }}-decomposed
+  annotations:
+    "helm.sh/resource-policy": "keep"
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opencloud
+spec:
+  accessModes:
+    - {{ .Values.opencloud.storage.decomposed.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.opencloud.storage.decomposed.persistence.size | quote }}
+  {{- if .Values.opencloud.storage.decomposed.persistence.storageClass }}
+  {{- if (eq "-" .Values.opencloud.storage.decomposed.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.opencloud.storage.decomposed.persistence.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}
