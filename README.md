@@ -37,6 +37,7 @@ OpenCloud is a cloud collaboration platform that provides file sync and share, d
 | 7.1.0            | 2.4.3 |
 | 7.2.0            | 2.4.4 |
 | 7.3.0            | 2.4.5, 2.4.6 |
+| 7.4.0            | 2.4.7 |
 
 
 ## 💡 Contributing
@@ -110,3 +111,12 @@ kubectl -n opencloud delete pvc -l app.kubernetes.io/instance=opencloud
 > **Note:** Never delete the namespace — only use `helm uninstall` (or delete the HelmRelease if using Flux). This ensures PVCs always stay.
 
 For deploying the full stack with FluxCD (external Keycloak, OpenLDAP, ClamAV), see the [chart documentation](./charts/opencloud/README.md) — self-contained HelmReleases live in `charts/opencloud/deployments/flux/`.
+
+1. **Install the OpenCloud Helm chart:**
+  ```sh
+  helm install opencloud \
+    oci://ghcr.io/tim-herbie/opencloud-helm/opencloud \
+    --version 2.4.7 \
+    --namespace opencloud \
+    --create-namespace
+  ```
