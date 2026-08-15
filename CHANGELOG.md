@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 <!-- release-bot:start -->
 
+## [3.0.0] - 2026-08-15
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- None
+
+### Chore / Docs / CI / Other
+- None
+
+
 ## [2.4.7] - 2026-08-09
 
 ### Breaking Changes
