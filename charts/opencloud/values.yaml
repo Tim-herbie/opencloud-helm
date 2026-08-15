@@ -244,7 +244,7 @@ collabora:
     registry: docker.io
     repository: collabora/code
     pullPolicy: IfNotPresent
-    tag: 26.04.2.4.1
+    tag: 26.04.3.1.1
   ssl:
     enabled: false
     verification: true
