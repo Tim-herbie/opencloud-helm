@@ -1,6 +1,7 @@
 directives:
   child-src:
     - '''self'''
+
   connect-src:
     - '''self'''
     - 'blob:'
@@ -8,40 +9,59 @@ directives:
     - 'wss://{{ .Values.global.domain.companion }}/'
     - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
     - 'https://update.opencloud.eu/'
-    - 'https://{{ .Values.global.domain.oidc  }}/'
+    # Required when using an external OIDC provider
+    - 'https://{{ .Values.global.domain.oidc }}/'
+
   default-src:
     - '''none'''
+
   font-src:
     - '''self'''
+
   frame-ancestors:
     - '''self'''
+
   frame-src:
     - '''self'''
     - 'blob:'
     - 'https://embed.diagrams.net/'
-    # In contrary to bash and docker the default is given after the | character
+    # Collabora Online
     - 'https://{{ .Values.global.domain.collabora }}/'
-    # This is needed for the external-sites web extension when embedding sites
+    # Required for the external-sites web extension
     - 'https://docs.opencloud.eu'
+    # Required for OIDC silent token renewal (hidden iframe).
+    # Without this entry browsers block the silent renew flow when an
+    # external Identity Provider is used.
+    - 'https://{{ .Values.global.domain.oidc }}/'
+
   img-src:
     - '''self'''
     - 'data:'
     - 'blob:'
     - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
-    # In contrary to bash and docker the default is given after the | character
+    # Collabora Online
     - 'https://{{ .Values.global.domain.collabora }}/'
+
   manifest-src:
     - '''self'''
+
   media-src:
     - '''self'''
+
   object-src:
     - '''self'''
     - 'blob:'
+
   script-src:
     - '''self'''
     - '''unsafe-inline'''
+    # Required when using an external OIDC provider
+    - 'https://{{ .Values.global.domain.oidc }}/'
+
   style-src:
     - '''self'''
     - '''unsafe-inline'''
+
   worker-src:
     - '''self'''
+    - 'blob:'
