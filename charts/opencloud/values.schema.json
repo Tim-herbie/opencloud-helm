@@ -328,6 +328,9 @@
         "createDemoUsers": {
           "type": "boolean"
         },
+        "asyncUploads": {
+          "type": "boolean"
+        },
         "antivirus": {
           "type": "object",
           "properties": {

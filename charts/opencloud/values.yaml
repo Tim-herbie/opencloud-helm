@@ -435,6 +435,8 @@ opencloud:
   
   # Create demo users (set true for integrated IDM; default admin user is created)
   createDemoUsers: true
+  # Keep upload sessions available while postprocessing policies and antivirus run.
+  asyncUploads: true
   # Additional services to start
   additionalServices: []
   # Services to exclude from starting

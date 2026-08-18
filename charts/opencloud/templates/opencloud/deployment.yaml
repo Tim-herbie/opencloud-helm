@@ -251,6 +251,8 @@ spec:
               value: data.postprocessing.granted
             {{- end }}
             {{- if or .Values.opencloud.antivirus.enabled .Values.opencloud.policies.enabled }}
+            - name: STORAGE_USERS_DATA_GATEWAY_URL
+              value: "http://{{ include "opencloud.opencloud.fullname" . }}:9200/data"
             - name: POSTPROCESSING_STEPS
               value: {{- if and .Values.opencloud.policies.enabled .Values.opencloud.antivirus.enabled }} "policies,virusscan"{{- else if .Values.opencloud.policies.enabled }} "policies"{{- else }} "virusscan"{{- end }}
             {{- end }}
@@ -273,10 +275,9 @@ spec:
               value: {{ .Values.opencloud.searchExtractorType | quote }}
             - name: SEARCH_EXTRACTOR_TIKA_TIKA_URL
               value: "http://{{ include "opencloud.tika.fullname" . }}:9998"
-            # Must be false — Go default is true, which makes search subscribe to UploadReady
-            # instead of FileUploaded. With sync uploads, FileUploaded is the correct event.
+            # Keep the upload session available while postprocessing runs.
             - name: OC_ASYNC_UPLOADS
-              value: "false"
+              value: {{ .Values.opencloud.asyncUploads | quote }}
             {{- with .Values.opencloud.searchExtractorSizeLimit }}
             - name: SEARCH_CONTENT_EXTRACTION_SIZE_LIMIT
               value: {{ int64 . | quote }}

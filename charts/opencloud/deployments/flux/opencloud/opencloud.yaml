@@ -103,6 +103,8 @@ spec:
       insecure: true
       migration:
         enabled: false
+      # Keep TUS uploads available until policy and antivirus postprocessing completes.
+      asyncUploads: true
       # Using external Keycloak OIDC + external OpenLDAP: the bundled IDM/idp
       # service must NOT run, so exclude it. Demo users are also disabled.
       createDemoUsers: false
@@ -169,6 +171,20 @@ spec:
               granted = false if {
                   input.request.method == "PUT"
                   pathPrefixes := ["/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
+                  restricted := pathPrefixes[_]
+                  startswith(input.request.path, restricted)
+                  utils.is_extension_restricted(input.resource.name)
+              }
+              granted = false if {
+                  input.request.method == "POST"
+                  pathPrefixes := ["/data", "/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
+                  restricted := pathPrefixes[_]
+                  startswith(input.request.path, restricted)
+                  utils.is_extension_restricted(input.resource.name)
+              }
+              granted = false if {
+                  input.request.method == "PATCH"
+                  pathPrefixes := ["/data", "/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
                   restricted := pathPrefixes[_]
                   startswith(input.request.path, restricted)
                   utils.is_extension_restricted(input.resource.name)

@@ -50,6 +50,11 @@ tests:
           content:
             name: POSTPROCESSING_STEPS
             value: policies
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DATA_GATEWAY_URL
+            value: http://RELEASE-NAME-opencloud-opencloud:9200/data
 
   - it: configures the policies service with all policy files
     template: opencloud/configmap.yaml

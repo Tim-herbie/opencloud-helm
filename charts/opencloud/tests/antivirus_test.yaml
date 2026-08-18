@@ -58,6 +58,16 @@ tests:
           content:
             name: POSTPROCESSING_STEPS
             value: virusscan
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ASYNC_UPLOADS
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DATA_GATEWAY_URL
+            value: http://RELEASE-NAME-opencloud-opencloud:9200/data
 
   - it: should set ANTIVIRUS_SCANNER_TYPE when antivirus is enabled
     template: opencloud/deployment.yaml
