@@ -4,12 +4,24 @@ tests:
   - it: OpenCloud HTTPRoute is created when httpRoute is enabled
     template: opencloud/httproute.yaml
     set:
-      httpRoute.enabled: true
+      global.tls.enabled: true
+      httpRoute:
+        enabled: true
+        gateway:
+          create: true
     asserts:
       - hasDocuments:
           count: 2
       - isKind:
           of: HTTPRoute
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: RELEASE-NAME-opencloud-proxy-http
+        documentIndex: 0
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: RELEASE-NAME-opencloud-proxy-https
+        documentIndex: 1
 
   - it: Collabora HTTPRoute is created when httpRoute and collabora are enabled
     template: collabora/httproute.yaml

@@ -10,8 +10,10 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- with .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ . }}-wopi-http
+      {{- if .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ .Values.httpRoute.gateway.sectionName }}-wopi-http
+      {{- else if .Values.httpRoute.gateway.create }}
+      sectionName: {{ include "opencloud.fullname" . }}-wopi-http
       {{- end }}
   hostnames:
     - {{ .Values.global.domain.wopi | quote }}
@@ -34,8 +36,10 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- with .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ . }}-wopi-https
+      {{- if .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ .Values.httpRoute.gateway.sectionName }}-wopi-https
+      {{- else if .Values.httpRoute.gateway.create }}
+      sectionName: {{ include "opencloud.fullname" . }}-wopi-https
       {{- end }}
   hostnames:
     - {{ .Values.global.domain.wopi | quote }}
