@@ -58,12 +58,19 @@ jobs:
       - name: Debug pods if failed
         if: failure()
         run: |
-          echo "==== Pods ===="
+          echo "==== All Pods ===="
           kubectl get pods -A
-          echo "==== Describe Pods ===="
-          kubectl describe pods -A
+          echo "==== Failing/Not-Running Pods ===="
+          kubectl get pods -A --no-headers | grep -vE '\s+(Running|Completed|Succeeded)\s+' || true
+          echo "==== Describe and Logs for Failing Pods ===="
+          kubectl get pods -A --no-headers | grep -vE '\s+(Running|Completed|Succeeded)\s+' | awk '{print $1" "$2}' | while read -r ns pod; do
+            echo "--- Describing pod: $pod (namespace: $ns) ---"
+            kubectl describe pod "$pod" -n "$ns"
+            echo "--- Logs for pod: $pod (namespace: $ns) ---"
+            kubectl logs "$pod" -n "$ns" --all-containers=true --tail=100 2>/dev/null || true
+          done
           echo "==== Events ===="
-          kubectl get events -A
+          kubectl get events -A --sort-by='.lastTimestamp'
 
   e2e:
     runs-on: ubuntu-latest
@@ -283,12 +290,19 @@ jobs:
       - name: Debug pods if failed
         if: steps.pods_wait.outcome == 'failure'
         run: |
-          echo "==== Pods ===="
+          echo "==== All Pods ===="
           kubectl get pods -A
-          echo "==== Describe Pods ===="
-          kubectl describe pods -A
+          echo "==== Failing/Not-Running Pods ===="
+          kubectl get pods -A --no-headers | grep -vE '\s+(Running|Completed|Succeeded)\s+' || true
+          echo "==== Describe and Logs for Failing Pods ===="
+          kubectl get pods -A --no-headers | grep -vE '\s+(Running|Completed|Succeeded)\s+' | awk '{print $1" "$2}' | while read -r ns pod; do
+            echo "--- Describing pod: $pod (namespace: $ns) ---"
+            kubectl describe pod "$pod" -n "$ns"
+            echo "--- Logs for pod: $pod (namespace: $ns) ---"
+            kubectl logs "$pod" -n "$ns" --all-containers=true --tail=100 2>/dev/null || true
+          done
           echo "==== Events ===="
-          kubectl get events -A
+          kubectl get events -A --sort-by='.lastTimestamp'
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
