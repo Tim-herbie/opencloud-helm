@@ -569,6 +569,18 @@
               }
             }
           }
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "proxyRoleQuotas": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         }
       }
     },

@@ -121,6 +121,10 @@ spec:
           accessDeniedHelp: ""
       ldap:
         secretRef: ldap-bind-secrets
+      config:
+        proxyRoleQuotas:
+          'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
+          '2aadd357-682c-406b-8874-293091995fdd': 0
       storage:
         # Default: decomposed (PVC-backed metadata + blobs, no S3). Switch to "s3"
         # (external S3) or "posixfs" below to use the alternatives.
@@ -160,7 +164,6 @@ spec:
     features:
       externalUserManagement:
         enabled: true
-        adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
         autoprovisionAccounts:
           enabled: true
           claimUserName: sub
@@ -264,8 +267,6 @@ spec:
     insecure:
       oidcIdpInsecure: true
       ocHttpApiInsecure: true
-    secretRefs:
-      ldapSecretRef: ldap-bind-secrets
     ingress:
       enabled: false
       ingressClassName: nginx
@@ -279,10 +280,6 @@ spec:
         namespace: kube-system
         port: 443
         sectionName: opencloud
-    quotas:
-      roles:
-        'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
-        '2aadd357-682c-406b-8874-293091995fdd': 0
     replicas: 1
 ---
 # ---------------------------------------------------------------------------
@@ -371,6 +368,10 @@ spec:
 #         scope: "openid profile email groups"
 #       ldap:
 #         secretRef: ldap-bind-secrets
+#       config:
+#         proxyRoleQuotas:
+#           'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
+#           '2aadd357-682c-406b-8874-293091995fdd': 0
 #       storage:
 #         # Default: decomposed (PVC-backed metadata + blobs, no S3). Switch to "s3"
 #         # (external S3) or "posixfs" below to use the alternatives.
@@ -410,7 +411,6 @@ spec:
 #     features:
 #       externalUserManagement:
 #         enabled: true
-#         adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
 #         autoprovisionAccounts:
 #           enabled: true
 #           claimUserName: sub
@@ -514,8 +514,6 @@ spec:
 #     insecure:
 #       oidcIdpInsecure: true
 #       ocHttpApiInsecure: true
-#     secretRefs:
-#       ldapSecretRef: ldap-bind-secrets
 #     ingress:
 #       enabled: false
 #       ingressClassName: nginx
@@ -529,8 +527,4 @@ spec:
 #         namespace: kube-system
 #         port: 443
 #         sectionName: opencloud2
-#     quotas:
-#       roles:
-#         'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
-#         '2aadd357-682c-406b-8874-293091995fdd': 0
 #     replicas: 1
