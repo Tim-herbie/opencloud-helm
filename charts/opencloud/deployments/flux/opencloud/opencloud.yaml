@@ -8,10 +8,68 @@
 #   1. `cp opencloud.yaml opencloud-oc2.yaml`
 #   2. Edit metadata.name, releaseName, global.domain.opencloud
 #   3. Apply it.
+---
 apiVersion: v1
-kind: Namespace
+kind: ServiceAccount
 metadata:
-  name: opencloud
+  name: flux
+  namespace: opencloud
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flux-reconciler
+  namespace: opencloud
+rules:
+  # Namespace-scoped namespace-admin for Helm reconciliation. This cannot
+  # create or modify cluster-scoped resources such as Namespaces or CRDs.
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flux-reconciler
+  namespace: opencloud
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flux-reconciler
+subjects:
+  - kind: ServiceAccount
+    name: flux
+    namespace: opencloud
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: opencloud-flux-referencegrant
+  namespace: kube-system
+rules:
+  # The shared Cilium Gateway is in kube-system. Helm must adopt and manage
+  # only OpenCloud's cross-namespace ReferenceGrant there.
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["referencegrants"]
+    verbs: ["create"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["referencegrants"]
+    resourceNames: ["opencloud-reference-grant"]
+    verbs: ["get", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: opencloud-flux-referencegrant
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: opencloud-flux-referencegrant
+subjects:
+  - kind: ServiceAccount
+    name: flux
+    namespace: opencloud
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
@@ -52,6 +110,7 @@ metadata:
 spec:
   interval: 15m
   timeout: 5m
+  serviceAccountName: flux
   chart:
     spec:
       chart: ./charts/opencloud

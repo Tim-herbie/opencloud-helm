@@ -3,6 +3,38 @@ kind: Namespace
 metadata:
   name: openldap
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: flux
+  namespace: openldap
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flux-reconciler
+  namespace: openldap
+rules:
+  # Namespace-scoped namespace-admin for Helm reconciliation. This cannot
+  # create or modify cluster-scoped resources such as Namespaces or CRDs.
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flux-reconciler
+  namespace: openldap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flux-reconciler
+subjects:
+  - kind: ServiceAccount
+    name: flux
+    namespace: openldap
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -20,6 +52,7 @@ metadata:
 spec:
   interval: 15m
   timeout: 5m
+  serviceAccountName: flux
   chart:
     spec:
       chart: openldap-stack-ha
