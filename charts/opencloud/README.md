@@ -330,6 +330,8 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.proxyOidcAccessTokenVerifyMethod` | OIDC access token verify method | `jwt` |
 | `opencloud.oidc.scope` | OIDC scope for web | `openid profile email groups roles` |
 | `opencloud.config.proxyRoleQuotas` | Role UUID to storage quota in bytes; merged into the proxy configuration without replacing built-in proxy policies | `{}` |
+| `opencloud.policies.enabled` | Mount configured OPA Rego policies into OpenCloud | `false` |
+| `opencloud.policies.policies` | OPA Rego policy files mounted at `/etc/opencloud/policies` | `[]` |
 | `opencloud.nats.internalEndpoint` | Internal NATS endpoint | `127.0.0.1:9233` |
 | `opencloud.nats.host` | NATS host | `0.0.0.0` |
 | `opencloud.nats.port` | NATS port | `9233` |

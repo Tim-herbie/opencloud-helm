@@ -581,6 +581,32 @@
               }
             }
           }
+        },
+        "policies": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "policies": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "fileName",
+                  "content"
+                ]
+              }
+            }
+          }
         }
       }
     },

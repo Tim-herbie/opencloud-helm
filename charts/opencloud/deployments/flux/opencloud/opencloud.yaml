@@ -121,86 +121,41 @@ spec:
           accessDeniedHelp: ""
       ldap:
         secretRef: ldap-bind-secrets
+        uri: ldaps://openldap.openldap.svc.cluster.local:636
+        insecure: true
+        bindDN: cn=admin,dc=opencloud,dc=eu
+        user:
+          baseDN: ou=users,dc=opencloud,dc=eu
+          schema:
+            id: openCloudUUID
+        group:
+          baseDN: ou=groups,dc=opencloud,dc=eu
+          createBaseDN: ou=custom,ou=groups,dc=opencloud,dc=eu
+          schema:
+            id: openCloudUUID
+      ldapServerWriteEnabled: true
+      proxyAutoprovisionAccounts: true
+      proxyAutoprovisionClaimUsername: sub
+      proxyRoleAssignmentDriver: oidc
+      proxyRoleAssignmentOidcClaim: roles
       config:
         proxyRoleQuotas:
           'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
           '2aadd357-682c-406b-8874-293091995fdd': 0
-      storage:
-        # Default: decomposed (PVC-backed metadata + blobs, no S3). Switch to "s3"
-        # (external S3) or "posixfs" below to use the alternatives.
-        mode: decomposed
-        # usersDriver: posix       # auto-derived from mode=posixfs; uncomment to override
-        # systemDriver: decomposed # only "decomposed"/"decomposeds3" valid; system has no posix option
-        # posixfs:
-        #   persistence:
-        #     enabled: true
-        #     size: 60Gi
-        #     accessMode: ReadWriteOnce
-        #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
-        # --- Decomposed alternative (uncomment to switch) ---
-        decomposed:
-          persistence:
-            enabled: true
-            size: 60Gi
-            # accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
-            accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
-        # --- External S3 alternative (uncomment to switch) ---
-        # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
-        # Reference it via `storage.s3.external.existingSecret` (below) and
-        # `secretRefs.s3CredentialsSecretRef` (top-level) so OpenCloud can read it.
-        # s3:
-        #   enabled: true
-        #   external:
-        #     endpoint: https://s3.example.com       # your S3 / Ceph / external MinIO endpoint
-        #     region: default
-        #     existingSecret: s3secret                # Secret with accessKey/secretKey keys
-        #     bucket: opencloud-bucket
-        #     createBucket: true
-    # secretRefs:
-    #   s3CredentialsSecretRef: s3secret  # only needed when storage.mode = s3
-    oidc:
-      issuerUrl: https://keycloak.opencloud.test/realms/openCloud
-      clientId: web
-    features:
-      externalUserManagement:
+      antivirus:
         enabled: true
-        autoprovisionAccounts:
-          enabled: true
-          claimUserName: sub
-        oidc:
-          domain: keycloak.opencloud.test
-          issuerURI: https://keycloak.opencloud.test/realms/openCloud
-          userIDClaim: sub
-          userIDClaimAttributeMapping: username
-          roleAssignment:
-            claim: roles
-        ldap:
-          writeable: true
-          uri: ldaps://openldap.openldap.svc.cluster.local:636
-          insecure: true
-          bindDN: cn=admin,dc=opencloud,dc=eu
-          user:
-            userNameMatch: none
-            schema:
-              id: openCloudUUID
-          group:
-            schema:
-              id: openCloudUUID
-      virusscan:
-        enabled: enable
-        infectedFileHandling: "abort"
-        scannerType: "clamav"
-        clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
-      emailNotifications:
+        infectedFileHandling: abort
+        scannerType: clamav
+        clamavSocket: tcp://clamav.clamav.svc.cluster.local:3310
+      smtp:
         enabled: false
-        smtp:
-          host: ""
-          port: ""
-          sender: ""
-          authentication: none
-          encryption: ssltls
+        host: ""
+        port: ""
+        sender: ""
+        authentication: none
+        encryption: ssltls
       policies:
-        enabled: enable
+        enabled: true
         policies:
           - fileName: proxy.rego
             content: |
@@ -247,26 +202,40 @@ spec:
                   ext := extensions[_]
                   RESTRICTED_EXTENSIONS_NO_DOT[ext]
               }
-      appsIntegration:
-        enabled: true
-        wopiIntegration:
-          officeSuites:
-            - name: Collabora
-              product: Collabora
-              enabled: true
-              uri: "https://collabora.opencloud.test"
-              insecure: true
-              disableProof: false
-              iconURI: https://collabora.opencloud.test/favicon.ico
-            - name: OnlyOffice
-              product: OnlyOffice
-              enabled: false
-              uri: "https://onlyoffice.opencloud.test"
-              insecure: true
-              disableProof: false
-    insecure:
-      oidcIdpInsecure: true
-      ocHttpApiInsecure: true
+      replicas: 1
+      storage:
+        # Default: decomposed (PVC-backed metadata + blobs, no S3). Switch to "s3"
+        # (external S3) or "posixfs" below to use the alternatives.
+        mode: decomposed
+        # usersDriver: posix       # auto-derived from mode=posixfs; uncomment to override
+        # systemDriver: decomposed # only "decomposed"/"decomposeds3" valid; system has no posix option
+        # posixfs:
+        #   persistence:
+        #     enabled: true
+        #     size: 60Gi
+        #     accessMode: ReadWriteOnce
+        #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
+        # --- Decomposed alternative (uncomment to switch) ---
+        decomposed:
+          persistence:
+            enabled: true
+            size: 60Gi
+            # accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
+            accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+        # --- External S3 alternative (uncomment to switch) ---
+        # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
+        # Reference it via `storage.s3.external.existingSecret` (below).
+        # s3:
+        #   enabled: true
+        #   external:
+        #     endpoint: https://s3.example.com       # your S3 / Ceph / external MinIO endpoint
+        #     region: default
+        #     existingSecret: s3secret                # Secret with accessKey/secretKey keys
+        #     bucket: opencloud-bucket
+        #     createBucket: true
+    oidc:
+      issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      clientId: web
     ingress:
       enabled: false
       ingressClassName: nginx
@@ -280,7 +249,6 @@ spec:
         namespace: kube-system
         port: 443
         sectionName: opencloud
-    replicas: 1
 ---
 # ---------------------------------------------------------------------------
 # Second OpenCloud instance (oc2) — shares Keycloak, OpenLDAP and ClamAV with
@@ -393,8 +361,7 @@ spec:
 #             # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
 #         # --- External S3 alternative (uncomment to switch) ---
 #         # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
-#         # Reference it via `storage.s3.external.existingSecret` (below) and
-#         # `secretRefs.s3CredentialsSecretRef` (top-level) so OpenCloud can read it.
+#         # Reference it via `storage.s3.external.existingSecret` (below).
 #         # s3:
 #         #   enabled: true
 #         #   external:
@@ -403,8 +370,6 @@ spec:
 #         #     existingSecret: s3secret                # Secret with accessKey/secretKey keys
 #         #     bucket: opencloud-bucket
 #         #     createBucket: true
-#     # secretRefs:
-#     #   s3CredentialsSecretRef: s3secret  # only needed when storage.mode = s3
 #     oidc:
 #       issuerUrl: https://keycloak.opencloud.test/realms/openCloud
 #       clientId: web

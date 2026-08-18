@@ -1,0 +1,37 @@
+suite: OPA policy integration tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+  - opencloud/deployment.yaml
+
+tests:
+  - it: mounts enabled policies and rolls the OpenCloud pod when they change
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        policies:
+          enabled: true
+          policies:
+            - fileName: proxy.rego
+              content: |
+                package proxy
+                default granted := true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: policies
+            mountPath: /etc/opencloud/policies
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: policies
+            configMap:
+              name: RELEASE-NAME-opencloud-policies
+      - exists:
+          path: spec.template.metadata.annotations["checksum/policies"]

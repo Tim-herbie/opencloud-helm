@@ -683,6 +683,7 @@ opencloud:
   policies:
     # Enable OPA policies
     enabled: false
+    # Policy files are mounted at /etc/opencloud/policies when enabled.
     # List of policy files
     policies: []
       # Example:
