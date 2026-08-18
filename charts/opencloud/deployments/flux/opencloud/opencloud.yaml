@@ -99,8 +99,8 @@ spec:
         enabled: true
     opencloud:
       logLevel: info
-      # Production: require trusted certificates for OpenCloud connections.
-      insecure: false
+      # Development uses self-signed certificates. Set false in production.
+      insecure: true
       migration:
         enabled: false
       # Using external Keycloak OIDC + external OpenLDAP: the bundled IDM/idp
@@ -124,8 +124,8 @@ spec:
       ldap:
         secretRef: ldap-bind-secrets
         uri: ldaps://openldap.openldap.svc.cluster.local:636
-        # Production: require a trusted LDAP certificate.
-        insecure: false
+        # Development uses a self-signed LDAP certificate. Set false in production.
+        insecure: true
         bindDN: cn=admin,dc=opencloud,dc=eu
         user:
           baseDN: ou=users,dc=opencloud,dc=eu
