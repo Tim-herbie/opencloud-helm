@@ -470,12 +470,6 @@ spec:
 #               insecure: true
 #               disableProof: false
 #               iconURI: https://collabora2.opencloud.test/favicon.ico
-#             - name: OnlyOffice
-#               product: OnlyOffice
-#               enabled: false
-#               uri: "https://onlyoffice.opencloud.test"
-#               insecure: true
-#               disableProof: false
 #     insecure:
 #       oidcIdpInsecure: true
 #       ocHttpApiInsecure: true
