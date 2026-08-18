@@ -43,4 +43,16 @@ data:
   search.yaml: |-
 {{- .Files.Get "files/opencloud/search.yaml" | nindent 4 }}
 
+  {{- if .Values.opencloud.policies.enabled }}
+  # Policies service configuration
+  policies.yaml: |-
+    engine:
+      policies:
+        - /etc/opencloud/policies/proxy.rego
+        - /etc/opencloud/policies/postprocessing.rego
+        - /etc/opencloud/policies/utils.rego
+    postprocessing:
+      query: data.postprocessing.granted
+  {{- end }}
+
 {{- end }}

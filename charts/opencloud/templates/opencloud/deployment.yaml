@@ -207,9 +207,25 @@ spec:
             - name: OC_LOG_PRETTY
               value: {{ .Values.opencloud.logPretty | quote }}
             # Enable services that are not started automatically
-            {{- with .Values.opencloud.additionalServices }}
+            {{- $additional := .Values.opencloud.additionalServices | default (list) }}
+            {{- if .Values.opencloud.antivirus.enabled }}
+              {{- if not (has "antivirus" $additional) }}
+                {{- $additional = append $additional "antivirus" }}
+              {{- end }}
+            {{- end }}
+            {{- if or .Values.opencloud.antivirus.enabled .Values.opencloud.policies.enabled }}
+              {{- if not (has "postprocessing" $additional) }}
+                {{- $additional = append $additional "postprocessing" }}
+              {{- end }}
+            {{- end }}
+            {{- if .Values.opencloud.policies.enabled }}
+              {{- if not (has "policies" $additional) }}
+                {{- $additional = append $additional "policies" }}
+              {{- end }}
+            {{- end }}
+            {{- if gt (len $additional) 0 }}
             - name: OC_ADD_RUN_SERVICES
-              value: {{ join "," . | quote }}
+              value: {{ join "," $additional | quote }}
             {{- end }}
             {{- $exclude := .Values.opencloud.excludeServices | default (list) }}
             {{- if .Values.opencloud.nats.external.enabled }}
@@ -228,6 +244,16 @@ spec:
             # INSECURE: needed if OpenCloud is using self generated certificates
             - name: OC_INSECURE
               value: {{ tpl (toString .Values.opencloud.insecure) . | quote }}
+            {{- if .Values.opencloud.policies.enabled }}
+            - name: PROXY_POLICIES_QUERY
+              value: data.proxy.granted
+            - name: POLICIES_POSTPROCESSING_QUERY
+              value: data.postprocessing.granted
+            {{- end }}
+            {{- if or .Values.opencloud.antivirus.enabled .Values.opencloud.policies.enabled }}
+            - name: POSTPROCESSING_STEPS
+              value: {{- if and .Values.opencloud.policies.enabled .Values.opencloud.antivirus.enabled }} "policies,virusscan"{{- else if .Values.opencloud.policies.enabled }} "policies"{{- else }} "virusscan"{{- end }}
+            {{- end }}
             # Basic auth (only needed when not using Keycloak)
             - name: PROXY_ENABLE_BASIC_AUTH
               value: {{ .Values.opencloud.proxyEnableBasicAuth | quote }}
@@ -680,6 +706,11 @@ spec:
             - name: config-files
               mountPath: /etc/opencloud/banned-password-list.txt
               subPath: banned-password-list.txt
+            {{- if .Values.opencloud.policies.enabled }}
+            - name: config-files
+              mountPath: /etc/opencloud/policies.yaml
+              subPath: policies.yaml
+            {{- end }}
             {{- if .Values.opencloud.policies.enabled }}
             - name: policies
               mountPath: /etc/opencloud/policies

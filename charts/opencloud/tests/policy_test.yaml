@@ -35,3 +35,45 @@ tests:
               name: RELEASE-NAME-opencloud-policies
       - exists:
           path: spec.template.metadata.annotations["checksum/policies"]
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PROXY_POLICIES_QUERY
+            value: data.proxy.granted
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POLICIES_POSTPROCESSING_QUERY
+            value: data.postprocessing.granted
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTPROCESSING_STEPS
+            value: policies
+
+  - it: configures the policies service with all policy files
+    template: opencloud/configmap.yaml
+    set:
+      opencloud:
+        policies:
+          enabled: true
+          policies:
+            - fileName: proxy.rego
+              content: |
+                package proxy
+                default granted := true
+            - fileName: postprocessing.rego
+              content: |
+                package postprocessing
+                default granted := true
+            - fileName: utils.rego
+              content: |
+                package utils
+                default ok := true
+    asserts:
+      - matchRegex:
+          path: data["policies.yaml"]
+          pattern: "/etc/opencloud/policies/proxy\.rego"
+      - matchRegex:
+          path: data["policies.yaml"]
+          pattern: "query: data\.postprocessing\.granted"

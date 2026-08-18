@@ -39,6 +39,26 @@ tests:
             name: ANTIVIRUS_ENABLED
             value: "true"
 
+  - it: should start antivirus and postprocessing when antivirus is enabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ADD_RUN_SERVICES
+            value: antivirus,postprocessing
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTPROCESSING_STEPS
+            value: virusscan
+
   - it: should set ANTIVIRUS_SCANNER_TYPE when antivirus is enabled
     template: opencloud/deployment.yaml
     set:
