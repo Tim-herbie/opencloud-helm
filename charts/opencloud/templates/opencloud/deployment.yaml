@@ -61,6 +61,18 @@ spec:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
       initContainers:
+        {{- if and .Values.tika.enabled (eq .Values.opencloud.searchExtractorType "tika") }}
+        - name: wait-for-tika
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
+          command:
+            - sh
+            - -ec
+            - |
+              until wget -q -O /dev/null --timeout=2 http://{{ include "opencloud.tika.fullname" . }}:9998/version; do
+                sleep 2
+              done
+        {{- end }}
         - name: init-config
           image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
