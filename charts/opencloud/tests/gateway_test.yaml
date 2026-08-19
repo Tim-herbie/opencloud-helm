@@ -12,13 +12,23 @@ tests:
       - isKind:
           of: Gateway
 
-  - it: ReferenceGrant resources are created when httpRoute is enabled
+  - it: ReferenceGrant resources are created when the chart creates the Gateway
     template: gateway/reference-grant.yaml
     set:
       httpRoute.enabled: true
+      httpRoute.gateway.create: true
     asserts:
       - hasDocuments:
           count: 2
+
+  - it: ReferenceGrant resources are not created for an external Gateway
+    template: gateway/reference-grant.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.create: false
+    asserts:
+      - hasDocuments:
+          count: 0
 
   - it: Traefik Middleware is created when className is traefik and gateway.create is true
     template: gateway/traefik-middleware.yaml

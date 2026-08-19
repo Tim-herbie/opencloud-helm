@@ -1,4 +1,4 @@
-{{- if .Values.httpRoute.enabled }}
+{{- if and .Values.httpRoute.enabled .Values.httpRoute.gateway.create }}
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: ReferenceGrant
 metadata:

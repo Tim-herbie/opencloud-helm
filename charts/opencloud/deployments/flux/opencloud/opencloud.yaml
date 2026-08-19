@@ -41,36 +41,6 @@ subjects:
     name: flux
     namespace: opencloud
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: opencloud-flux-referencegrant
-  namespace: kube-system
-rules:
-  # The shared Cilium Gateway is in kube-system. Helm must adopt and manage
-  # only OpenCloud's cross-namespace ReferenceGrant there.
-  - apiGroups: ["gateway.networking.k8s.io"]
-    resources: ["referencegrants"]
-    verbs: ["create"]
-  - apiGroups: ["gateway.networking.k8s.io"]
-    resources: ["referencegrants"]
-    resourceNames: ["opencloud-reference-grant"]
-    verbs: ["get", "update", "patch", "delete"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: opencloud-flux-referencegrant
-  namespace: kube-system
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: opencloud-flux-referencegrant
-subjects:
-  - kind: ServiceAccount
-    name: flux
-    namespace: opencloud
----
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
