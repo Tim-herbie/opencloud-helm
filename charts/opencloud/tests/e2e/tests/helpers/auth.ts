@@ -85,18 +85,38 @@ export async function login(page: Page) {
     }
   }
 
-  await usernameInput(page).fill(username!);
-  await passwordInput(page).fill(password!);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await usernameInput(page).fill(username!);
+    await passwordInput(page).fill(password!);
 
-  const submit = page
-    .locator('button[type="submit"], input[type="submit"], button[name="login"]')
-    .first();
+    const submit = page
+      .locator('button[type="submit"], input[type="submit"], button[name="login"]')
+      .first();
 
-  await expect(submit).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/\/files\//, { timeout: 10000 }),
-    submit.click()
-  ]);
+    await expect(submit).toBeVisible();
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().includes('/signin/v1/identifier/_/logon'),
+      { timeout: 30000 }
+    );
 
-  await expect(personalHeading(page)).toBeVisible();
+    await submit.click();
+    const response = await responsePromise;
+    const body = await response.text().catch(() => '');
+
+    if (response.ok()) {
+      await expect(page).toHaveURL(/\/files\//, { timeout: 30000 });
+      await expect(personalHeading(page)).toBeVisible({ timeout: 30000 });
+      return;
+    }
+
+    if (response.status() !== 500 || attempt === 3) {
+      throw new Error(`OpenCloud login failed with HTTP ${response.status()}: ${body}`);
+    }
+
+    await page.waitForTimeout(attempt * 5000);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForLoginOrApp(page);
+  }
 }
