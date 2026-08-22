@@ -8,10 +8,38 @@
 #   1. `cp opencloud.yaml opencloud-oc2.yaml`
 #   2. Edit metadata.name, releaseName, global.domain.opencloud
 #   3. Apply it.
+---
 apiVersion: v1
-kind: Namespace
+kind: ServiceAccount
 metadata:
-  name: opencloud
+  name: flux
+  namespace: opencloud
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flux-reconciler
+  namespace: opencloud
+rules:
+  # Namespace-scoped namespace-admin for Helm reconciliation. This cannot
+  # create or modify cluster-scoped resources such as Namespaces or CRDs.
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flux-reconciler
+  namespace: opencloud
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flux-reconciler
+subjects:
+  - kind: ServiceAccount
+    name: flux
+    namespace: opencloud
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
@@ -52,6 +80,7 @@ metadata:
 spec:
   interval: 15m
   timeout: 5m
+  serviceAccountName: flux
   chart:
     spec:
       chart: ./charts/opencloud
@@ -99,8 +128,12 @@ spec:
         enabled: true
     opencloud:
       logLevel: info
+      # Development uses self-signed certificates. Set false in production.
+      insecure: true
       migration:
         enabled: false
+      # Keep TUS uploads available until policy and antivirus postprocessing completes.
+      asyncUploads: true
       # Using external Keycloak OIDC + external OpenLDAP: the bundled IDM/idp
       # service must NOT run, so exclude it. Demo users are also disabled.
       createDemoUsers: false
@@ -121,83 +154,42 @@ spec:
           accessDeniedHelp: ""
       ldap:
         secretRef: ldap-bind-secrets
-      storage:
-        # Default: decomposed (PVC-backed metadata + blobs, no S3). Switch to "s3"
-        # (external S3) or "posixfs" below to use the alternatives.
-        mode: decomposed
-        # usersDriver: posix       # auto-derived from mode=posixfs; uncomment to override
-        # systemDriver: decomposed # only "decomposed"/"decomposeds3" valid; system has no posix option
-        # posixfs:
-        #   persistence:
-        #     enabled: true
-        #     size: 60Gi
-        #     accessMode: ReadWriteOnce
-        #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
-        # --- Decomposed alternative (uncomment to switch) ---
-        decomposed:
-          persistence:
-            enabled: true
-            size: 60Gi
-            # accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
-            accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
-        # --- External S3 alternative (uncomment to switch) ---
-        # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
-        # Reference it via `storage.s3.external.existingSecret` (below) and
-        # `secretRefs.s3CredentialsSecretRef` (top-level) so OpenCloud can read it.
-        # s3:
-        #   enabled: true
-        #   external:
-        #     endpoint: https://s3.example.com       # your S3 / Ceph / external MinIO endpoint
-        #     region: default
-        #     existingSecret: s3secret                # Secret with accessKey/secretKey keys
-        #     bucket: opencloud-bucket
-        #     createBucket: true
-    # secretRefs:
-    #   s3CredentialsSecretRef: s3secret  # only needed when storage.mode = s3
-    oidc:
-      issuerUrl: https://keycloak.opencloud.test/realms/openCloud
-      clientId: web
-    features:
-      externalUserManagement:
+        uri: ldaps://openldap.openldap.svc.cluster.local:636
+        # Development uses a self-signed LDAP certificate. Set false in production.
+        insecure: true
+        bindDN: cn=admin,dc=opencloud,dc=eu
+        user:
+          baseDN: ou=users,dc=opencloud,dc=eu
+          schema:
+            id: openCloudUUID
+        group:
+          baseDN: ou=groups,dc=opencloud,dc=eu
+          createBaseDN: ou=custom,ou=groups,dc=opencloud,dc=eu
+          schema:
+            id: openCloudUUID
+      ldapServerWriteEnabled: true
+      proxyAutoprovisionAccounts: true
+      proxyAutoprovisionClaimUsername: sub
+      proxyRoleAssignmentDriver: oidc
+      proxyRoleAssignmentOidcClaim: roles
+      config:
+        proxyRoleQuotas:
+          'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
+          '2aadd357-682c-406b-8874-293091995fdd': 0
+      antivirus:
         enabled: true
-        adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
-        autoprovisionAccounts:
-          enabled: true
-          claimUserName: sub
-        oidc:
-          domain: keycloak.opencloud.test
-          issuerURI: https://keycloak.opencloud.test/realms/openCloud
-          userIDClaim: sub
-          userIDClaimAttributeMapping: username
-          roleAssignment:
-            claim: roles
-        ldap:
-          writeable: true
-          uri: ldaps://openldap.openldap.svc.cluster.local:636
-          insecure: true
-          bindDN: cn=admin,dc=opencloud,dc=eu
-          user:
-            userNameMatch: none
-            schema:
-              id: openCloudUUID
-          group:
-            schema:
-              id: openCloudUUID
-      virusscan:
-        enabled: enable
-        infectedFileHandling: "abort"
-        scannerType: "clamav"
-        clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
-      emailNotifications:
+        infectedFileHandling: abort
+        scannerType: clamav
+        clamavSocket: tcp://clamav.clamav.svc.cluster.local:3310
+      smtp:
         enabled: false
-        smtp:
-          host: ""
-          port: ""
-          sender: ""
-          authentication: none
-          encryption: ssltls
+        host: ""
+        port: ""
+        sender: ""
+        authentication: none
+        encryption: ssltls
       policies:
-        enabled: enable
+        enabled: true
         policies:
           - fileName: proxy.rego
             content: |
@@ -208,6 +200,20 @@ spec:
               granted = false if {
                   input.request.method == "PUT"
                   pathPrefixes := ["/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
+                  restricted := pathPrefixes[_]
+                  startswith(input.request.path, restricted)
+                  utils.is_extension_restricted(input.resource.name)
+              }
+              granted = false if {
+                  input.request.method == "POST"
+                  pathPrefixes := ["/data", "/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
+                  restricted := pathPrefixes[_]
+                  startswith(input.request.path, restricted)
+                  utils.is_extension_restricted(input.resource.name)
+              }
+              granted = false if {
+                  input.request.method == "PATCH"
+                  pathPrefixes := ["/data", "/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
                   restricted := pathPrefixes[_]
                   startswith(input.request.path, restricted)
                   utils.is_extension_restricted(input.resource.name)
@@ -244,28 +250,40 @@ spec:
                   ext := extensions[_]
                   RESTRICTED_EXTENSIONS_NO_DOT[ext]
               }
-      appsIntegration:
-        enabled: true
-        wopiIntegration:
-          officeSuites:
-            - name: Collabora
-              product: Collabora
-              enabled: true
-              uri: "https://collabora.opencloud.test"
-              insecure: true
-              disableProof: false
-              iconURI: https://collabora.opencloud.test/favicon.ico
-            - name: OnlyOffice
-              product: OnlyOffice
-              enabled: false
-              uri: "https://onlyoffice.opencloud.test"
-              insecure: true
-              disableProof: false
-    insecure:
-      oidcIdpInsecure: true
-      ocHttpApiInsecure: true
-    secretRefs:
-      ldapSecretRef: ldap-bind-secrets
+      replicas: 1
+      storage:
+        # Default: decomposed (PVC-backed metadata + blobs, no S3). Switch to "s3"
+        # (external S3) or "posixfs" below to use the alternatives.
+        mode: decomposed
+        # usersDriver: posix       # auto-derived from mode=posixfs; uncomment to override
+        # systemDriver: decomposed # only "decomposed"/"decomposeds3" valid; system has no posix option
+        # posixfs:
+        #   persistence:
+        #     enabled: true
+        #     size: 60Gi
+        #     accessMode: ReadWriteOnce
+        #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
+        # --- Decomposed alternative (uncomment to switch) ---
+        decomposed:
+          persistence:
+            enabled: true
+            size: 60Gi
+            # accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
+            accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+        # --- External S3 alternative (uncomment to switch) ---
+        # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
+        # Reference it via `storage.s3.external.existingSecret` (below).
+        # s3:
+        #   enabled: true
+        #   external:
+        #     endpoint: https://s3.example.com       # your S3 / Ceph / external MinIO endpoint
+        #     region: default
+        #     existingSecret: s3secret                # Secret with accessKey/secretKey keys
+        #     bucket: opencloud-bucket
+        #     createBucket: true
+    oidc:
+      issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      clientId: web
     ingress:
       enabled: false
       ingressClassName: nginx
@@ -279,11 +297,6 @@ spec:
         namespace: kube-system
         port: 443
         sectionName: opencloud
-    quotas:
-      roles:
-        'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
-        '2aadd357-682c-406b-8874-293091995fdd': 0
-    replicas: 1
 ---
 # ---------------------------------------------------------------------------
 # Second OpenCloud instance (oc2) — shares Keycloak, OpenLDAP and ClamAV with
@@ -371,6 +384,10 @@ spec:
 #         scope: "openid profile email groups"
 #       ldap:
 #         secretRef: ldap-bind-secrets
+#       config:
+#         proxyRoleQuotas:
+#           'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
+#           '2aadd357-682c-406b-8874-293091995fdd': 0
 #       storage:
 #         # Default: decomposed (PVC-backed metadata + blobs, no S3). Switch to "s3"
 #         # (external S3) or "posixfs" below to use the alternatives.
@@ -392,8 +409,7 @@ spec:
 #             # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
 #         # --- External S3 alternative (uncomment to switch) ---
 #         # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
-#         # Reference it via `storage.s3.external.existingSecret` (below) and
-#         # `secretRefs.s3CredentialsSecretRef` (top-level) so OpenCloud can read it.
+#         # Reference it via `storage.s3.external.existingSecret` (below).
 #         # s3:
 #         #   enabled: true
 #         #   external:
@@ -402,15 +418,12 @@ spec:
 #         #     existingSecret: s3secret                # Secret with accessKey/secretKey keys
 #         #     bucket: opencloud-bucket
 #         #     createBucket: true
-#     # secretRefs:
-#     #   s3CredentialsSecretRef: s3secret  # only needed when storage.mode = s3
 #     oidc:
 #       issuerUrl: https://keycloak.opencloud.test/realms/openCloud
 #       clientId: web
 #     features:
 #       externalUserManagement:
 #         enabled: true
-#         adminUUID: "0ab77e6d-23b4-4ba3-9843-a3b3efdcfc53"
 #         autoprovisionAccounts:
 #           enabled: true
 #           claimUserName: sub
@@ -505,17 +518,9 @@ spec:
 #               insecure: true
 #               disableProof: false
 #               iconURI: https://collabora2.opencloud.test/favicon.ico
-#             - name: OnlyOffice
-#               product: OnlyOffice
-#               enabled: false
-#               uri: "https://onlyoffice.opencloud.test"
-#               insecure: true
-#               disableProof: false
 #     insecure:
 #       oidcIdpInsecure: true
 #       ocHttpApiInsecure: true
-#     secretRefs:
-#       ldapSecretRef: ldap-bind-secrets
 #     ingress:
 #       enabled: false
 #       ingressClassName: nginx
@@ -529,8 +534,4 @@ spec:
 #         namespace: kube-system
 #         port: 443
 #         sectionName: opencloud2
-#     quotas:
-#       roles:
-#         'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
-#         '2aadd357-682c-406b-8874-293091995fdd': 0
 #     replicas: 1

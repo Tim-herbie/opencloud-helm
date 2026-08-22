@@ -1,0 +1,84 @@
+suite: OPA policy integration tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+  - opencloud/deployment.yaml
+
+tests:
+  - it: mounts enabled policies and rolls the OpenCloud pod when they change
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        policies:
+          enabled: true
+          policies:
+            - fileName: proxy.rego
+              content: |
+                package proxy
+                default granted := true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: policies
+            mountPath: /etc/opencloud/policies
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: policies
+            configMap:
+              name: RELEASE-NAME-opencloud-policies
+      - exists:
+          path: spec.template.metadata.annotations["checksum/policies"]
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PROXY_POLICIES_QUERY
+            value: data.proxy.granted
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POLICIES_POSTPROCESSING_QUERY
+            value: data.postprocessing.granted
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTPROCESSING_STEPS
+            value: policies
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DATA_GATEWAY_URL
+            value: http://RELEASE-NAME-opencloud-opencloud:9200/data
+
+  - it: configures the policies service with all policy files
+    template: opencloud/configmap.yaml
+    set:
+      opencloud:
+        policies:
+          enabled: true
+          policies:
+            - fileName: proxy.rego
+              content: |
+                package proxy
+                default granted := true
+            - fileName: postprocessing.rego
+              content: |
+                package postprocessing
+                default granted := true
+            - fileName: utils.rego
+              content: |
+                package utils
+                default ok := true
+    asserts:
+      - matchRegex:
+          path: data["policies.yaml"]
+          pattern: "/etc/opencloud/policies/proxy\.rego"
+      - matchRegex:
+          path: data["policies.yaml"]
+          pattern: "query: data\.postprocessing\.granted"

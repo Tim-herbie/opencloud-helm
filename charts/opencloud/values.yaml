@@ -435,6 +435,8 @@ opencloud:
   
   # Create demo users (set true for integrated IDM; default admin user is created)
   createDemoUsers: true
+  # Keep upload sessions available while postprocessing policies and antivirus run.
+  asyncUploads: true
   # Additional services to start
   additionalServices: []
   # Services to exclude from starting
@@ -493,25 +495,24 @@ opencloud:
     appRegistry: {}
     # CSP configuration
     csp: {}
-    # Proxy configuration
-    # ==== Example ====
-    # role_quotas: # Sets default Quota's for roles (in bytes)
-    #   'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 15000000000 # User
-    #   '2aadd357-682c-406b-8874-293091995fdd': 15000000000 # SpaceAdmin
-    #   '71881883-1768-46bd-a24d-a356a2afdf7f': 15000000000 # Admin
-    # 
-    # role_assignment:
-    #   driver: oidc
-    #   oidc_role_mapper:
-    #     role_claim: groups
-    #     role_mapping:
-    #       - role_name: admin                # OpenCloud Role
-    #         claim_value: "authentik Admins" # Authentik Group
-    #       - role_name: spaceadmin
-    #         claim_value: "opencloud-spaces"
-    #       - role_name: user
-    #         claim_value: "opencloud"
+    # Proxy configuration. A non-empty value replaces the built-in proxy YAML.
+    # Example custom proxy configuration:
+    # proxy: |-
+    #   role_assignment:
+    #     driver: oidc
+    #     oidc_role_mapper:
+    #       role_claim: groups
+    #       role_mapping:
+    #         - role_name: admin
+    #           claim_value: "authentik Admins"
+    #         - role_name: spaceadmin
+    #           claim_value: "opencloud-spaces"
+    #         - role_name: user
+    #           claim_value: "opencloud"
     proxy: {}
+    # Role quotas are merged into proxy.yaml without replacing built-in policies.
+    # Values are bytes and keys are OpenCloud role UUIDs.
+    proxyRoleQuotas: {}
     # Banned password list configuration
     # Format: Multi-line string (not YAML array)
     # Use the |- syntax to preserve line breaks
@@ -684,6 +685,7 @@ opencloud:
   policies:
     # Enable OPA policies
     enabled: false
+    # Policy files are mounted at /etc/opencloud/policies when enabled.
     # List of policy files
     policies: []
       # Example:

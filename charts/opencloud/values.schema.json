@@ -328,6 +328,9 @@
         "createDemoUsers": {
           "type": "boolean"
         },
+        "asyncUploads": {
+          "type": "boolean"
+        },
         "antivirus": {
           "type": "object",
           "properties": {
@@ -566,6 +569,44 @@
                 "accessDeniedHelp": {
                   "type": "string"
                 }
+              }
+            }
+          }
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "proxyRoleQuotas": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "policies": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "policies": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "fileName",
+                  "content"
+                ]
               }
             }
           }

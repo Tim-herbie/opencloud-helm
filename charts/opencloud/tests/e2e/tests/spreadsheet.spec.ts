@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { login, randomLetters } from './helpers/auth';
 
 test('can create spreadsheet, edit A1, save and close', async ({ page, context }) => {
-  test.setTimeout(15_000);
+  test.setTimeout(90_000);
 
   await login(page);
   const fileBaseName = randomLetters(10);

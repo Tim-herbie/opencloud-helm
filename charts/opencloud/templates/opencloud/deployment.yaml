@@ -55,11 +55,24 @@ spec:
         checksum/configmap: {{ include (print $.Template.BasePath "/opencloud/configmap.yaml") . | sha256sum }}
         checksum/web-extensions-init: {{ include (print $.Template.BasePath "/opencloud/web-extensions-init.yaml") . | sha256sum }}
         checksum/theme-branding: {{ include (print $.Template.BasePath "/opencloud/theme-branding-configmap.yaml") . | sha256sum }}
+        checksum/policies: {{ include (print $.Template.BasePath "/opencloud/policies-configmap.yaml") . | sha256sum }}
     spec:
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
       initContainers:
+        {{- if and .Values.tika.enabled (eq .Values.opencloud.searchExtractorType "tika") }}
+        - name: wait-for-tika
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
+          command:
+            - sh
+            - -ec
+            - |
+              until wget -q -O /dev/null --timeout=2 http://{{ include "opencloud.tika.fullname" . }}:9998/version; do
+                sleep 2
+              done
+        {{- end }}
         - name: init-config
           image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
@@ -206,9 +219,25 @@ spec:
             - name: OC_LOG_PRETTY
               value: {{ .Values.opencloud.logPretty | quote }}
             # Enable services that are not started automatically
-            {{- with .Values.opencloud.additionalServices }}
+            {{- $additional := .Values.opencloud.additionalServices | default (list) }}
+            {{- if .Values.opencloud.antivirus.enabled }}
+              {{- if not (has "antivirus" $additional) }}
+                {{- $additional = append $additional "antivirus" }}
+              {{- end }}
+            {{- end }}
+            {{- if or .Values.opencloud.antivirus.enabled .Values.opencloud.policies.enabled }}
+              {{- if not (has "postprocessing" $additional) }}
+                {{- $additional = append $additional "postprocessing" }}
+              {{- end }}
+            {{- end }}
+            {{- if .Values.opencloud.policies.enabled }}
+              {{- if not (has "policies" $additional) }}
+                {{- $additional = append $additional "policies" }}
+              {{- end }}
+            {{- end }}
+            {{- if gt (len $additional) 0 }}
             - name: OC_ADD_RUN_SERVICES
-              value: {{ join "," . | quote }}
+              value: {{ join "," $additional | quote }}
             {{- end }}
             {{- $exclude := .Values.opencloud.excludeServices | default (list) }}
             {{- if .Values.opencloud.nats.external.enabled }}
@@ -227,6 +256,18 @@ spec:
             # INSECURE: needed if OpenCloud is using self generated certificates
             - name: OC_INSECURE
               value: {{ tpl (toString .Values.opencloud.insecure) . | quote }}
+            {{- if .Values.opencloud.policies.enabled }}
+            - name: PROXY_POLICIES_QUERY
+              value: data.proxy.granted
+            - name: POLICIES_POSTPROCESSING_QUERY
+              value: data.postprocessing.granted
+            {{- end }}
+            {{- if or .Values.opencloud.antivirus.enabled .Values.opencloud.policies.enabled }}
+            - name: STORAGE_USERS_DATA_GATEWAY_URL
+              value: "http://{{ include "opencloud.opencloud.fullname" . }}:9200/data"
+            - name: POSTPROCESSING_STEPS
+              value: {{- if and .Values.opencloud.policies.enabled .Values.opencloud.antivirus.enabled }} "policies,virusscan"{{- else if .Values.opencloud.policies.enabled }} "policies"{{- else }} "virusscan"{{- end }}
+            {{- end }}
             # Basic auth (only needed when not using Keycloak)
             - name: PROXY_ENABLE_BASIC_AUTH
               value: {{ .Values.opencloud.proxyEnableBasicAuth | quote }}
@@ -246,10 +287,9 @@ spec:
               value: {{ .Values.opencloud.searchExtractorType | quote }}
             - name: SEARCH_EXTRACTOR_TIKA_TIKA_URL
               value: "http://{{ include "opencloud.tika.fullname" . }}:9998"
-            # Must be false — Go default is true, which makes search subscribe to UploadReady
-            # instead of FileUploaded. With sync uploads, FileUploaded is the correct event.
+            # Keep the upload session available while postprocessing runs.
             - name: OC_ASYNC_UPLOADS
-              value: "false"
+              value: {{ .Values.opencloud.asyncUploads | quote }}
             {{- with .Values.opencloud.searchExtractorSizeLimit }}
             - name: SEARCH_CONTENT_EXTRACTION_SIZE_LIMIT
               value: {{ int64 . | quote }}
@@ -679,6 +719,16 @@ spec:
             - name: config-files
               mountPath: /etc/opencloud/banned-password-list.txt
               subPath: banned-password-list.txt
+            {{- if .Values.opencloud.policies.enabled }}
+            - name: config-files
+              mountPath: /etc/opencloud/policies.yaml
+              subPath: policies.yaml
+            {{- end }}
+            {{- if .Values.opencloud.policies.enabled }}
+            - name: policies
+              mountPath: /etc/opencloud/policies
+              readOnly: true
+            {{- end }}
             {{- if and (.Values.opencloud.nats.external.enabled) (not .Values.opencloud.nats.external.tls.certTrusted) }}
             - name: nats-ca
               mountPath: /etc/opencloud/nats-ca
@@ -722,6 +772,11 @@ spec:
         - name: config-files
           configMap:
             name: {{ include "opencloud.opencloud.fullname" . }}-config
+        {{- if .Values.opencloud.policies.enabled }}
+        - name: policies
+          configMap:
+            name: {{ include "opencloud.fullname" . }}-policies
+        {{- end }}
         - name: theme-branding
           configMap:
             name: {{ include "opencloud.opencloud.fullname" . }}-theme-branding

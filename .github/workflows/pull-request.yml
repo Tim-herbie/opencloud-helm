@@ -281,7 +281,7 @@ jobs:
 
       # Debug if helm install fails
       - name: Debug pods if failed
-        if: steps.pods_wait.outcome == 'failure'
+        if: ${{ failure() }}
         run: |
           echo "==== Pods ===="
           kubectl get pods -A
@@ -315,21 +315,24 @@ jobs:
 
       # Debug if helm install fails
       - name: Debug opencloud pod if failed
-        if: steps.e2e_tests.outcome == 'failure'
+        if: ${{ failure() }}
         run: |
-          kubectl -n opencloud-test logs deploy/opencloud-test-opencloud
+          kubectl -n opencloud-test logs deploy/opencloud-test-opencloud --all-containers=true || true
+          kubectl -n opencloud-test logs deploy/opencloud-test-opencloud --all-containers=true --previous || true
+          kubectl -n opencloud-test describe pod -l app.kubernetes.io/component=opencloud || true
+          kubectl -n opencloud-test get events --sort-by=.lastTimestamp || true
 
       # Debug if helm install fails
       - name: Debug collabora pod if failed
-        if: steps.e2e_tests.outcome == 'failure'
+        if: ${{ failure() }}
         run: |
-          kubectl -n opencloud-test logs deploy/opencloud-test-collabora
+          kubectl -n opencloud-test logs deploy/opencloud-test-collabora --all-containers=true || true
 
       # Debug if helm install fails
       - name: Debug collaboration pod if failed
-        if: steps.e2e_tests.outcome == 'failure'
+        if: ${{ failure() }}
         run: |
-          kubectl -n opencloud-test logs deploy/opencloud-test-collaboration
+          kubectl -n opencloud-test logs deploy/opencloud-test-collaboration --all-containers=true || true
 
       - name: Upload Playwright report
         if: always()

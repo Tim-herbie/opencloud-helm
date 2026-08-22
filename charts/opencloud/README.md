@@ -287,6 +287,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.existingSecret` | Name of the existing secret | `` |
 | `opencloud.adminPassword` | Admin password | `admin` |
 | `opencloud.createDemoUsers` | Create demo users (default `true` for integrated IDM) | `true` |
+| `opencloud.asyncUploads` | Keep upload sessions available during postprocessing | `true` |
 | `opencloud.excludeServices` | Services to exclude from starting (set `["idp"]` when using external OIDC). The external LDAP env vars (`OC_LDAP_*`, `GRAPH_LDAP_*`, `FRONTEND_LDAP_SERVER_WRITE_ENABLED`) and the external LDAP bind secret (`opencloud.ldap.secretRef`, default `<release-name>-opencloud-ldap`, chart-generated from `opencloud.ldap.adminPassword`) are only used when `idp` is excluded; with the built-in IDP running they are omitted and the bind passwords come from the generated init secret. | `[]` |
 | `opencloud.theme.urls.imprint` | Imprint URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/legal-notice` |
 | `opencloud.theme.urls.privacy` | Privacy policy URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/data-protection-notice` |
@@ -329,6 +330,9 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.proxyRoleAssignmentOidcClaim` | OIDC claim for role assignment | `roles` |
 | `opencloud.proxyOidcAccessTokenVerifyMethod` | OIDC access token verify method | `jwt` |
 | `opencloud.oidc.scope` | OIDC scope for web | `openid profile email groups roles` |
+| `opencloud.config.proxyRoleQuotas` | Role UUID to storage quota in bytes; merged into the proxy configuration without replacing built-in proxy policies | `{}` |
+| `opencloud.policies.enabled` | Mount configured OPA Rego policies into OpenCloud | `false` |
+| `opencloud.policies.policies` | OPA Rego policy files mounted at `/etc/opencloud/policies` | `[]` |
 | `opencloud.nats.internalEndpoint` | Internal NATS endpoint | `127.0.0.1:9233` |
 | `opencloud.nats.host` | NATS host | `0.0.0.0` |
 | `opencloud.nats.port` | NATS port | `9233` |

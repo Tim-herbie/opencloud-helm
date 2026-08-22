@@ -4,6 +4,8 @@ templates:
   - opencloud/deployment.yaml
   - opencloud/config-json-configmap.yaml
   - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
   - opencloud/web-extensions-init.yaml
 
 tests:
@@ -36,6 +38,36 @@ tests:
           content:
             name: ANTIVIRUS_ENABLED
             value: "true"
+
+  - it: should start antivirus and postprocessing when antivirus is enabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ADD_RUN_SERVICES
+            value: antivirus,postprocessing
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTPROCESSING_STEPS
+            value: virusscan
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ASYNC_UPLOADS
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_DATA_GATEWAY_URL
+            value: http://RELEASE-NAME-opencloud-opencloud:9200/data
 
   - it: should set ANTIVIRUS_SCANNER_TYPE when antivirus is enabled
     template: opencloud/deployment.yaml

@@ -25,10 +25,10 @@ data:
 
   # Proxy configuration
   proxy.yaml: |-
-{{- if empty .Values.opencloud.config.proxy -}}
+{{- if and (empty .Values.opencloud.config.proxy) (empty .Values.opencloud.config.proxyRoleQuotas) -}}
 {{ tpl (.Files.Get "files/opencloud/proxy.yaml.gotmpl") . | nindent 4 }}
 {{- else -}}
-{{ .Values.opencloud.config.proxy | nindent 4 }}
+{{ include "opencloud.proxy.config" . | nindent 4 }}
 {{- end }}
 
   # Banned password list
@@ -42,5 +42,17 @@ data:
   # Search configuration
   search.yaml: |-
 {{- .Files.Get "files/opencloud/search.yaml" | nindent 4 }}
+
+  {{- if .Values.opencloud.policies.enabled }}
+  # Policies service configuration
+  policies.yaml: |-
+    engine:
+      policies:
+        - /etc/opencloud/policies/proxy.rego
+        - /etc/opencloud/policies/postprocessing.rego
+        - /etc/opencloud/policies/utils.rego
+    postprocessing:
+      query: data.postprocessing.granted
+  {{- end }}
 
 {{- end }}

@@ -295,3 +295,19 @@ Usage:
         {{- tpl (.value | toYaml) .context }}
     {{- end }}
 {{- end -}}
+
+{{/*
+Render the proxy configuration and overlay separately configured role quotas.
+*/}}
+{{- define "opencloud.proxy.config" -}}
+{{- $proxy := dict -}}
+{{- if empty .Values.opencloud.config.proxy -}}
+  {{- $proxy = fromYaml (tpl (.Files.Get "files/opencloud/proxy.yaml.gotmpl") .) -}}
+{{- else -}}
+  {{- $proxy = fromYaml (include "opencloud.tplvalues.render" (dict "value" .Values.opencloud.config.proxy "context" .)) -}}
+{{- end -}}
+{{- with .Values.opencloud.config.proxyRoleQuotas }}
+  {{- $_ := set $proxy "role_quotas" . -}}
+{{- end }}
+{{- toYaml $proxy -}}
+{{- end -}}

@@ -1,0 +1,29 @@
+suite: Proxy configuration tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/configmap.yaml
+
+tests:
+  - it: merges role quotas without removing built-in proxy policies
+    template: opencloud/configmap.yaml
+    set:
+      opencloud:
+        config:
+          proxyRoleQuotas:
+            d7beeea8-8ff4-406b-8fb6-ab2dd81e6b11: 10737418240
+            2aadd357-682c-406b-8874-293091995fdd: 53687091200
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "additional_policies:"
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "role_quotas:"
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "d7beeea8-8ff4-406b-8fb6-ab2dd81e6b11: 10737418240"
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "2aadd357-682c-406b-8874-293091995fdd: 53687091200"

@@ -4,6 +4,7 @@ templates:
   - opencloud/deployment.yaml
   - opencloud/config-json-configmap.yaml
   - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
   - opencloud/secrets.yaml
   - opencloud/theme-branding-configmap.yaml
   - opencloud/web-extensions-init.yaml
