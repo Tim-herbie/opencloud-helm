@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 <!-- release-bot:start -->
 
+## [3.0.0] - 2026-08-22
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- [#149](https://github.com/Tim-herbie/opencloud-helm/pull/149) fix: preserve proxy policies with role quotas
+
+### Chore / Docs / CI / Other
+- [#150](https://github.com/Tim-herbie/opencloud-helm/pull/150) chore(deps): update opencloudeu/web-extensions docker tag to draw-io-2.2.0
+
+
 ## [2.4.7] - 2026-08-09
 
 ### Breaking Changes
