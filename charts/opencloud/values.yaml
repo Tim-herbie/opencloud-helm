@@ -192,7 +192,7 @@ webExtensions:
     # Draw.io extension
     drawio:
       enabled: true
-      tag: draw-io-2.1.0
+      tag: draw-io-2.2.0
     # External Sites extension
     externalsites:
       enabled: true
