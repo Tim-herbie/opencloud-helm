@@ -478,17 +478,25 @@ jobs:
           fi
 
           if helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version "$publish_version" >/dev/null 2>&1; then
-            echo "Chart ${publish_version} already exists in GHCR. Skipping publish."
-            exit 0
+            echo "Chart ${publish_version} already exists in GHCR. Skipping versioned publish."
+          else
+            rm -f opencloud-*.tgz
+            helm package charts/opencloud --version "$publish_version"
+            helm push "opencloud-${publish_version}.tgz" oci://ghcr.io/tim-herbie/opencloud-helm
+
+            echo "Verifying published chart ${publish_version}."
+            rm -f "opencloud-${publish_version}.tgz"
+            helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version "$publish_version"
           fi
 
+          echo "Publishing latest chart tag."
           rm -f opencloud-*.tgz
-          helm package charts/opencloud --version "$publish_version"
-          helm push "opencloud-${publish_version}.tgz" oci://ghcr.io/tim-herbie/opencloud-helm
+          helm package charts/opencloud --version latest
+          helm push "opencloud-latest.tgz" oci://ghcr.io/tim-herbie/opencloud-helm
 
-          echo "Verifying published chart ${publish_version}."
-          rm -f "opencloud-${publish_version}.tgz"
-          helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version "$publish_version"
+          echo "Verifying published chart latest."
+          rm -f opencloud-latest.tgz
+          helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version latest
 
   create-github-release:
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'release-bot/main'
