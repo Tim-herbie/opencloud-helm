@@ -452,6 +452,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up ORAS
+        uses: oras-project/setup-oras@v1
+
       - name: Package and publish Helm chart
         shell: bash
         run: |
@@ -459,10 +462,12 @@ jobs:
 
           chart_version="$(helm show chart charts/opencloud | awk '/^version:/ {print $2}')"
           publish_version="$chart_version"
+          is_prerelease=false
 
           if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/release-bot/main" ]]; then
             short_sha="${GITHUB_SHA::7}"
             publish_version="${chart_version}-pre-release-${short_sha}"
+            is_prerelease=true
             echo "Publishing pre-release chart version ${publish_version}."
           else
             release_version="${{ needs.create-tag.outputs.version }}"
@@ -489,14 +494,18 @@ jobs:
             helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version "$publish_version"
           fi
 
-          echo "Publishing latest chart tag."
-          rm -f opencloud-*.tgz
-          helm package charts/opencloud --version latest
-          helm push "opencloud-latest.tgz" oci://ghcr.io/tim-herbie/opencloud-helm
+          if [[ "$is_prerelease" == "true" ]]; then
+            echo "Pre-release run detected. Skipping latest tag update."
+            exit 0
+          fi
 
-          echo "Verifying published chart latest."
-          rm -f opencloud-latest.tgz
-          helm pull oci://ghcr.io/tim-herbie/opencloud-helm/opencloud --version latest
+          echo "Updating latest tag to ${publish_version}."
+          oras cp \
+            "ghcr.io/tim-herbie/opencloud-helm/opencloud:${publish_version}" \
+            "ghcr.io/tim-herbie/opencloud-helm/opencloud:latest"
+
+          echo "Verifying latest tag."
+          oras manifest fetch "ghcr.io/tim-herbie/opencloud-helm/opencloud:latest" >/dev/null
 
   create-github-release:
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'release-bot/main'
