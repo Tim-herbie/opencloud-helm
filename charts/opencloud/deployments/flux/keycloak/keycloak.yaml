@@ -3,6 +3,38 @@ kind: Namespace
 metadata:
   name: keycloak
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: flux
+  namespace: keycloak
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flux-reconciler
+  namespace: keycloak
+rules:
+  # Namespace-scoped namespace-admin for Helm reconciliation. This cannot
+  # create or modify cluster-scoped resources such as Namespaces or CRDs.
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flux-reconciler
+  namespace: keycloak
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flux-reconciler
+subjects:
+  - kind: ServiceAccount
+    name: flux
+    namespace: keycloak
+---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: OCIRepository
 metadata:

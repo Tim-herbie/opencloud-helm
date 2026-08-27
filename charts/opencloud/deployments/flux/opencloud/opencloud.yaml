@@ -170,6 +170,7 @@ spec:
       ldapServerWriteEnabled: true
       proxyAutoprovisionAccounts: true
       proxyAutoprovisionClaimUsername: sub
+      proxyUserOidcClaim: sub
       proxyRoleAssignmentDriver: oidc
       proxyRoleAssignmentOidcClaim: roles
       config:
