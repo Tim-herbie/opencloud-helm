@@ -24,8 +24,8 @@ global:
     opencloud: cloud.opencloud.test
     # Domain for Keycloak (used only when oidc.issuerUrl is set for external OIDC)
     oidc: keycloak.opencloud.test
-    # Domain for WOPI server
-    wopi: wopiserver.opencloud.test
+    # OpenCloud serves the WOPI/collaboration endpoints on the main domain in 7.5.x+
+    wopi: cloud.opencloud.test
     # Domain for Collabora CODE
     collabora: collabora.opencloud.test
     # Domain for Companion
@@ -281,12 +281,12 @@ collabora:
 # Collaboration
 # =====================================================================
 
-# Top-level configuration for the standalone collaboration (WOPI) service.
-# Note: no 'enabled' flag here — the collaboration service is required when
-# collabora or collabora.external are used.
+# OpenCloud 7.5.x+ runs the collaboration (WOPI) service inside the main
+# OpenCloud process. Keep the standalone service disabled by default unless you
+# explicitly need the legacy deployment model.
 collaboration:
-  # Enable Collaboration
-  enabled: true
+  # Enable legacy standalone collaboration service
+  enabled: false
   # Number of replicas (Note: When using multiple replicas, persistence should be disabled
   # or use a storage class that supports ReadWriteMany access mode)
   replicas: 1
@@ -313,7 +313,7 @@ image:
   # OpenCloud image repository
   repository: opencloudeu/opencloud-rolling
   # OpenCloud image tag
-  tag: "7.4.0"
+  tag: "7.5.0"
   # Image pull policy
   pullPolicy: IfNotPresent
   # Image pull secrets

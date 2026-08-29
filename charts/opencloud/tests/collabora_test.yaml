@@ -69,14 +69,14 @@ tests:
 
   # --- WOPI Alias Group ---
 
-  - it: should set WOPI alias group to collaboration service
+  - it: should set WOPI alias group to the main OpenCloud domain
     template: collabora/deployment.yaml
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: aliasgroup1
-            value: "http://RELEASE-NAME-opencloud-collaboration:9300,https://wopiserver.opencloud.test"
+            value: "https://cloud.opencloud.test"
     set:
       collabora:
         enabled: true
@@ -84,7 +84,7 @@ tests:
           enabled: false
       global:
         domain:
-          wopi: wopiserver.opencloud.test
+          opencloud: cloud.opencloud.test
 
   # --- SSL Configuration ---
 
