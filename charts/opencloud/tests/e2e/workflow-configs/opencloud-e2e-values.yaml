@@ -12,12 +12,14 @@ collabora:
   enabled: true
   ssl:
     enabled: false
+    verification: false
 
 oidc:
   enabled: false
   issuerUrl: "" # leave empty to use the integrated IDM (no external OIDC provider)
 
 opencloud:
+  insecure: true
   
   migration:
     enabled: false

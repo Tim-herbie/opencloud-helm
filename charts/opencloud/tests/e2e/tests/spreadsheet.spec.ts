@@ -7,6 +7,13 @@ declare const process: {
 
 const editorCanvasSelector = '#document-canvas[aria-label="Online Editor"]';
 
+type EditorSurface = Page | Frame;
+
+type EditorTarget = {
+  page: Page;
+  surface: EditorSurface;
+};
+
 async function findSpreadsheetEditorFrame(page: Page, timeout: number): Promise<Frame | null> {
   const deadline = Date.now() + timeout;
 
@@ -23,6 +30,28 @@ async function findSpreadsheetEditorFrame(page: Page, timeout: number): Promise<
     }
 
     await page.waitForTimeout(500);
+  }
+
+  return null;
+}
+
+async function findSpreadsheetEditor(context: BrowserContext, timeout: number): Promise<EditorTarget | null> {
+  const deadline = Date.now() + timeout;
+
+  while (Date.now() < deadline) {
+    for (const candidatePage of context.pages()) {
+      const pageCanvasCount = await candidatePage.locator(editorCanvasSelector).count().catch(() => 0);
+      if (pageCanvasCount > 0) {
+        return { page: candidatePage, surface: candidatePage };
+      }
+
+      const frame = await findSpreadsheetEditorFrame(candidatePage, 1);
+      if (frame) {
+        return { page: candidatePage, surface: frame };
+      }
+    }
+
+    await Promise.all(context.pages().map(async (candidatePage) => candidatePage.waitForTimeout(250).catch(() => {})));
   }
 
   return null;
@@ -79,25 +108,20 @@ async function openSpreadsheetFromFilesList(
   if ((await hrefMatch.count().catch(() => 0)) > 0) {
     await hrefMatch.click();
   } else if ((await namedEntry.count().catch(() => 0)) > 0) {
-    await namedEntry.click();
+    await namedEntry.dblclick();
   } else {
-    await fallbackEntry.click();
+    await fallbackEntry.dblclick();
   }
 
-  const popupPage = await Promise.race([
-    popupPromise,
-    findSpreadsheetEditorFrame(page, editorReadyTimeout).then((frame) => (frame ? null : null))
-  ]);
-
-  return popupPage ?? page;
+  return (await popupPromise) ?? page;
 }
 
 test('can create spreadsheet, edit A1, save and close', async ({ page, context }) => {
   test.setTimeout(90_000);
 
-  const editorReadyTimeout = process.env.CI ? 30_000 : 10_000;
-  const popupWaitTimeout = process.env.CI ? 20_000 : 3_000;
-  const sheetFrameSelector = 'iframe[title*="Collabora" i], iframe[src*="loleaflet" i], iframe';
+  const initialEditorWaitTimeout = process.env.CI ? 8_000 : 4_000;
+  const editorReadyTimeout = process.env.CI ? 25_000 : 10_000;
+  const popupWaitTimeout = process.env.CI ? 10_000 : 3_000;
 
   await login(page);
   const fileBaseName = randomLetters(10);
@@ -133,16 +157,11 @@ test('can create spreadsheet, edit A1, save and close', async ({ page, context }
   const popupPromise = context.waitForEvent('page', { timeout: popupWaitTimeout }).catch(() => null);
   await createButton.click();
 
-  let popupPage = await Promise.race([
-    popupPromise,
-    findSpreadsheetEditorFrame(page, editorReadyTimeout).then((frame) => (frame ? null : null))
-  ]);
+  let popupPage = await popupPromise;
+  let editorTarget = await findSpreadsheetEditor(context, initialEditorWaitTimeout);
 
-  let editorPage = popupPage ?? page;
-
-  let sheetFrame = await findSpreadsheetEditorFrame(editorPage, editorReadyTimeout);
-  if (!sheetFrame) {
-    editorPage = await openSpreadsheetFromFilesList(
+  if (!editorTarget) {
+    const fallbackPage = await openSpreadsheetFromFilesList(
       page,
       context,
       fileBaseName,
@@ -150,14 +169,17 @@ test('can create spreadsheet, edit A1, save and close', async ({ page, context }
       popupWaitTimeout,
       editorReadyTimeout
     );
-    popupPage = editorPage === page ? null : editorPage;
-    sheetFrame = await findSpreadsheetEditorFrame(editorPage, editorReadyTimeout);
+    popupPage = fallbackPage === page ? popupPage : fallbackPage;
+    editorTarget = await findSpreadsheetEditor(context, editorReadyTimeout);
   }
 
-  expect(sheetFrame, 'Could not find spreadsheet editor frame after opening the document').toBeTruthy();
-  if (!sheetFrame) {
+  expect(editorTarget, 'Could not find spreadsheet editor frame after opening the document').toBeTruthy();
+  if (!editorTarget) {
     throw new Error('Could not find spreadsheet editor frame after opening the document');
   }
+
+  let editorPage = editorTarget.page;
+  let editorSurface = editorTarget.surface;
 
   await editorPage.waitForLoadState('domcontentloaded');
   await editorPage.waitForTimeout(2500);
@@ -169,23 +191,23 @@ test('can create spreadsheet, edit A1, save and close', async ({ page, context }
   }
   await editorPage.keyboard.press('Escape').catch(() => {});
 
-  const sheetFrameElement = editorPage.locator(sheetFrameSelector).first();
-  await expect(sheetFrameElement).toBeVisible({ timeout: editorReadyTimeout });
-  sheetFrame = sheetFrame ?? (await findSpreadsheetEditorFrame(editorPage, editorReadyTimeout));
-  expect(sheetFrame, 'Could not find spreadsheet editor frame after the editor page became visible').toBeTruthy();
-  if (!sheetFrame) {
+  editorTarget = (await findSpreadsheetEditor(context, editorReadyTimeout)) ?? editorTarget;
+  editorSurface = editorTarget.surface;
+  editorPage = editorTarget.page;
+  expect(editorSurface, 'Could not find spreadsheet editor surface after the editor page became visible').toBeTruthy();
+  if (!editorSurface) {
     throw new Error('Could not find spreadsheet editor frame after the editor page became visible');
   }
 
-  const closeWelcomeOverlay = sheetFrame.locator('#welcome-close').first();
+  const closeWelcomeOverlay = editorSurface.locator('#welcome-close').first();
   if (await closeWelcomeOverlay.isVisible({ timeout: 5000 }).catch(() => false)) {
     if (await closeWelcomeOverlay.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await sheetFrame.locator('body').press('Escape').catch(() => {});
+      await editorSurface.locator('body').press('Escape').catch(() => {});
     }
     await expect(closeWelcomeOverlay).toBeHidden({ timeout: 5000 });
   }
 
-  const editorCanvas = sheetFrame.locator(editorCanvasSelector).first();
+  const editorCanvas = editorSurface.locator(editorCanvasSelector).first();
   await expect(editorCanvas).toBeVisible({ timeout: editorReadyTimeout });
   await editorCanvas.click({ position: { x: 90, y: 45 }, force: true });
   await editorPage.keyboard.type('word test');
