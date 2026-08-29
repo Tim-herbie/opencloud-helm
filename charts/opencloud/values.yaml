@@ -24,8 +24,6 @@ global:
     opencloud: cloud.opencloud.test
     # Domain for Keycloak (used only when oidc.issuerUrl is set for external OIDC)
     oidc: keycloak.opencloud.test
-    # Domain for WOPI server
-    wopi: wopiserver.opencloud.test
     # Domain for Collabora CODE
     collabora: collabora.opencloud.test
     # Domain for Companion
@@ -245,6 +243,12 @@ collabora:
     repository: collabora/code
     pullPolicy: IfNotPresent
     tag: 26.04.2.4.1
+  proofKey:
+    image:
+      registry: docker.io
+      repository: alpine/openssl
+      pullPolicy: IfNotPresent
+      tag: "3.5.7"
   ssl:
     enabled: false
     verification: true
@@ -276,31 +280,6 @@ collabora:
     port: 9980
     # Protocol to use for readiness checks (http or https)
     protocol: http
-
-# =====================================================================
-# Collaboration
-# =====================================================================
-
-# Top-level configuration for the standalone collaboration (WOPI) service.
-# Note: no 'enabled' flag here — the collaboration service is required when
-# collabora or collabora.external are used.
-collaboration:
-  # Enable Collaboration
-  enabled: true
-  # Number of replicas (Note: When using multiple replicas, persistence should be disabled
-  # or use a storage class that supports ReadWriteMany access mode)
-  replicas: 1
-  # Resource requests/limits for the collaboration service (WOPI)
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 4
-      memory: 10Gi
-
-  # Additional environment variables for the collaboration service
-  env: []
   
 # =====================================================================
 # OPENCLOUD CORE

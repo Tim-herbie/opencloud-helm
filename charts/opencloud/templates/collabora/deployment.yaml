@@ -21,13 +21,33 @@ spec:
         {{- include "opencloud.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: collabora
     spec:
+      initContainers:
+        - name: generate-proof-key
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.collabora.proofKey.image "global" .Values.global) | quote }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.collabora.proofKey.image.pullPolicy "global" .Values.global) }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              if [ ! -s /proof/proof_key ]; then
+                openssl genrsa -traditional -out /proof/proof_key.tmp 4096
+                chown 1001:1001 /proof/proof_key.tmp
+                chmod 400 /proof/proof_key.tmp
+                mv /proof/proof_key.tmp /proof/proof_key
+                echo "WOPI proof key generated"
+              else
+                echo "WOPI proof key already exists"
+              fi
+          volumeMounts:
+            - name: collabora-proof-key
+              mountPath: /proof
       containers:
         - name: collabora
           image: {{ include "opencloud.image" (dict "imageValues" .Values.collabora.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.collabora.image.pullPolicy "global" .Values.global) }}
           env:
             - name: aliasgroup1
-              value: "http://{{ include "opencloud.fullname" . }}-collaboration:9300,https://{{ .Values.global.domain.wopi }}"
+              value: "https://{{ include "opencloud.domain" . }}"
             - name: DONT_GEN_SSL_CERT
               value: "YES"
             - name: extra_params
@@ -38,6 +58,8 @@ spec:
                 --o:welcome.enable=false \
                 --o:update.enable=false \
                 --o:net.frame_ancestors={{ include "opencloud.domain" . }} \
+                --o:net.lok_allow.host[14]={{ include "opencloud.domain" . }} \
+                --o:home_mode.enable=false \
                 --o:security.capabilities=false \
                 --o:child_root_path=/tmp/coolwsd-child-roots \
                 --o:cache_files.path=/tmp/coolwsd-cache \
@@ -93,9 +115,15 @@ spec:
               mountPath: /tmp/coolwsd-child-roots
             - name: coolwsd-cache
               mountPath: /tmp/coolwsd-cache
+            - name: collabora-proof-key
+              mountPath: /etc/coolwsd/proof_key
+              subPath: proof_key
+              readOnly: true
       volumes:
         - name: coolwsd-child-roots
           emptyDir: {}
         - name: coolwsd-cache
+          emptyDir: {}
+        - name: collabora-proof-key
           emptyDir: {}
 {{- end }}

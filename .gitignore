@@ -1,4 +1,5 @@
 /.project
+/private/
 
 # macOS
 .DS_Store

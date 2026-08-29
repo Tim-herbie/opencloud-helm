@@ -218,6 +218,28 @@ spec:
               value: {{ .Values.opencloud.logColor | quote }}
             - name: OC_LOG_PRETTY
               value: {{ .Values.opencloud.logPretty | quote }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled .Values.collaboration.enabled }}
+            - name: COLLABORA_DOMAIN
+              value: {{ .Values.global.domain.collabora | quote }}
+            - name: COLLABORATION_WOPI_SRC
+              value: "https://{{ include "opencloud.domain" . }}"
+            - name: COLLABORATION_APP_NAME
+              value: "CollaboraOnline"
+            - name: COLLABORATION_APP_PRODUCT
+              value: "Collabora"
+            - name: COLLABORATION_APP_ADDR
+              value: "https://{{ include "opencloud.collabora.domain" . }}"
+            - name: COLLABORATION_APP_ICON
+              value: "https://{{ include "opencloud.collabora.domain" . }}/favicon.ico"
+            - name: COLLABORATION_APP_INSECURE
+              value: {{ tpl (toString .Values.opencloud.insecure) . | quote }}
+            - name: COLLABORATION_CS3API_DATAGATEWAY_INSECURE
+              value: {{ tpl (toString .Values.opencloud.insecure) . | quote }}
+            - name: COLLABORATION_LOG_LEVEL
+              value: {{ .Values.opencloud.logLevel | quote }}
+            - name: FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR
+              value: "eu.opencloud.api.collaboration"
+            {{- end }}
             # Enable services that are not started automatically
             {{- $additional := .Values.opencloud.additionalServices | default (list) }}
             {{- if .Values.opencloud.antivirus.enabled }}
@@ -233,6 +255,11 @@ spec:
             {{- if .Values.opencloud.policies.enabled }}
               {{- if not (has "policies" $additional) }}
                 {{- $additional = append $additional "policies" }}
+              {{- end }}
+            {{- end }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled .Values.collaboration.enabled }}
+              {{- if not (has "collaboration" $additional) }}
+                {{- $additional = append $additional "collaboration" }}
               {{- end }}
             {{- end }}
             {{- if gt (len $additional) 0 }}

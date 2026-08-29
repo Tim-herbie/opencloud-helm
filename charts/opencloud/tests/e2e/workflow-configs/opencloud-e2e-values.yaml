@@ -1,9 +1,7 @@
 global:
   domain:
     opencloud: opencloud.127.0.0.1.nip.io
-    wopi: wopiserver.127.0.0.1.nip.io
     collabora: collabora.127.0.0.1.nip.io
-    onlyoffice: onlyoffice.127.0.0.1.nip.io
     companion: companion.127.0.0.1.nip.io
 
   tls:
@@ -14,11 +12,14 @@ collabora:
   enabled: true
   ssl:
     enabled: false
+    verification: false
 
 oidc:
+  enabled: false
   issuerUrl: "" # leave empty to use the integrated IDM (no external OIDC provider)
 
 opencloud:
+  insecure: true
   
   migration:
     enabled: false
@@ -51,3 +52,8 @@ httpRoute:
     create: true
     className: traefik
     port: 8443
+
+tika:
+  resources:
+    requests:
+      cpu: 100m
