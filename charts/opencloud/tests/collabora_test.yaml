@@ -2,6 +2,7 @@ suite: Collabora Tests
 templates:
   - _helpers/tpl.yaml
   - collabora/deployment.yaml
+  - opencloud/deployment.yaml
 
 tests:
   # --- Mutual Exclusion ---
@@ -55,17 +56,66 @@ tests:
 
   # --- WOPI Proof Key Generation ---
 
-  - it: should generate WOPI proof key on startup
+  - it: should generate WOPI proof key in an init container
     template: collabora/deployment.yaml
     asserts:
       - equal:
-          path: spec.template.spec.containers[0].args[0]
-          value: "coolconfig generate-proof-key && /start-collabora-online.sh"
+          path: spec.template.spec.initContainers[0].name
+          value: generate-proof-key
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: /bin/sh
+      - equal:
+          path: spec.template.spec.initContainers[0].command[1]
+          value: -ec
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /proof
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: collabora-proof-key
+            mountPath: /etc/coolwsd/proof_key
+            subPath: proof_key
+            readOnly: true
     set:
       collabora:
         enabled: true
         external:
           enabled: false
+
+  - it: should enable embedded collaboration envs for external Collabora
+    template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: COLLABORATION_WOPI_SRC
+            value: "https://cloud.opencloud.test"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: COLLABORATION_APP_ADDR
+            value: "https://collabora.opencloud.test"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR
+            value: "eu.opencloud.api.collaboration"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ADD_RUN_SERVICES
+            value: "collaboration"
+    set:
+      collabora:
+        enabled: false
+        external:
+          enabled: true
+      global:
+        domain:
+          opencloud: cloud.opencloud.test
+          collabora: collabora.opencloud.test
 
   # --- WOPI Alias Group ---
 
@@ -102,6 +152,8 @@ tests:
               --o:welcome.enable=false \
               --o:update.enable=false \
               --o:net.frame_ancestors=cloud.opencloud.test \
+              --o:net.lok_allow.host[14]=cloud.opencloud.test \
+              --o:home_mode.enable=false \
               --o:security.capabilities=false \
               --o:child_root_path=/tmp/coolwsd-child-roots \
               --o:cache_files.path=/tmp/coolwsd-cache \
@@ -129,6 +181,8 @@ tests:
               --o:welcome.enable=false \
               --o:update.enable=false \
               --o:net.frame_ancestors=cloud.opencloud.test \
+              --o:net.lok_allow.host[14]=cloud.opencloud.test \
+              --o:home_mode.enable=false \
               --o:security.capabilities=false \
               --o:child_root_path=/tmp/coolwsd-child-roots \
               --o:cache_files.path=/tmp/coolwsd-cache \

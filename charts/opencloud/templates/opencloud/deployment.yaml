@@ -218,7 +218,7 @@ spec:
               value: {{ .Values.opencloud.logColor | quote }}
             - name: OC_LOG_PRETTY
               value: {{ .Values.opencloud.logPretty | quote }}
-            {{- if or .Values.collabora.enabled .Values.collaboration.enabled }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled .Values.collaboration.enabled }}
             - name: COLLABORA_DOMAIN
               value: {{ .Values.global.domain.collabora | quote }}
             - name: COLLABORATION_WOPI_SRC
@@ -257,7 +257,7 @@ spec:
                 {{- $additional = append $additional "policies" }}
               {{- end }}
             {{- end }}
-            {{- if or .Values.collabora.enabled .Values.collaboration.enabled }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled .Values.collaboration.enabled }}
               {{- if not (has "collaboration" $additional) }}
                 {{- $additional = append $additional "collaboration" }}
               {{- end }}

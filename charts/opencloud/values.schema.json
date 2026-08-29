@@ -636,6 +636,12 @@
             },
             "namespace": {
               "type": "string"
+            },
+            "sectionName": {
+              "type": "string"
+            },
+            "httpSectionName": {
+              "type": "string"
             }
           }
         },
@@ -694,12 +700,143 @@
         "enabled": {
           "type": "boolean"
         },
-        "tag": {
+        "image": {
+          "type": "object",
+          "properties": {
+            "registry": {
+              "type": "string"
+            },
+            "repository": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": [
+                "",
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            },
+            "tag": {
+              "type": "string"
+            }
+          }
+        },
+        "proofKey": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "object",
+              "properties": {
+                "registry": {
+                  "type": "string"
+                },
+                "repository": {
+                  "type": "string"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "",
+                    "Always",
+                    "IfNotPresent",
+                    "Never"
+                  ]
+                },
+                "tag": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "ssl": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "verification": {
+              "type": "boolean"
+            }
+          }
+        },
+        "existingSecret": {
           "type": "string"
         },
-        "domain": {
-          "type": "string",
-          "format": "hostname"
+        "admin": {
+          "type": "object",
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                "memory": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                "memory": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "external": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "protocol": {
+              "type": "string",
+              "enum": [
+                "http",
+                "https"
+              ]
+            }
+          }
         }
       }
     }

@@ -90,13 +90,6 @@ Return the Companion domain
 {{- end }}
 
 {{/*
-Return the WOPI domain
-*/}}
-{{- define "opencloud.wopi.domain" -}}
-{{- .Values.global.domain.wopi }}
-{{- end }}
-
-{{/*
 Return the OIDC issuer URL
 */}}
 {{- define "opencloud.oidc.issuer" -}}
