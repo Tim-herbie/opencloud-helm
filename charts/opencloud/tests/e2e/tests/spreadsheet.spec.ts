@@ -1,8 +1,48 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Frame, type Page } from '@playwright/test';
 import { login, randomLetters } from './helpers/auth';
+
+const editorCanvasSelector = '#document-canvas[aria-label="Online Editor"]';
+
+async function waitForSpreadsheetEditorFrame(page: Page): Promise<Frame> {
+  let editorFrame: Frame | null = null;
+
+  await expect
+    .poll(
+      async () => {
+        for (const frame of page.frames()) {
+          if (frame === page.mainFrame()) {
+            continue;
+          }
+
+          const canvasCount = await frame.locator(editorCanvasSelector).count().catch(() => 0);
+          if (canvasCount > 0) {
+            editorFrame = frame;
+            return true;
+          }
+        }
+
+        return false;
+      },
+      {
+        timeout: process.env.CI ? 30_000 : 10_000,
+        intervals: [500, 1000, 2000]
+      }
+    )
+    .toBeTruthy();
+
+  if (!editorFrame) {
+    throw new Error('Could not find spreadsheet editor frame');
+  }
+
+  return editorFrame;
+}
 
 test('can create spreadsheet, edit A1, save and close', async ({ page, context }) => {
   test.setTimeout(90_000);
+
+  const editorReadyTimeout = process.env.CI ? 30_000 : 10_000;
+  const popupWaitTimeout = process.env.CI ? 20_000 : 3_000;
+  const sheetFrameSelector = 'iframe[title*="Collabora" i], iframe[src*="loleaflet" i], iframe';
 
   await login(page);
   const fileBaseName = randomLetters(10);
@@ -35,22 +75,17 @@ test('can create spreadsheet, edit A1, save and close', async ({ page, context }
   await expect(createButton).toBeVisible();
   await expect(createButton).toBeEnabled({ timeout: 10000 });
 
-  const pageCountBeforeCreate = context.pages().length;
+  const popupPromise = context.waitForEvent('page', { timeout: popupWaitTimeout }).catch(() => null);
   await createButton.click();
 
-  let popupPage: Page | null = null;
-  const popupDeadline = Date.now() + 3000;
-  while (Date.now() < popupDeadline) {
-    const pagesNow = context.pages();
-    if (pagesNow.length > pageCountBeforeCreate) {
-      popupPage = pagesNow[pagesNow.length - 1];
-      break;
-    }
-    await page.waitForTimeout(100);
-  }
+  const popupPage = await Promise.race([
+    popupPromise,
+    waitForSpreadsheetEditorFrame(page).then(() => null).catch(() => null)
+  ]);
 
   const editorPage = popupPage ?? page;
 
+  await editorPage.waitForLoadState('domcontentloaded');
   await editorPage.waitForTimeout(2500);
   const viewport = editorPage.viewportSize();
   if (viewport) {
@@ -60,10 +95,9 @@ test('can create spreadsheet, edit A1, save and close', async ({ page, context }
   }
   await editorPage.keyboard.press('Escape').catch(() => {});
 
-  const sheetFrameSelector = 'iframe[title*="Collabora" i], iframe[src*="loleaflet" i], iframe';
   const sheetFrameElement = editorPage.locator(sheetFrameSelector).first();
-  await expect(sheetFrameElement).toBeVisible({ timeout: 10000 });
-  const sheetFrame = editorPage.frameLocator(sheetFrameSelector).first();
+  await expect(sheetFrameElement).toBeVisible({ timeout: editorReadyTimeout });
+  const sheetFrame = await waitForSpreadsheetEditorFrame(editorPage);
 
   const closeWelcomeOverlay = sheetFrame.locator('#welcome-close').first();
   if (await closeWelcomeOverlay.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -73,8 +107,8 @@ test('can create spreadsheet, edit A1, save and close', async ({ page, context }
     await expect(closeWelcomeOverlay).toBeHidden({ timeout: 5000 });
   }
 
-  const editorCanvas = sheetFrame.locator('#document-canvas[aria-label="Online Editor"]').first();
-  await expect(editorCanvas).toBeVisible({ timeout: 10000 });
+  const editorCanvas = sheetFrame.locator(editorCanvasSelector).first();
+  await expect(editorCanvas).toBeVisible({ timeout: editorReadyTimeout });
   await editorCanvas.click({ position: { x: 90, y: 45 }, force: true });
   await editorPage.keyboard.type('word test');
   await editorPage.keyboard.press('Enter');
