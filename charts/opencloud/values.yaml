@@ -248,7 +248,7 @@ collabora:
       registry: docker.io
       repository: alpine/openssl
       pullPolicy: IfNotPresent
-      tag: "3.5.7"
+      tag: "3.5.8"
   ssl:
     enabled: false
     verification: true
