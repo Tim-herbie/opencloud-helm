@@ -6,6 +6,7 @@ global:
 
   tls:
     enabled: true
+    secretName: opencloud-tls-secret
 
 collabora:
   enabled: true
