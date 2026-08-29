@@ -1,40 +1,95 @@
-import { expect, test, type Frame, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Frame, type Page } from '@playwright/test';
 import { login, randomLetters } from './helpers/auth';
+
+declare const process: {
+  env: Record<string, string | undefined>;
+};
 
 const editorCanvasSelector = '#document-canvas[aria-label="Online Editor"]';
 
-async function waitForSpreadsheetEditorFrame(page: Page): Promise<Frame> {
-  let editorFrame: Frame | null = null;
+async function findSpreadsheetEditorFrame(page: Page, timeout: number): Promise<Frame | null> {
+  const deadline = Date.now() + timeout;
 
-  await expect
-    .poll(
-      async () => {
-        for (const frame of page.frames()) {
-          if (frame === page.mainFrame()) {
-            continue;
-          }
-
-          const canvasCount = await frame.locator(editorCanvasSelector).count().catch(() => 0);
-          if (canvasCount > 0) {
-            editorFrame = frame;
-            return true;
-          }
-        }
-
-        return false;
-      },
-      {
-        timeout: process.env.CI ? 30_000 : 10_000,
-        intervals: [500, 1000, 2000]
+  while (Date.now() < deadline) {
+    for (const frame of page.frames()) {
+      if (frame === page.mainFrame()) {
+        continue;
       }
-    )
-    .toBeTruthy();
 
-  if (!editorFrame) {
-    throw new Error('Could not find spreadsheet editor frame');
+      const canvasCount = await frame.locator(editorCanvasSelector).count().catch(() => 0);
+      if (canvasCount > 0) {
+        return frame;
+      }
+    }
+
+    await page.waitForTimeout(500);
   }
 
-  return editorFrame;
+  return null;
+}
+
+async function waitForSpreadsheetFile(page: Page, fileBaseName: string, fileNamePattern: RegExp, timeout: number): Promise<boolean> {
+  const deadline = Date.now() + timeout;
+
+  while (Date.now() < deadline) {
+    const textMatches = await page.getByText(fileNamePattern).count().catch(() => 0);
+    const listMatches = await page
+      .locator(
+        `[href*="${fileBaseName}"], [title*="${fileBaseName}"], [data-path*="${fileBaseName}"], [aria-label*="${fileBaseName}"]`
+      )
+      .count()
+      .catch(() => 0);
+
+    if (textMatches + listMatches > 0) {
+      return true;
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  return false;
+}
+
+async function openSpreadsheetFromFilesList(
+  page: Page,
+  context: BrowserContext,
+  fileBaseName: string,
+  fileNamePattern: RegExp,
+  popupWaitTimeout: number,
+  editorReadyTimeout: number
+): Promise<Page> {
+  await page.goto('/files/spaces/personal', { waitUntil: 'domcontentloaded' });
+
+  const searchBox = page.getByRole('searchbox', { name: /enter search term/i }).first();
+  if (await searchBox.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await searchBox.fill(fileBaseName);
+    await searchBox.press('Enter').catch(() => {});
+  }
+
+  const fileFound = await waitForSpreadsheetFile(page, fileBaseName, fileNamePattern, editorReadyTimeout);
+  expect(fileFound, `Created spreadsheet ${fileBaseName} did not appear in the file list`).toBeTruthy();
+
+  const popupPromise = context.waitForEvent('page', { timeout: popupWaitTimeout }).catch(() => null);
+  const hrefMatch = page.locator(`[href*="${fileBaseName}"]`).first();
+  const namedEntry = page.getByText(fileNamePattern).first();
+  const fallbackEntry = page
+    .locator(`[title*="${fileBaseName}"], [data-path*="${fileBaseName}"], [aria-label*="${fileBaseName}"]`)
+    .first();
+
+  if ((await hrefMatch.count().catch(() => 0)) > 0) {
+    await hrefMatch.click();
+  } else if ((await namedEntry.count().catch(() => 0)) > 0) {
+    await namedEntry.click();
+  } else {
+    await fallbackEntry.click();
+  }
+
+  const popupPage = await Promise.race([
+    popupPromise,
+    findSpreadsheetEditorFrame(page, editorReadyTimeout).then((frame) => (frame ? null : null))
+  ]);
+
+  return popupPage ?? page;
 }
 
 test('can create spreadsheet, edit A1, save and close', async ({ page, context }) => {
@@ -78,12 +133,31 @@ test('can create spreadsheet, edit A1, save and close', async ({ page, context }
   const popupPromise = context.waitForEvent('page', { timeout: popupWaitTimeout }).catch(() => null);
   await createButton.click();
 
-  const popupPage = await Promise.race([
+  let popupPage = await Promise.race([
     popupPromise,
-    waitForSpreadsheetEditorFrame(page).then(() => null).catch(() => null)
+    findSpreadsheetEditorFrame(page, editorReadyTimeout).then((frame) => (frame ? null : null))
   ]);
 
-  const editorPage = popupPage ?? page;
+  let editorPage = popupPage ?? page;
+
+  let sheetFrame = await findSpreadsheetEditorFrame(editorPage, editorReadyTimeout);
+  if (!sheetFrame) {
+    editorPage = await openSpreadsheetFromFilesList(
+      page,
+      context,
+      fileBaseName,
+      fileNamePattern,
+      popupWaitTimeout,
+      editorReadyTimeout
+    );
+    popupPage = editorPage === page ? null : editorPage;
+    sheetFrame = await findSpreadsheetEditorFrame(editorPage, editorReadyTimeout);
+  }
+
+  expect(sheetFrame, 'Could not find spreadsheet editor frame after opening the document').toBeTruthy();
+  if (!sheetFrame) {
+    throw new Error('Could not find spreadsheet editor frame after opening the document');
+  }
 
   await editorPage.waitForLoadState('domcontentloaded');
   await editorPage.waitForTimeout(2500);
@@ -97,7 +171,11 @@ test('can create spreadsheet, edit A1, save and close', async ({ page, context }
 
   const sheetFrameElement = editorPage.locator(sheetFrameSelector).first();
   await expect(sheetFrameElement).toBeVisible({ timeout: editorReadyTimeout });
-  const sheetFrame = await waitForSpreadsheetEditorFrame(editorPage);
+  sheetFrame = sheetFrame ?? (await findSpreadsheetEditorFrame(editorPage, editorReadyTimeout));
+  expect(sheetFrame, 'Could not find spreadsheet editor frame after the editor page became visible').toBeTruthy();
+  if (!sheetFrame) {
+    throw new Error('Could not find spreadsheet editor frame after the editor page became visible');
+  }
 
   const closeWelcomeOverlay = sheetFrame.locator('#welcome-close').first();
   if (await closeWelcomeOverlay.isVisible({ timeout: 5000 }).catch(() => false)) {
