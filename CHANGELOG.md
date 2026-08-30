@@ -7,7 +7,19 @@ All notable changes to this project will be documented in this file.
 ## [3.0.0] - 2026-08-30
 
 ### Breaking Changes
-- None
+- The chart no longer ships or manages bundled Keycloak, PostgreSQL, and MinIO resources.
+- All internal templates for these components were removed.
+- The chart now focuses on OpenCloud itself and expects identity/storage dependencies to be handled externally when needed.
+- If you previously relied on bundled Keycloak/PostgreSQL/MinIO, you must migrate your setup before upgrading.
+
+### Migration Notes
+- Remove old values related to internal Keycloak/PostgreSQL/MinIO.
+- Move to external services or to the current default architecture (integrated IDM and non-bundled dependencies).
+- Re-check OIDC and storage values, because configuration structure and defaults changed.
+- If you are using the httproutes with one gateway listener for all routes, please take a look on the values file. We added a new parameter to allow one exact listener for all httproutes and one prefix to generate listeners for each route.
+
+### Breaking Changes
+- [#107](https://github.com/Tim-herbie/opencloud-helm/pull/107) feat: enable HTTPS, OIDC auth, Collabora, ClamAV, and OPA policies- #107
 
 ### Features
 - [#162](https://github.com/Tim-herbie/opencloud-helm/pull/162) feat(httproute): allow exact sectionName overrides for external gateways
