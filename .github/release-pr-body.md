@@ -1,46 +1,41 @@
-## Release 2.4.7
+## Release 3.0.0
 
-Base: changes since 2.4.6.
+Base: changes since 2.4.7.
 
-OpenCloud version from values.yaml: 7.4.0
+OpenCloud version from values.yaml: 7.5.0
 
 ### Pull Requests
-- [#136](https://github.com/Tim-herbie/opencloud-helm/pull/136) chore(deps): update docker.io/collabora/code docker tag to v26.04.2.4.1
-- [#139](https://github.com/Tim-herbie/opencloud-helm/pull/139) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.4.0
-- [#140](https://github.com/Tim-herbie/opencloud-helm/pull/140) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.7.1
-- [#135](https://github.com/Tim-herbie/opencloud-helm/pull/135) chore(deps): update opencloudeu/web-extensions docker tag
-- [#134](https://github.com/Tim-herbie/opencloud-helm/pull/134) chore(deps): update dependency node to v24
-- [#133](https://github.com/Tim-herbie/opencloud-helm/pull/133) chore(deps): update opencloudeu/web-extensions docker tag
-- [#132](https://github.com/Tim-herbie/opencloud-helm/pull/132) Enable Renovate updates for web extension image tags
-- [#131](https://github.com/Tim-herbie/opencloud-helm/pull/131) chore(deps): update actions/upload-artifact action to v7
-- [#130](https://github.com/Tim-herbie/opencloud-helm/pull/130) chore(deps): update actions/setup-node action to v7
-- [#128](https://github.com/Tim-herbie/opencloud-helm/pull/128) chore(tests): add e2e tests
-- [#129](https://github.com/Tim-herbie/opencloud-helm/pull/129) fix: improve httproute and gateway usability
-- [#126](https://github.com/Tim-herbie/opencloud-helm/pull/126) chore(docs): add minimal-setup docs example
-- [#124](https://github.com/Tim-herbie/opencloud-helm/pull/124) chore: move set OC_ADMIN_USER_ID always instead only when oidc is ena…
+- [#162](https://github.com/Tim-herbie/opencloud-helm/pull/162) feat(httproute): allow exact sectionName overrides for external gateways
+- [#161](https://github.com/Tim-herbie/opencloud-helm/pull/161) chore(deps): update docker.io/collabora/code docker tag to v26.04.3.1.1
+- [#155](https://github.com/Tim-herbie/opencloud-helm/pull/155) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.5.0
+- [#160](https://github.com/Tim-herbie/opencloud-helm/pull/160) chore(deps): update docker.io/alpine/openssl docker tag to v3.5.8
+- [#159](https://github.com/Tim-herbie/opencloud-helm/pull/159) Feature: Move collaboration into the opencloud process
+- [#157](https://github.com/Tim-herbie/opencloud-helm/pull/157) feat: extend csp yaml for epub reader iframe sytle loading
+- [#153](https://github.com/Tim-herbie/opencloud-helm/pull/153) chore(deps): update oras-project/setup-oras action to v2
+- [#154](https://github.com/Tim-herbie/opencloud-helm/pull/154) fix: add Flux reconciler RBAC for Keycloak
+- [#152](https://github.com/Tim-herbie/opencloud-helm/pull/152) chore(ci): package and push every helm chart for the tag latest
+- [#149](https://github.com/Tim-herbie/opencloud-helm/pull/149) fix: preserve proxy policies with role quotas
+- [#150](https://github.com/Tim-herbie/opencloud-helm/pull/150) chore(deps): update opencloudeu/web-extensions docker tag to draw-io-2.2.0
 
 ### Changelog
-## [2.4.7] - 2026-08-09
+## [3.0.0] - 2026-08-30
 
 ### Breaking Changes
 - None
 
 ### Features
-- None
+- [#162](https://github.com/Tim-herbie/opencloud-helm/pull/162) feat(httproute): allow exact sectionName overrides for external gateways
+- [#157](https://github.com/Tim-herbie/opencloud-helm/pull/157) feat: extend csp yaml for epub reader iframe sytle loading
 
 ### Fixes
-- [#129](https://github.com/Tim-herbie/opencloud-helm/pull/129) fix: improve httproute and gateway usability
+- [#154](https://github.com/Tim-herbie/opencloud-helm/pull/154) fix: add Flux reconciler RBAC for Keycloak
+- [#149](https://github.com/Tim-herbie/opencloud-helm/pull/149) fix: preserve proxy policies with role quotas
 
 ### Chore / Docs / CI / Other
-- [#136](https://github.com/Tim-herbie/opencloud-helm/pull/136) chore(deps): update docker.io/collabora/code docker tag to v26.04.2.4.1
-- [#139](https://github.com/Tim-herbie/opencloud-helm/pull/139) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.4.0
-- [#140](https://github.com/Tim-herbie/opencloud-helm/pull/140) chore(deps): update quay.io/keycloak/keycloak docker tag to v26.7.1
-- [#135](https://github.com/Tim-herbie/opencloud-helm/pull/135) chore(deps): update opencloudeu/web-extensions docker tag
-- [#134](https://github.com/Tim-herbie/opencloud-helm/pull/134) chore(deps): update dependency node to v24
-- [#133](https://github.com/Tim-herbie/opencloud-helm/pull/133) chore(deps): update opencloudeu/web-extensions docker tag
-- [#131](https://github.com/Tim-herbie/opencloud-helm/pull/131) chore(deps): update actions/upload-artifact action to v7
-- [#130](https://github.com/Tim-herbie/opencloud-helm/pull/130) chore(deps): update actions/setup-node action to v7
-- [#128](https://github.com/Tim-herbie/opencloud-helm/pull/128) chore(tests): add e2e tests
-- [#126](https://github.com/Tim-herbie/opencloud-helm/pull/126) chore(docs): add minimal-setup docs example
-- [#124](https://github.com/Tim-herbie/opencloud-helm/pull/124) chore: move set OC_ADMIN_USER_ID always instead only when oidc is ena…
-- [#132](https://github.com/Tim-herbie/opencloud-helm/pull/132) Enable Renovate updates for web extension image tags
+- [#161](https://github.com/Tim-herbie/opencloud-helm/pull/161) chore(deps): update docker.io/collabora/code docker tag to v26.04.3.1.1
+- [#155](https://github.com/Tim-herbie/opencloud-helm/pull/155) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v7.5.0
+- [#160](https://github.com/Tim-herbie/opencloud-helm/pull/160) chore(deps): update docker.io/alpine/openssl docker tag to v3.5.8
+- [#153](https://github.com/Tim-herbie/opencloud-helm/pull/153) chore(deps): update oras-project/setup-oras action to v2
+- [#152](https://github.com/Tim-herbie/opencloud-helm/pull/152) chore(ci): package and push every helm chart for the tag latest
+- [#150](https://github.com/Tim-herbie/opencloud-helm/pull/150) chore(deps): update opencloudeu/web-extensions docker tag to draw-io-2.2.0
+- [#159](https://github.com/Tim-herbie/opencloud-helm/pull/159) Feature: Move collaboration into the opencloud process
