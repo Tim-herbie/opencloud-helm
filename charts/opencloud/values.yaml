@@ -719,9 +719,18 @@ httpRoute:
     className: cilium
     # Gateway namespace (defaults to Release.Namespace)
     namespace: ""
-    # Gateway section name (applies to all routes). If set to a non-empty value, this overrides the default component-specific section names (e.g., opencloud-https) for all routes. If left empty, the defaults are used.
+    # Gateway section name prefix. If set to a non-empty value, the chart keeps
+    # appending the route-specific suffixes (for example "<prefix>-proxy-https"
+    # or "<prefix>-collabora-http"). This works with both chart-managed and
+    # external Gateways.
     sectionName: ""
-    # Gateway HTTP section name for redirect routes. If set to a non-empty value, this overrides the default component-specific HTTP section names (e.g., opencloud-proxy-http) for redirect routes. If left empty, the defaults are used.
+    # Exact Gateway section name for all generated HTTPRoutes when reusing an
+    # external Gateway (httpRoute.gateway.create=false). If left empty, the
+    # chart uses sectionName as a prefix or its default route-specific names.
+    exactSectionName: ""
+    # Exact Gateway HTTP section name for redirect routes when reusing an
+    # external Gateway (httpRoute.gateway.create=false). If set, it overrides
+    # exactSectionName for redirect routes only.
     httpSectionName: ""
     # Gateway annotations
     annotations:

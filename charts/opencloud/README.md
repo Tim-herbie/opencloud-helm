@@ -574,7 +574,9 @@ This chart includes HTTPRoute resources that can be used to expose the OpenCloud
 | `httpRoute.enabled` | Enable HTTPRoutes | `false` |
 | `httpRoute.gateway.name` | Gateway name | `opencloud-gateway` |
 | `httpRoute.gateway.namespace` | Gateway namespace | `""` (defaults to Release.Namespace) |
-| `httpRoute.gateway.sectionName` | Gateway section name | `""` (defaults to multiple route-specific section names for the routes listed below) |
+| `httpRoute.gateway.sectionName` | Gateway section name prefix | `""` (defaults to multiple route-specific section names for the routes listed below) |
+| `httpRoute.gateway.exactSectionName` | Exact Gateway section name for all generated HTTPRoutes on an external Gateway | `""` |
+| `httpRoute.gateway.httpSectionName` | Exact Gateway section name for HTTP redirect routes on an external Gateway | `""` |
 | `httpRoute.opencloud.routeName` | Name of the OpenCloud HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-httproute`) |
 | `httpRoute.opencloud.redirectRouteName` | Name of the OpenCloud HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-http-redirect`) |
 | `httpRoute.collabora.routeName` | Name of the Collabora HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-collabora-httproute`) |
@@ -604,7 +606,12 @@ The HTTPRoute resource names can be customized via the `httpRoute.<component>.ro
 
 > **Note:** This chart no longer manages a Keycloak HTTPRoute. When using external OIDC, deploy and manage the Keycloak HTTPRoute alongside your Keycloak deployment (see `deployments/flux/keycloak/keycloak.yaml` for an example using `extraManifests`).
 
-All HTTPRoutes use the Gateway specified by `httpRoute.gateway.name` and `httpRoute.gateway.namespace`. If `httpRoute.gateway.sectionName` is set, all routes use `${sectionName}-<component>-http/https` as their listener section names (useful when `httpRoute.gateway.create` is `false` and you reference an existing gateway). If `httpRoute.gateway.sectionName` is empty and `httpRoute.gateway.create` is `true`, the chart creates the Gateway with per-component listeners.
+All HTTPRoutes use the Gateway specified by `httpRoute.gateway.name` and `httpRoute.gateway.namespace`. The listener section names are chosen in this order:
+
+1. If `httpRoute.gateway.httpSectionName` is set and you reuse an external Gateway (`httpRoute.gateway.create=false`), HTTP redirect routes use that exact listener name.
+2. If `httpRoute.gateway.exactSectionName` is set and you reuse an external Gateway, all generated HTTPRoutes use that exact listener name.
+3. If `httpRoute.gateway.sectionName` is set, the chart treats it as a prefix and appends the route-specific suffixes, for example `${sectionName}-proxy-https` or `${sectionName}-collabora-http`.
+4. If none of the overrides are set and `httpRoute.gateway.create` is `true`, the chart creates the Gateway with its default per-component listener names.
 
 ## Setting Up Gateway API with Talos, Cilium, and cert-manager
 
