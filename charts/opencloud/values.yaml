@@ -198,7 +198,7 @@ webExtensions:
     # Importer extension
     importer:
       enabled: true
-      tag: importer-1.0.0
+      tag: importer-2.0.0
     # JSON Viewer extension
     jsonviewer:
       enabled: true
