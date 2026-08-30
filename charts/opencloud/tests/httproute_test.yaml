@@ -23,6 +23,52 @@ tests:
           value: RELEASE-NAME-opencloud-proxy-https
         documentIndex: 1
 
+  - it: OpenCloud HTTPRoutes keep the legacy sectionName prefix behavior
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.sectionName: shared
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: shared-proxy-http
+        documentIndex: 0
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: shared-proxy-https
+        documentIndex: 1
+
+  - it: OpenCloud HTTPRoutes can share one exact external listener name
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.exactSectionName: shared-listener
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: shared-listener
+        documentIndex: 0
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: shared-listener
+        documentIndex: 1
+
+  - it: OpenCloud redirect routes can use a dedicated exact HTTP listener name
+    template: opencloud/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.gateway.exactSectionName: shared-https
+      httpRoute.gateway.httpSectionName: shared-http
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: shared-http
+        documentIndex: 0
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: shared-https
+        documentIndex: 1
+
   - it: Collabora HTTPRoute is created when httpRoute and collabora are enabled
     template: collabora/httproute.yaml
     set:
@@ -33,6 +79,22 @@ tests:
           count: 2
       - isKind:
           of: HTTPRoute
+
+  - it: Collabora HTTPRoutes can share one exact external listener name
+    template: collabora/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      collabora.enabled: true
+      httpRoute.gateway.exactSectionName: shared-listener
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: shared-listener
+        documentIndex: 0
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: shared-listener
+        documentIndex: 1
 
   - it: Collaboration HTTPRoute is created when httpRoute and collaboration are enabled
     template: collaboration/httproute.yaml

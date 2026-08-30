@@ -127,27 +127,31 @@ Create a fully qualified Tika name.
 Return the default Gateway listener section name for a route.
 */}}
 {{- define "opencloud.httpRoute.defaultSectionName" -}}
-{{- $route := index . "route" -}}
-{{- if index . "tlsEnabled" -}}
-{{- printf "%s-https" $route -}}
-{{- else -}}
-{{- printf "%s-http" $route -}}
-{{- end -}}
+{{- $root := index . "root" -}}
+{{- $suffix := index . "suffix" -}}
+{{- printf "%s-%s" (include "opencloud.fullname" $root) $suffix -}}
 {{- end -}}
 
 {{/*
 Return the sectionName for an HTTPRoute.
-Uses a custom gateway.sectionName when set. Otherwise, when the chart creates
-the Gateway, fall back to the route-specific listener name. If no Gateway is
+For external Gateways, a redirect route can use gateway.httpSectionName and all
+routes can use gateway.exactSectionName as exact listener names. Otherwise,
+gateway.sectionName keeps the legacy prefix behavior. When the chart creates
+the Gateway, fall back to the chart-managed listener name. If no Gateway is
 created, leave sectionName empty so an external Gateway can choose freely.
 */}}
 {{- define "opencloud.httpRoute.sectionName" -}}
 {{- $root := index . "root" -}}
-{{- $route := index . "route" -}}
-{{- if $root.Values.httpRoute.gateway.sectionName -}}
-{{- $root.Values.httpRoute.gateway.sectionName -}}
+{{- $suffix := index . "suffix" -}}
+{{- $isHttpRedirect := index . "isHttpRedirect" | default false -}}
+{{- if and (not $root.Values.httpRoute.gateway.create) $isHttpRedirect $root.Values.httpRoute.gateway.httpSectionName -}}
+{{- $root.Values.httpRoute.gateway.httpSectionName -}}
+{{- else if and (not $root.Values.httpRoute.gateway.create) $root.Values.httpRoute.gateway.exactSectionName -}}
+{{- $root.Values.httpRoute.gateway.exactSectionName -}}
+{{- else if $root.Values.httpRoute.gateway.sectionName -}}
+{{- printf "%s-%s" $root.Values.httpRoute.gateway.sectionName $suffix -}}
 {{- else if $root.Values.httpRoute.gateway.create -}}
-{{- include "opencloud.httpRoute.defaultSectionName" (dict "route" $route "tlsEnabled" $root.Values.global.tls.enabled) -}}
+{{- include "opencloud.httpRoute.defaultSectionName" (dict "root" $root "suffix" $suffix) -}}
 {{- end -}}
 {{- end -}}
 

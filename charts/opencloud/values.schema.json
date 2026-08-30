@@ -640,6 +640,9 @@
             "sectionName": {
               "type": "string"
             },
+            "exactSectionName": {
+              "type": "string"
+            },
             "httpSectionName": {
               "type": "string"
             }

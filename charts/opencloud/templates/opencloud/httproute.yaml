@@ -9,10 +9,9 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- if .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ .Values.httpRoute.gateway.sectionName }}-proxy-http
-      {{- else if .Values.httpRoute.gateway.create }}
-      sectionName: {{ include "opencloud.fullname" . }}-proxy-http
+      {{- $sectionName := include "opencloud.httpRoute.sectionName" (dict "root" . "suffix" "proxy-http" "isHttpRedirect" true) }}
+      {{- if $sectionName }}
+      sectionName: {{ $sectionName }}
       {{- end }}
   hostnames:
     - {{ include "opencloud.domain" . | quote }}
@@ -34,10 +33,9 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- if .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ .Values.httpRoute.gateway.sectionName }}-proxy-https
-      {{- else if .Values.httpRoute.gateway.create }}
-      sectionName: {{ include "opencloud.fullname" . }}-proxy-https
+      {{- $sectionName := include "opencloud.httpRoute.sectionName" (dict "root" . "suffix" "proxy-https") }}
+      {{- if $sectionName }}
+      sectionName: {{ $sectionName }}
       {{- end }}
   hostnames:
     - {{ include "opencloud.domain" . | quote }}

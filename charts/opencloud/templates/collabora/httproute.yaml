@@ -10,10 +10,9 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- if .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ .Values.httpRoute.gateway.sectionName }}-collabora-http
-      {{- else if .Values.httpRoute.gateway.create }}
-      sectionName: {{ include "opencloud.fullname" . }}-collabora-http
+      {{- $sectionName := include "opencloud.httpRoute.sectionName" (dict "root" . "suffix" "collabora-http" "isHttpRedirect" true) }}
+      {{- if $sectionName }}
+      sectionName: {{ $sectionName }}
       {{- end }}
   hostnames:
     - {{ .Values.global.domain.collabora | quote }}
@@ -36,10 +35,9 @@ spec:
   parentRefs:
     - name: {{ .Values.httpRoute.gateway.name }}
       namespace: {{ .Values.httpRoute.gateway.namespace | default .Release.Namespace }}
-      {{- if .Values.httpRoute.gateway.sectionName }}
-      sectionName: {{ .Values.httpRoute.gateway.sectionName }}-collabora-https
-      {{- else if .Values.httpRoute.gateway.create }}
-      sectionName: {{ include "opencloud.fullname" . }}-collabora-https
+      {{- $sectionName := include "opencloud.httpRoute.sectionName" (dict "root" . "suffix" "collabora-https") }}
+      {{- if $sectionName }}
+      sectionName: {{ $sectionName }}
       {{- end }}
   hostnames:
     - {{ .Values.global.domain.collabora | quote }}
