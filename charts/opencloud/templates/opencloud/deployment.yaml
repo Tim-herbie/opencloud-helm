@@ -207,7 +207,7 @@ spec:
             # OpenCloud URL
             {{- /* The built-in IDP requires an https issuer URL. With Gateway TLS termination the public URL is https even when internal TLS (global.tls.enabled) is off, so only fall back to http when the IDP is excluded (external OIDC). */}}
             - name: OC_URL
-              value: "{{ if or .Values.global.tls.enabled (not (has "idp" (.Values.opencloud.excludeServices | default (list)))) }}https{{ else }}http{{ end }}://{{ include "opencloud.domain" . }}"
+              value: "{{ if or .Values.global.tls.enabled .Values.global.tls.external (not (has "idp" (.Values.opencloud.excludeServices | default (list)))) }}https{{ else }}http{{ end }}://{{ include "opencloud.domain" . }}"
             # Available roles
             - name: GRAPH_AVAILABLE_ROLES
               value: {{ .Values.opencloud.graphAvailableRoles | quote }}

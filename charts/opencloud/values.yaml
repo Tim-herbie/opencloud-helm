@@ -31,6 +31,8 @@ global:
 
   # TLS settings for secure connections
   tls:
+    # External gateway uses TLS (set to false if not providing HTTPS endpoints for users)
+    external: true
     # Enable TLS (set to false when using gateway TLS termination externally)
     enabled: false
     # secretName for TLS certificate
