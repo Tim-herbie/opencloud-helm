@@ -38,7 +38,7 @@ OpenCloud is a cloud collaboration platform that provides file sync and share, d
 | 7.2.0            | 2.4.4 |
 | 7.3.0            | 2.4.5, 2.4.6 |
 | 7.4.0            | 2.4.7 |
-| 7.5.0            | 3.0.0 |
+| 7.5.0            | 3.0.0, 3.0.1 |
 
 
 ## 💡 Contributing
@@ -117,7 +117,7 @@ For deploying the full stack with FluxCD (external Keycloak, OpenLDAP, ClamAV), 
   ```sh
   helm install opencloud \
     oci://ghcr.io/tim-herbie/opencloud-helm/opencloud \
-    --version 3.0.0 \
+    --version 3.0.1 \
     --namespace opencloud \
     --create-namespace
   ```

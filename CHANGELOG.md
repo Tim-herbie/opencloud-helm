@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 <!-- release-bot:start -->
 
+## [3.0.1] - 2026-09-04
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- None
+
+### Chore / Docs / CI / Other
+- [#164](https://github.com/Tim-herbie/opencloud-helm/pull/164) Preserve storage users mount ID during legacy migration
+
+
 ## [3.0.0] - 2026-08-30
 
 ### Breaking Changes
