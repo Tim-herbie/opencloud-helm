@@ -242,7 +242,7 @@ collabora:
     registry: docker.io
     repository: collabora/code
     pullPolicy: IfNotPresent
-    tag: 26.04.3.1.1
+    tag: 26.04.3.2.1
   proofKey:
     image:
       registry: docker.io
