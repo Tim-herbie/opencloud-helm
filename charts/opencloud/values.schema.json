@@ -29,6 +29,9 @@
         "tls": {
           "type": "object",
           "properties": {
+            "external": {
+              "type": "boolean"
+            },
             "enabled": {
               "type": "boolean"
             },
