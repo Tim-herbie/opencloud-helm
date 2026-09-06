@@ -255,6 +255,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `global.domain.collabora` | Domain for Collabora | `collabora.opencloud.test` |
 | `global.domain.companion` | Domain for Companion | `companion.opencloud.test` |
 | `global.domain.wopi` | Domain for WOPI server | `wopiserver.opencloud.test` |
+| `global.tls.external` | Indicate TLS will be provided externally. Configures opencloud to use "https://" URLS | `true` |
 | `global.tls.enabled` | Enable TLS (set to false when using gateway TLS termination externally) | `false` |
 | `global.tls.secretName` | secretName for TLS certificate | `""` |
 | `global.storage.storageClass` | Storage class for persistent volumes | `""` |
