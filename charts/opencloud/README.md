@@ -289,7 +289,9 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.adminPassword` | Admin password | `admin` |
 | `opencloud.createDemoUsers` | Create demo users (default `true` for integrated IDM) | `true` |
 | `opencloud.asyncUploads` | Keep upload sessions available during postprocessing | `true` |
-| `opencloud.excludeServices` | Services to exclude from starting (set `["idp"]` when using external OIDC). The external LDAP env vars (`OC_LDAP_*`, `GRAPH_LDAP_*`, `FRONTEND_LDAP_SERVER_WRITE_ENABLED`) and the external LDAP bind secret (`opencloud.ldap.secretRef`, default `<release-name>-opencloud-ldap`, chart-generated from `opencloud.ldap.adminPassword`) are only used when `idp` is excluded; with the built-in IDP running they are omitted and the bind passwords come from the generated init secret. | `[]` |
+| `opencloud.excludeServices` | Services to exclude from starting. Set `["idp"]` to use an external OIDC provider. Set `["idm"]` when an external LDAP server replaces the bundled IDM. | `[]` |
+| `opencloud.ldap.keepIdm` | Keep the bundled IDM as the user directory when `idp` is excluded. `false`: `OC_LDAP_*` points at `opencloud.ldap.uri`. `true`: accounts stay in IDM. | `false` |
+| `opencloud.ldap.secretRef` | Existing Secret with `reva-ldap-bind-password` / `graph-ldap-bind-password` (used when `idp` is excluded and `ldap.keepIdm` is false) | `""` |
 | `opencloud.theme.urls.imprint` | Imprint URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/legal-notice` |
 | `opencloud.theme.urls.privacy` | Privacy policy URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/data-protection-notice` |
 | `opencloud.theme.urls.accessibility` | Accessibility statement URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/accessibility-statement` |
@@ -463,13 +465,20 @@ opencloud:
 
 
 
-The chart uses the **integrated IDM** by default. To use an external OIDC provider, set `oidc.issuerUrl` and exclude the `idp` service.
+The chart uses the **bundled IDP** (LibreGraph Connect) and **bundled IDM** (LibreIDM LDAP) by default. Those are two different services:
+
+| Piece | What it is | Bundled process | External replacement |
+| ----- | ---------- | --------------- | -------------------- |
+| **IDP** | Login (OIDC) | `idp` | Authentik, Keycloak, Authelia, Auth0, … (`oidc.issuerUrl` + `excludeServices: [idp]`) |
+| **IDM** | User directory (LDAP) | `idm` | OpenLDAP / AD (`OC_LDAP_*` + usually `excludeServices: [idm]`) |
+
+When `excludeServices` contains `idp` and `ldap.keepIdm` is `false`, the chart sets `OC_LDAP_*` from `opencloud.ldap` (default `ldaps://openldap.openldap.svc.cluster.local:636`). Set `opencloud.ldap.keepIdm: true` to keep accounts in the bundled IDM instead.
 
 ### OIDC Settings
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `oidc.issuerUrl` | OIDC Issuer URL (leave empty for integrated IDM) | `""` |
+| `oidc.issuerUrl` | OIDC Issuer URL (leave empty for the bundled IDP) | `""` |
 | `oidc.clientId` | OIDC Client ID | `"web"` |
 | `oidc.accountUrl` | Account management URL (optional; derived from `issuerUrl` if empty) | `""` |
 | `oidc.oidcIdpInsecure` | Disable TLS certificate validation for OIDC provider | `false` |
@@ -483,7 +492,33 @@ The chart uses the **integrated IDM** by default. To use an external OIDC provid
 | `oidc.cors.allowCredentials` | Allow credentials | `"true"` |
 | `oidc.cors.maxAge` | Max age in seconds | `"3600"` |
 
-#### Example: Using External OIDC Provider
+#### Example: External OIDC + bundled IDM
+
+Login goes to the external OIDC provider. Users autoprovision into IDM.
+
+```yaml
+oidc:
+  issuerUrl: "https://auth.example.com/application/o/opencloud/"
+  clientId: "web"
+  accountUrl: "https://auth.example.com/if/user/#/settings"
+  scope: "openid profile email groups"
+
+opencloud:
+  createDemoUsers: false
+  ldap:
+    keepIdm: true
+  excludeServices:
+    - idp
+  proxyOidcAccessTokenVerifyMethod: "none"
+  proxyRoleAssignmentOidcClaim: "groups"
+  proxyAutoprovisionClaimUsername: "preferred_username"
+  oidc:
+    scope: "openid profile email groups"
+```
+
+#### Example: External OIDC + OpenLDAP
+
+Excluding `idp` with `ldap.keepIdm: false` points LDAP at `opencloud.ldap.uri`. Deploy OpenLDAP yourself (the chart does not ship it).
 
 ```yaml
 oidc:
@@ -494,8 +529,15 @@ oidc:
 opencloud:
   createDemoUsers: false
   excludeServices:
-    - "idp"
+    - idp
+    - idm
+  ldap:
+    uri: "ldaps://openldap.openldap.svc.cluster.local:636"
+    bindDN: "cn=admin,dc=opencloud,dc=eu"
+    adminPassword: "changeme"
 ```
+
+> **Note:** Silent token renewal in the Web UI uses a hidden iframe against the IdP. If the IdP sends `X-Frame-Options: DENY` (Authentik default), configure `frame-ancestors` on the **IdP** reverse proxy to allow the OpenCloud origin. That is not a chart setting.
 
 ### Collabora Settings
 

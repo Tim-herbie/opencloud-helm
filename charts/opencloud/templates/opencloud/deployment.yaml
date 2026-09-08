@@ -410,8 +410,9 @@ spec:
               value: {{ printf "%s/.well-known/openid-configuration" (include "opencloud.oidc.issuer" .) | quote }}
             - name: WEB_OIDC_SCOPE
               value: {{ .Values.opencloud.oidc.scope | quote }}
-            {{- /* External LDAP settings are only needed when the built-in IDP is excluded (external OIDC/LDAP setup) */}}
-            {{- if has "idp" (.Values.opencloud.excludeServices | default (list)) }}
+            {{- /* OC_LDAP_* against opencloud.ldap.uri when idp is excluded and ldap.keepIdm is false. */}}
+            {{- $useExternalLdap := and (has "idp" (.Values.opencloud.excludeServices | default (list))) (not .Values.opencloud.ldap.keepIdm) }}
+            {{- if $useExternalLdap }}
             - name: OC_LDAP_SERVER_WRITE_ENABLED
               value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
             - name: GRAPH_LDAP_SERVER_WRITE_ENABLED
@@ -541,10 +542,9 @@ spec:
                   name: {{ $initSecretName }}
                   key: serviceAccountID
             # Per-service LDAP bind passwords
-            {{- if has "idp" (.Values.opencloud.excludeServices | default (list)) }}
-            # External LDAP (built-in IDP excluded): bind against the external
-            # directory using the shared bind secret (opencloud.ldap.secretRef,
-            # or the chart-generated <release-name>-opencloud-ldap).
+            {{- $useExternalLdap := and (has "idp" (.Values.opencloud.excludeServices | default (list))) (not .Values.opencloud.ldap.keepIdm) }}
+            {{- if $useExternalLdap }}
+            # Bind against the external LDAP secret (opencloud.ldap.secretRef, or <release>-opencloud-ldap).
             - name: USERS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -571,9 +571,7 @@ spec:
                   name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
                   key: graph-ldap-bind-password
             {{- else }}
-            # Built-in IDP (default): bind against the internal IDM LDAP using the
-            # generated service user passwords from the init secret — no external
-            # LDAP secret needed.
+            # Bind against the bundled IDM using passwords from the init secret.
             - name: USERS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
