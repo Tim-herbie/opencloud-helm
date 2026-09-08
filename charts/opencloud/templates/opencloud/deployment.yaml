@@ -410,7 +410,7 @@ spec:
               value: {{ printf "%s/.well-known/openid-configuration" (include "opencloud.oidc.issuer" .) | quote }}
             - name: WEB_OIDC_SCOPE
               value: {{ .Values.opencloud.oidc.scope | quote }}
-            {{- /* OC_LDAP_* against opencloud.ldap.uri when idp is excluded and ldap.keepIdm is false. */}}
+            {{- /* OC_LDAP_* against opencloud.ldap.uri when idp is excluded and opencloud.ldap.keepIdm is false. */}}
             {{- $useExternalLdap := and (has "idp" (.Values.opencloud.excludeServices | default (list))) (not .Values.opencloud.ldap.keepIdm) }}
             {{- if $useExternalLdap }}
             - name: OC_LDAP_SERVER_WRITE_ENABLED

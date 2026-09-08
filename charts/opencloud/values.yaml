@@ -357,7 +357,7 @@ opencloud:
     bindDN: "cn=admin,dc=opencloud,dc=eu"
     adminPassword: "admin"  # Must match OpenLDAP adminPassword
     # Secret with reva-ldap-bind-password / graph-ldap-bind-password.
-    # Used when excludeServices contains "idp" and ldap.keepIdm is false.
+    # Used when excludeServices contains "idp" and opencloud.ldap.keepIdm is false.
     # Defaults to <release-name>-opencloud-ldap generated from adminPassword.
     secretRef: ""
     user:

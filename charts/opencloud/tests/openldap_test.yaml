@@ -80,8 +80,8 @@ tests:
 
   # --- LDAP Bind Secret References ---
   # Bundled IDP: bind passwords from the init secret.
-  # idp excluded, ldap.keepIdm false: bind against *-opencloud-ldap; OC_LDAP_* from opencloud.ldap.
-  # idp excluded, ldap.keepIdm true: bind against the init secret; no OC_LDAP_URI.
+  # idp excluded, opencloud.ldap.keepIdm false: bind against *-opencloud-ldap; OC_LDAP_* from opencloud.ldap.
+  # idp excluded, opencloud.ldap.keepIdm true: bind against the init secret; no OC_LDAP_URI.
 
   - it: should not inject OC_LDAP_URI when only issuerUrl is set
     template: opencloud/deployment.yaml
@@ -171,7 +171,7 @@ tests:
             name: OC_EXCLUDE_RUN_SERVICES
             value: "idp"
 
-  - it: should keep bundled IDM when ldap.keepIdm is true and idp is excluded
+  - it: should keep bundled IDM when opencloud.ldap.keepIdm is true and idp is excluded
     template: opencloud/deployment.yaml
     set:
       oidc:
@@ -285,7 +285,7 @@ tests:
           path: stringData.graph-ldap-bind-password
           value: s3cret
 
-  - it: should not render the external LDAP bind secret when ldap.keepIdm is true
+  - it: should not render the external LDAP bind secret when opencloud.ldap.keepIdm is true
     template: opencloud/secrets.yaml
     set:
       opencloud:
