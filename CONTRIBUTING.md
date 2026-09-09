@@ -31,7 +31,35 @@ git checkout -b feature/your-feature-name
 When making changes, please ensure you:
 - Follow Helm best practices
 - Include proper documentation
-- Test your changes with `helm lint` and installation tests
+- Run the required chart validation commands below
+
+#### Required Helm validation
+
+From the repository root, run both commands before opening or updating a PR:
+
+```bash
+helm lint charts/opencloud --strict
+helm unittest charts/opencloud
+```
+
+`helm-unittest` is a Helm plugin. Install it once if it is not available:
+
+```bash
+# The plugin repository does not publish Helm provenance metadata.
+helm plugin install --verify=false https://github.com/helm-unittest/helm-unittest.git
+```
+
+Also render the chart for a basic syntax check:
+
+```bash
+helm template test charts/opencloud >/dev/null
+```
+
+For changes affecting a deployed release, run the Helm integration tests as well:
+
+```bash
+helm test <release-name> --namespace <namespace>
+```
 
 ### 4. Submit a Pull Request
 

@@ -347,17 +347,19 @@ opencloud:
   proxyOidcAccessTokenVerifyMethod: "jwt"
   # LDAP server write enabled (default: true)
   ldapServerWriteEnabled: true
-  # LDAP configuration (used when externalUserManagement is enabled)
+  # LDAP directory used when excludeServices contains "idp".
   ldap:
+    # Keep the bundled IDM as the user directory when idp is excluded.
+    # false: OC_LDAP_* points at opencloud.ldap.uri (external OpenLDAP).
+    # true: accounts stay in the bundled IDM. Do not exclude idm.
+    keepIdm: false
     uri: "ldaps://openldap.openldap.svc.cluster.local:636"
     insecure: true
     bindDN: "cn=admin,dc=opencloud,dc=eu"
     adminPassword: "admin"  # Must match OpenLDAP adminPassword
-    # Name of the secret containing LDAP bind passwords (keys: reva-ldap-bind-password,
-    # graph-ldap-bind-password). Only used when the built-in IDP is excluded
-    # (opencloud.excludeServices contains "idp", i.e. external OIDC/LDAP setup).
-    # If not set, defaults to <release-name>-opencloud-ldap, which the chart
-    # generates from adminPassword in that case.
+    # Secret with reva-ldap-bind-password / graph-ldap-bind-password.
+    # Used when excludeServices contains "idp" and opencloud.ldap.keepIdm is false.
+    # Defaults to <release-name>-opencloud-ldap generated from adminPassword.
     secretRef: ""
     user:
       baseDN: "ou=users,dc=opencloud,dc=eu"
@@ -420,8 +422,10 @@ opencloud:
   asyncUploads: true
   # Additional services to start
   additionalServices: []
-  # Services to exclude from starting
-  # Leave empty so the built-in IDP runs when using integrated IDM
+  # Services to exclude from starting.
+  # Leave empty so the bundled IDP and IDM both run.
+  # Add "idp" to use an external OIDC provider.
+  # Add "idm" when an external LDAP server replaces the bundled IDM.
   excludeServices: [] # necessary that idp runs
   env: []
   envFrom: []
