@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 <!-- release-bot:start -->
 
+## [Unreleased]
+
+### Fixes
+- Add `opencloud.ldap.keepIdm` so external OIDC can keep the bundled IDM (LibreIDM) instead of OpenLDAP. Default is unchanged: `excludeServices: [idp]` still points `OC_LDAP_*` at `openldap.openldap.svc`.
+
+### Upgrade notes
+- None. Existing OpenLDAP installs that exclude `idp` keep working with no new values. The supported external-LDAP layout excludes both `idp` and `idm`.
+- Authentik / Authelia (external OIDC, no OpenLDAP): set `oidc.issuerUrl`, `excludeServices: [idp]`, and `opencloud.ldap.keepIdm: true`. Do **not** exclude `idm`.
+
 ## [3.0.0] - 2026-08-30
 
 ### Breaking Changes

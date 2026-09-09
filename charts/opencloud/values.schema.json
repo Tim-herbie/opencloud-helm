@@ -334,6 +334,14 @@
         "asyncUploads": {
           "type": "boolean"
         },
+        "ldap": {
+          "type": "object",
+          "properties": {
+            "keepIdm": {
+              "type": "boolean"
+            }
+          }
+        },
         "antivirus": {
           "type": "object",
           "properties": {

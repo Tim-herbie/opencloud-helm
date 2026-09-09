@@ -1,4 +1,11 @@
 {{- if .Values.opencloud.enabled }}
+{{- /* LDAP directory selection: external OpenLDAP vs bundled IDM (LibreIDM). */}}
+{{- $excludeServices := .Values.opencloud.excludeServices | default (list) }}
+{{- $keepIdm := .Values.opencloud.ldap.keepIdm | default false }}
+{{- $useExternalLdap := and (has "idp" $excludeServices) (not $keepIdm) }}
+{{- if and $keepIdm (has "idm" $excludeServices) }}
+{{- fail "opencloud.ldap.keepIdm=true requires the bundled IDM to run: remove \"idm\" from opencloud.excludeServices" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -410,8 +417,8 @@ spec:
               value: {{ printf "%s/.well-known/openid-configuration" (include "opencloud.oidc.issuer" .) | quote }}
             - name: WEB_OIDC_SCOPE
               value: {{ .Values.opencloud.oidc.scope | quote }}
-            {{- /* External LDAP settings are only needed when the built-in IDP is excluded (external OIDC/LDAP setup) */}}
-            {{- if has "idp" (.Values.opencloud.excludeServices | default (list)) }}
+            {{- /* OC_LDAP_* against opencloud.ldap.uri when idp is excluded and opencloud.ldap.keepIdm is false. */}}
+            {{- if $useExternalLdap }}
             - name: OC_LDAP_SERVER_WRITE_ENABLED
               value: {{ .Values.opencloud.ldapServerWriteEnabled | quote }}
             - name: GRAPH_LDAP_SERVER_WRITE_ENABLED
@@ -541,10 +548,8 @@ spec:
                   name: {{ $initSecretName }}
                   key: serviceAccountID
             # Per-service LDAP bind passwords
-            {{- if has "idp" (.Values.opencloud.excludeServices | default (list)) }}
-            # External LDAP (built-in IDP excluded): bind against the external
-            # directory using the shared bind secret (opencloud.ldap.secretRef,
-            # or the chart-generated <release-name>-opencloud-ldap).
+            {{- if $useExternalLdap }}
+            # Bind against the external LDAP secret (opencloud.ldap.secretRef, or <release>-opencloud-ldap).
             - name: USERS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -571,9 +576,7 @@ spec:
                   name: {{ .Values.opencloud.ldap.secretRef | default (printf "%s-ldap" (include "opencloud.opencloud.fullname" .)) }}
                   key: graph-ldap-bind-password
             {{- else }}
-            # Built-in IDP (default): bind against the internal IDM LDAP using the
-            # generated service user passwords from the init secret — no external
-            # LDAP secret needed.
+            # Bind against the bundled IDM using passwords from the init secret.
             - name: USERS_LDAP_BIND_PASSWORD
               valueFrom:
                 secretKeyRef:

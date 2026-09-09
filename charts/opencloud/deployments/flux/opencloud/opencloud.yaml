@@ -134,11 +134,12 @@ spec:
         enabled: false
       # Keep TUS uploads available until policy and antivirus postprocessing completes.
       asyncUploads: true
-      # Using external Keycloak OIDC + external OpenLDAP: the bundled IDM/idp
-      # service must NOT run, so exclude it. Demo users are also disabled.
+      # Using external Keycloak OIDC + external OpenLDAP: the bundled idm/idp
+      # services must NOT run, so exclude them. Demo users are also disabled.
       createDemoUsers: false
       excludeServices:
         - "idp"
+        - "idm"
       persistence:
         data:
           accessMode: ReadWriteMany  
@@ -373,11 +374,12 @@ spec:
 #       logLevel: info
 #       migration:
 #         enabled: false
-#       # Using external Keycloak OIDC + external OpenLDAP: the bundled IDM/idp
-#       # service must NOT run, so exclude it. Demo users are also disabled.
+#       # Using external Keycloak OIDC + external OpenLDAP: the bundled idm/idp
+#       # services must NOT run, so exclude them. Demo users are also disabled.
 #       createDemoUsers: false
 #       excludeServices:
 #         - "idp"
+#         - "idm"
 #       persistence:
 #         data:
 #           accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate

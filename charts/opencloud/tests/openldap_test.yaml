@@ -79,11 +79,25 @@ tests:
             value: "https://custom.example.com/account"
 
   # --- LDAP Bind Secret References ---
-  # With the built-in IDP (default), the per-service LDAP bind passwords come from
-  # the generated init secret (<release>-opencloud-opencloud-init) — no external
-  # LDAP secret is needed. When the built-in IDP is excluded (external OIDC/LDAP
-  # setup), they come from the external LDAP bind secret
-  # <release>-opencloud-opencloud-ldap (overridable via opencloud.ldap.secretRef).
+  # Bundled IDP: bind passwords from the init secret.
+  # idp excluded, opencloud.ldap.keepIdm false: bind against *-opencloud-ldap; OC_LDAP_* from opencloud.ldap.
+  # idp excluded, opencloud.ldap.keepIdm true: bind against the init secret; no OC_LDAP_URI.
+
+  - it: should not inject OC_LDAP_URI when only issuerUrl is set
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://auth.example.com/application/o/opencloud/
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_LDAP_URI
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_EXCLUDE_RUN_SERVICES
+            value: "idp"
 
   - it: should use the init secret for LDAP bind passwords with the built-in IDP (default)
     template: opencloud/deployment.yaml
@@ -137,6 +151,117 @@ tests:
                 name: RELEASE-NAME-opencloud-opencloud-ldap
                 key: graph-ldap-bind-password
 
+  - it: should inject OC_LDAP_URI when issuerUrl is set and idp is excluded
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      opencloud:
+        excludeServices:
+          - idp
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_LDAP_URI
+            value: "ldaps://openldap.openldap.svc.cluster.local:636"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_EXCLUDE_RUN_SERVICES
+            value: "idp"
+
+  - it: should keep the external LDAP configuration and custom bind secret when idp and idm are excluded
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      opencloud:
+        excludeServices:
+          - idp
+          - idm
+        ldap:
+          secretRef: ldap-bind-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_EXCLUDE_RUN_SERVICES
+            value: "idp,idm"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_LDAP_URI
+            value: "ldaps://openldap.openldap.svc.cluster.local:636"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: USERS_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ldap-bind-secrets
+                key: reva-ldap-bind-password
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GRAPH_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ldap-bind-secrets
+                key: graph-ldap-bind-password
+
+  - it: should keep bundled IDM when opencloud.ldap.keepIdm is true and idp is excluded
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://auth.example.com/application/o/opencloud/
+      opencloud:
+        ldap:
+          keepIdm: true
+        excludeServices:
+          - idp
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_LDAP_URI
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_EXCLUDE_RUN_SERVICES
+            value: "idp"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: USERS_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-init
+                key: idmRevaServicePassword
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GRAPH_LDAP_BIND_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-opencloud-opencloud-init
+                key: idmServicePassword
+
+  - it: should reject keepIdm when the bundled IDM is excluded
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://auth.example.com/application/o/opencloud/
+      opencloud:
+        ldap:
+          keepIdm: true
+        excludeServices:
+          - idp
+          - idm
+    asserts:
+      - failedTemplate:
+          errorPattern: 'opencloud\.ldap\.keepIdm=true requires the bundled IDM to run'
+
   # --- OC_URL scheme ---
   # The built-in IDP requires an https issuer URL, so OC_URL must be https
   # whenever the IDP runs (Gateway terminates TLS), even if global.tls.enabled
@@ -154,6 +279,10 @@ tests:
   - it: should use http OC_URL when the built-in IDP is excluded and TLS is disabled
     template: opencloud/deployment.yaml
     set:
+      global:
+        tls:
+          enabled: false
+          external: false
       opencloud:
         excludeServices:
           - idp
@@ -196,6 +325,20 @@ tests:
       - equal:
           path: stringData.graph-ldap-bind-password
           value: s3cret
+
+  - it: should not render the external LDAP bind secret when opencloud.ldap.keepIdm is true
+    template: opencloud/secrets.yaml
+    set:
+      opencloud:
+        existingSecret: existing
+        excludeServices:
+          - idp
+        ldap:
+          keepIdm: true
+          adminPassword: s3cret
+    asserts:
+      - hasDocuments:
+          count: 0
 
   # --- S3 Credentials Secret References ---
 
