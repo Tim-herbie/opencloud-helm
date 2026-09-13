@@ -155,7 +155,7 @@ tika:
   # Resources allocation
   resources:
     requests:
-      cpu: 1
+      cpu: 100m
       memory: 1Gi
     limits:
       cpu: 4

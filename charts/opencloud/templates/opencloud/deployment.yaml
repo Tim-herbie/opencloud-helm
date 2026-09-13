@@ -198,6 +198,10 @@ spec:
         - name: idm-cert-init
           image: {{ $idmCert.image | quote }}
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: true
           command:
             - /bin/sh
             - -c
@@ -205,6 +209,10 @@ spec:
               set -e
               IDM_DIR=/var/lib/opencloud/idm
               mkdir -p "${IDM_DIR}"
+              # Ensure ownership/permissions so the non-root IDM process can open/create BoltDB
+              chown -R 1000:1000 "${IDM_DIR}" || true
+              chmod 700 "${IDM_DIR}" || true
+              echo "[idm-cert-init] before changes:"; ls -la "${IDM_DIR}" || true
               if [ -f "${IDM_DIR}/ldap.crt" ]; then
                 if openssl x509 -in "${IDM_DIR}/ldap.crt" -checkend 0 >/dev/null 2>&1; then
                   echo "IDM certificate still valid, nothing to do"
@@ -221,6 +229,10 @@ spec:
                 -keyout "${IDM_DIR}/ldap.key" -out "${IDM_DIR}/ldap.crt"
               chown 1000:1000 "${IDM_DIR}/ldap.crt" "${IDM_DIR}/ldap.key" || true
               chmod 600 "${IDM_DIR}/ldap.key" || true
+              # Ensure the IDM data directory and any existing BoltDB are owned by the opencloud user
+              chown -R 1000:1000 "${IDM_DIR}" || true
+              chmod 700 "${IDM_DIR}" || true
+              echo "[idm-cert-init] after changes:"; ls -la "${IDM_DIR}" || true
           volumeMounts:
             - name: data
               mountPath: /var/lib/opencloud
