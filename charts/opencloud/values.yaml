@@ -370,7 +370,22 @@ opencloud:
       createBaseDN: "ou=custom,ou=groups,dc=opencloud,dc=eu"
       schema:
         id: "opencloudUUID"
-    disableUserMechanism: "attribute"
+      disableUserMechanism: "attribute"
+    # IDM certificate init container configuration
+    # When the bundled IDM is enabled (not excluded via opencloud.excludeServices),
+    # an init container can ensure `/var/lib/opencloud/idm/ldap.crt` and
+    # `/var/lib/opencloud/idm/ldap.key` exist and regenerate them on pod start
+    # if the certificate is missing or expired. The init container only runs
+    # when `idm` is not present in `opencloud.excludeServices`.
+    idmCert:
+      # Image that provides `openssl` for certificate generation. The image
+      # should include the `openssl` binary. Default uses a lightweight
+      # Alpine image with openssl.
+      image: "alpine/openssl:3.5.8"
+      # Self-signed certificate validity in days
+      daysValid: 365
+      # Common Name for the generated certificate
+      commonName: ""
   # Graph LDAP refint enabled (default: true)
   graphLdapRefintEnabled: true
   # Graph LDAP server UUID (default: false for external IdP)
