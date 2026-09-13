@@ -192,6 +192,51 @@ spec:
             - name: web-extensions-init-script
               mountPath: /scripts
         {{- end }}
+        {{- /* Init container to ensure IDM LDAP certificate exists and is valid */}}
+        {{- if not (has "idm" $excludeServices) }}
+        {{- $idmCert := default (dict "image" "alpine/openssl:3.5.8" "daysValid" 365 "commonName" "") .Values.opencloud.idmCert }}
+        - name: idm-cert-init
+          image: {{ $idmCert.image | quote }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              IDM_DIR=/var/lib/opencloud/idm
+              mkdir -p "${IDM_DIR}"
+              # Ensure ownership/permissions so the non-root IDM process can open/create BoltDB
+              chown -R 1000:1000 "${IDM_DIR}" || true
+              chmod 700 "${IDM_DIR}" || true
+              echo "[idm-cert-init] before changes:"; ls -la "${IDM_DIR}" || true
+              if [ -f "${IDM_DIR}/ldap.crt" ]; then
+                if openssl x509 -in "${IDM_DIR}/ldap.crt" -checkend 0 >/dev/null 2>&1; then
+                  echo "IDM certificate still valid, nothing to do"
+                  exit 0
+                else
+                  echo "IDM certificate expired or invalid, removing"
+                  rm -f "${IDM_DIR}/ldap.crt" "${IDM_DIR}/ldap.key" || true
+                fi
+              else
+                echo "No IDM certificate found, generating new one"
+              fi
+              openssl req -x509 -nodes -newkey rsa:2048 -days {{ $idmCert.daysValid }} \
+                -subj "/CN={{ default (printf "%s-idm.local" .Release.Name) $idmCert.commonName }}" \
+                -keyout "${IDM_DIR}/ldap.key" -out "${IDM_DIR}/ldap.crt"
+              chown 1000:1000 "${IDM_DIR}/ldap.crt" "${IDM_DIR}/ldap.key" || true
+              chmod 600 "${IDM_DIR}/ldap.key" || true
+              # Ensure the IDM data directory and any existing BoltDB are owned by the opencloud user
+              chown -R 1000:1000 "${IDM_DIR}" || true
+              chmod 700 "${IDM_DIR}" || true
+              echo "[idm-cert-init] after changes:"; ls -la "${IDM_DIR}" || true
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/opencloud
+        {{- end }}
       containers:
         - name: opencloud
           image: {{ include "opencloud.image" (dict "imageValues" .Values.image "global" .Values.global) | quote }}
