@@ -19,7 +19,7 @@ spec:
       protocol: TCP
       name: nats
     {{- end }}
-    - port: 9205
+    - port: 9124
       targetPort: metrics
       protocol: TCP
       name: metrics
