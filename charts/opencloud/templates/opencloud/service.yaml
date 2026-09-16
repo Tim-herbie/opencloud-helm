@@ -19,6 +19,10 @@ spec:
       protocol: TCP
       name: nats
     {{- end }}
+    - port: 9205
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
   selector:
     {{- include "opencloud.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: opencloud

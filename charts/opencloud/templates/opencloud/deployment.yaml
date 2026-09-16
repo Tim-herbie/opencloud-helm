@@ -750,6 +750,8 @@ spec:
               containerPort: 9200
             - name: nats
               containerPort: 9233
+            - name: metrics
+              containerPort: 9205
           startupProbe:
             tcpSocket:
               port: 9200
