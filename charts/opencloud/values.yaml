@@ -390,6 +390,8 @@ opencloud:
   graphLdapRefintEnabled: true
   # Graph LDAP server UUID (default: false for external IdP)
   graphLdapServerUuid: "false"
+  # Graph debug address
+  graphDebugAddr: "0.0.0.0:9124"
   # Settings setup default assignments (default: false)
   settingsSetupDefaultAssignments: "false"
   # Proxy autoprovision claim username (default: sub)

@@ -13,7 +13,7 @@ spec:
     matchLabels:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}
   endpoints:
-    - port: http
+    - port: metrics
       path: /metrics
       interval: {{ .Values.monitoring.interval | default "30s" }}
       scrapeTimeout: {{ .Values.monitoring.scrapeTimeout | default "10s" }}

@@ -500,6 +500,9 @@ spec:
             - name: FRONTEND_FULL_TEXT_SEARCH_ENABLED
               value: {{ .Values.opencloud.frontendFullTextSearchEnabled | quote }}
             {{- end }}
+            # Proemtheus metrics
+            - name: GRAPH_DEBUG_ADDR
+              value: {{ .Values.opencloud.graphDebugAddr | quote }}
             {{- /* Runtime secrets — injected directly, no opencloud init needed */ -}}
             {{- $initSecretName := .Values.opencloud.initSecrets.existingSecret | default (printf "%s-init" (include "opencloud.opencloud.fullname" .)) }}
             - name: OC_JWT_SECRET
@@ -750,6 +753,8 @@ spec:
               containerPort: 9200
             - name: nats
               containerPort: 9233
+            - name: metrics
+              containerPort: 9124
           startupProbe:
             tcpSocket:
               port: 9200
