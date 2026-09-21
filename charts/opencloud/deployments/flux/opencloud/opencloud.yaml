@@ -186,6 +186,80 @@ spec:
         proxyRoleQuotas:
           'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
           '2aadd357-682c-406b-8874-293091995fdd': 0
+        # Creation offer for Collabora formats. Without this override the
+        # built-in OpenCloud defaults apply (ODT/ODS/ODP only, no DOCX/XLSX).
+        appRegistry:
+          mimetypes:
+            - mime_type: application/pdf
+              extension: pdf
+              name: PDF
+              description: PDF document
+              icon: ''
+              default_app: ''
+              allow_creation: false
+            - mime_type: application/vnd.oasis.opendocument.text
+              extension: odt
+              name: OpenDocument Text
+              description: OpenDocument text document
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.oasis.opendocument.spreadsheet
+              extension: ods
+              name: OpenDocument Spreadsheet
+              description: OpenDocument spreadsheet document
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.oasis.opendocument.presentation
+              extension: odp
+              name: OpenDocument Presentation
+              description: OpenDocument presentation document
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+              extension: docx
+              name: Microsoft Word
+              description: Microsoft Word document
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+              extension: xlsx
+              name: Microsoft Excel
+              description: Microsoft Excel spreadsheet
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.openxmlformats-officedocument.presentationml.presentation
+              extension: pptx
+              name: Microsoft PowerPoint
+              description: Microsoft PowerPoint presentation
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: text/markdown
+              extension: md
+              name: Markdown file
+              description: Markdown file
+              icon: ''
+              default_app: ''
+              allow_creation: true
+            - mime_type: text/plain
+              extension: txt
+              name: Text file
+              description: Plain text file
+              icon: ''
+              default_app: ''
+              allow_creation: true
+            - mime_type: application/vnd.jupyter
+              extension: ipynb
+              name: Jupyter Notebook
+              description: Jupyter Notebook
+              icon: ''
+              default_app: ''
+              allow_creation: true
       antivirus:
         enabled: true
         infectedFileHandling: abort
