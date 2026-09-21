@@ -59,11 +59,14 @@ tests:
           path: data["proxy.yaml"]
           pattern: "backend: http://RELEASE-NAME-opencloud-yjs:1234"
 
-  - it: leaves the app registry unmounted by default
+  - it: renders the default app registry
     template: opencloud/configmap.yaml
     asserts:
-      - notExists:
+      - exists:
           path: data["app-registry.yaml"]
+      - matchRegex:
+          path: data["app-registry.yaml"]
+          pattern: "extension: docx"
 
   - it: mounts an explicit app registry override
     template: opencloud/deployment.yaml

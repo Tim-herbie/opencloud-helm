@@ -8,8 +8,7 @@ metadata:
     app.kubernetes.io/component: opencloud
 data:
 {{- if not (empty .Values.opencloud.config.appRegistry) }}
-  # Optional app registry override. With no override, OpenCloud's built-in
-  # defaults are used, matching the Collabora Docker Compose deployment.
+  # App registry MIME creation/default-app policy.
   app-registry.yaml: |-
 {{ toYaml (dict "app_registry" .Values.opencloud.config.appRegistry) | nindent 4 }}
 

@@ -513,8 +513,80 @@ opencloud:
   # Configuration files
   config:
     theme: "owncloud"
-    # App registry configuration
-    appRegistry: {}
+    # MIME creation/default-app policy. This is enabled by default so
+    # Collabora can create ODT/ODS/ODP/DOCX/XLSX/PPTX files.
+    appRegistry:
+      mimetypes:
+        - mime_type: application/pdf
+          extension: pdf
+          name: PDF
+          description: PDF document
+          icon: ''
+          default_app: ''
+          allow_creation: false
+        - mime_type: application/vnd.oasis.opendocument.text
+          extension: odt
+          name: OpenDocument Text
+          description: OpenDocument text document
+          icon: ''
+          default_app: Collabora
+          allow_creation: true
+        - mime_type: application/vnd.oasis.opendocument.spreadsheet
+          extension: ods
+          name: OpenDocument Spreadsheet
+          description: OpenDocument spreadsheet document
+          icon: ''
+          default_app: Collabora
+          allow_creation: true
+        - mime_type: application/vnd.oasis.opendocument.presentation
+          extension: odp
+          name: OpenDocument Presentation
+          description: OpenDocument presentation document
+          icon: ''
+          default_app: Collabora
+          allow_creation: true
+        - mime_type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+          extension: docx
+          name: Microsoft Word
+          description: Microsoft Word document
+          icon: ''
+          default_app: Collabora
+          allow_creation: true
+        - mime_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+          extension: xlsx
+          name: Microsoft Excel
+          description: Microsoft Excel spreadsheet
+          icon: ''
+          default_app: Collabora
+          allow_creation: true
+        - mime_type: application/vnd.openxmlformats-officedocument.presentationml.presentation
+          extension: pptx
+          name: Microsoft PowerPoint
+          description: Microsoft PowerPoint presentation
+          icon: ''
+          default_app: Collabora
+          allow_creation: true
+        - mime_type: text/markdown
+          extension: md
+          name: Markdown file
+          description: Markdown file
+          icon: ''
+          default_app: ''
+          allow_creation: true
+        - mime_type: text/plain
+          extension: txt
+          name: Text file
+          description: Plain text file
+          icon: ''
+          default_app: ''
+          allow_creation: true
+        - mime_type: application/vnd.jupyter
+          extension: ipynb
+          name: Jupyter Notebook
+          description: Jupyter Notebook
+          icon: ''
+          default_app: ''
+          allow_creation: true
     # CSP configuration
     csp: {}
     # Proxy configuration. A non-empty value replaces the built-in proxy YAML.
