@@ -65,9 +65,18 @@ Using default credentials in production environments poses significant security 
   ✓ HTTPS with TLS termination (cilium-gateway)
   ✓ OIDC authentication (Keycloak)
   ✓ User directory (OpenLDAP)
+{{- if .Values.opencloud.antivirus.enabled }}
   ✓ Virus scanning (ClamAV)
+{{- end }}
+{{- if .Values.collabora.enabled }}
   ✓ Document editing (Collabora)
+{{- end }}
+{{- if .Values.opencloud.policies.enabled }}
   ✓ OPA policies (file type restrictions)
+{{- end }}
+{{- if .Values.yjs.enabled }}
+  ✓ Real-time collaboration (Yjs: Markdown, .ocnote)
+{{- end }}
 
 =====================================================
   IMPORTANT: Production Readiness Checklist
@@ -89,27 +98,20 @@ Using default credentials in production environments poses significant security 
 The following insecure options are currently ENABLED for development
 and MUST be disabled (set to false) in production:
 
-{{- if .Values.oidc }}
-  - oidc.oidcIdpInsecure: {{ .Values.oidc.oidcIdpInsecure }}
-    (Disables TLS certificate validation for OIDC provider)
-{{- end }}
+  - opencloud.insecure: {{ .Values.opencloud.insecure }}
+    (OpenCloud accepts self-signed certificates)
 
-{{- if .Values.opencloud }}
-  - opencloud.ocHttpApiInsecure: {{ .Values.opencloud.ocHttpApiInsecure }}
-    (Disables TLS certificate validation for OpenCloud HTTP APIs)
-{{- end }}
-
-{{- if and .Values.opencloud .Values.opencloud.ldap }}
+{{- if .Values.opencloud.ldap.insecure }}
   - opencloud.ldap.insecure: {{ .Values.opencloud.ldap.insecure }}
     (Disables TLS certificate validation for LDAP connections)
 {{- end }}
 
-{{- if and .Values.features .Values.features.appsIntegration .Values.features.appsIntegration.wopiIntegration .Values.features.appsIntegration.wopiIntegration.officeSuites }}
-  - collabora.insecure: {{ index .Values.features.appsIntegration.wopiIntegration.officeSuites 0 "insecure" }}
-    (Disables TLS certificate validation for Collabora)
-
-  - collabora.disableProof: {{ index .Values.features.appsIntegration.wopiIntegration.officeSuites 0 "disableProof" }}
-    (Disables WOPI proof key verification)
+{{- if .Values.collabora.enabled }}
+  - collabora.ssl.enabled: {{ .Values.collabora.ssl.enabled }}
+    (Collabora serves plain HTTP behind the TLS-terminating route)
+  - collabora.ssl.verification: {{ .Values.collabora.ssl.verification }}
+    (Collabora verifies the OpenCloud WOPI TLS certificate; set false only
+    with self-signed certificates)
 {{- end }}
 
 For more information, please refer to the OpenCloud documentation:

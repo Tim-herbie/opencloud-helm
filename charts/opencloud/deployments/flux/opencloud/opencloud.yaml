@@ -246,13 +246,6 @@ spec:
               icon: ''
               default_app: ''
               allow_creation: true
-            - mime_type: text/plain
-              extension: txt
-              name: Text file
-              description: Plain text file
-              icon: ''
-              default_app: ''
-              allow_creation: true
             - mime_type: application/vnd.jupyter
               extension: ipynb
               name: Jupyter Notebook
