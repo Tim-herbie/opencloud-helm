@@ -1,0 +1,84 @@
+suite: Yjs real-time collaboration tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/configmap.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+  - yjs/deployment.yaml
+  - yjs/service.yaml
+
+tests:
+  - it: creates Yjs by default
+    template: yjs/deployment.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+
+  - it: creates Yjs and configures the browser when enabled
+    template: yjs/deployment.yaml
+    set:
+      yjs:
+        enabled: true
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.containers[0].env[0]
+          value:
+            name: PORT
+            value: "1234"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENCLOUD_URL
+            value: http://RELEASE-NAME-opencloud-opencloud:9200
+
+  - it: creates the Yjs service when enabled
+    template: yjs/service.yaml
+    set:
+      yjs.enabled: true
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.ports[0].port
+          value: 1234
+
+  - it: adds the Yjs WebSocket route when enabled
+    template: opencloud/configmap.yaml
+    set:
+      yjs.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "endpoint: /yjs"
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "backend: http://RELEASE-NAME-opencloud-yjs:1234"
+
+  - it: leaves the app registry unmounted by default
+    template: opencloud/configmap.yaml
+    asserts:
+      - notExists:
+          path: data["app-registry.yaml"]
+
+  - it: mounts an explicit app registry override
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        config:
+          appRegistry:
+            mimetypes:
+              - mime_type: application/vnd.oasis.opendocument.text
+                extension: odt
+                allow_creation: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-files
+            mountPath: /etc/opencloud/app-registry.yaml
+            subPath: app-registry.yaml

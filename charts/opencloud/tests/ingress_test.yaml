@@ -23,7 +23,7 @@ tests:
           of: Ingress
 
   - it: Collaboration Ingress is created when ingress and collabora are enabled
-    template: collaboration/ingress.yaml
+    template: collabora/ingress.yaml
     set:
       ingress.enabled: true
       collabora.enabled: true

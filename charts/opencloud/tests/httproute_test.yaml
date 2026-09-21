@@ -97,10 +97,10 @@ tests:
         documentIndex: 1
 
   - it: Collaboration HTTPRoute is created when httpRoute and collaboration are enabled
-    template: collaboration/httproute.yaml
+    template: collabora/httproute.yaml
     set:
       httpRoute.enabled: true
-      collaboration.enabled: true
+      collabora.enabled: true
     asserts:
       - hasDocuments:
           count: 2

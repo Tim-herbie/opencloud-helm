@@ -126,6 +126,14 @@ spec:
         companion: companion.opencloud.test
       tls:
         enabled: true
+    # Collabora calls the OpenCloud WOPI endpoint over the self-signed test
+    # certificate. Use true in production with a trusted CA.
+    collabora:
+      ssl:
+        verification: false
+    # Enable Yjs for real-time Markdown and .ocnote collaboration.
+    yjs:
+      enabled: true
     opencloud:
       logLevel: info
       # Development uses self-signed certificates. Set false in production.

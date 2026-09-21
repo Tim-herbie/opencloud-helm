@@ -69,6 +69,13 @@ Create a fully qualified OpenCloud name.
 {{- end }}
 
 {{/*
+Create the Yjs service name.
+*/}}
+{{- define "opencloud.yjs.fullname" -}}
+{{- printf "%s-yjs" (include "opencloud.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
 Return the OpenCloud domain
 */}}
 {{- define "opencloud.domain" -}}

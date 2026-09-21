@@ -52,7 +52,7 @@ tests:
           path: spec.template.spec.containers[0].env
           content:
             name: OC_ADD_RUN_SERVICES
-            value: antivirus,postprocessing
+            value: antivirus,postprocessing,collaboration
       - contains:
           path: spec.template.spec.containers[0].env
           content:

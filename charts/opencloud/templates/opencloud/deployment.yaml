@@ -270,7 +270,7 @@ spec:
               value: {{ .Values.opencloud.logColor | quote }}
             - name: OC_LOG_PRETTY
               value: {{ .Values.opencloud.logPretty | quote }}
-            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled .Values.collaboration.enabled }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             - name: COLLABORA_DOMAIN
               value: {{ .Values.global.domain.collabora | quote }}
             - name: COLLABORATION_WOPI_SRC
@@ -292,6 +292,12 @@ spec:
             - name: FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR
               value: "eu.opencloud.api.collaboration"
             {{- end }}
+            {{- if .Values.yjs.enabled }}
+            # The browser uses the public OpenCloud origin; the proxy forwards
+            # /yjs to the in-cluster Yjs WebSocket service.
+            - name: WEB_OPTION_YJS_SERVER_URL
+              value: "wss://{{ include "opencloud.domain" . }}/yjs"
+            {{- end }}
             # Enable services that are not started automatically
             {{- $additional := .Values.opencloud.additionalServices | default (list) }}
             {{- if .Values.opencloud.antivirus.enabled }}
@@ -309,7 +315,7 @@ spec:
                 {{- $additional = append $additional "policies" }}
               {{- end }}
             {{- end }}
-            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled .Values.collaboration.enabled }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
               {{- if not (has "collaboration" $additional) }}
                 {{- $additional = append $additional "collaboration" }}
               {{- end }}
@@ -790,6 +796,11 @@ spec:
             - name: config-files
               mountPath: /etc/opencloud/search.yaml
               subPath: search.yaml
+            {{- if not (empty .Values.opencloud.config.appRegistry) }}
+            - name: config-files
+              mountPath: /etc/opencloud/app-registry.yaml
+              subPath: app-registry.yaml
+            {{- end }}
             - name: config-files
               mountPath: /etc/opencloud/csp.yaml
               subPath: csp.yaml

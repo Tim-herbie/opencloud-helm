@@ -235,6 +235,24 @@ webExtensions:
       tag: pastebin-2.1.0
 
 # =====================================================================
+# REAL-TIME COLLABORATION (YJS)
+# =====================================================================
+
+yjs:
+  # Enables collaborative Markdown and .ocnote editing by default, matching
+  # the current OpenCloud Compose deployment.
+  enabled: true
+  image:
+    registry: docker.io
+    repository: opencloudeu/yjs
+    pullPolicy: IfNotPresent
+    tag: "1.0.0"
+  replicas: 1
+  port: 1234
+  shutdownGracePeriodMs: 15000
+  resources: {}
+
+# =====================================================================
 # COLLABORATION (COLLABORA)
 # =====================================================================
 
@@ -253,6 +271,8 @@ collabora:
       tag: "3.5.8"
   ssl:
     enabled: false
+    # Keep verification enabled by default. For the self-signed test setup,
+    # override this with collabora.ssl.verification=false.
     verification: true
 
   existingSecret: ""

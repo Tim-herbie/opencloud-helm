@@ -3,6 +3,11 @@ templates:
   - _helpers/tpl.yaml
   - collabora/deployment.yaml
   - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
 
 tests:
   # --- Mutual Exclusion ---
