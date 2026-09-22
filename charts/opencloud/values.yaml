@@ -428,6 +428,11 @@ opencloud:
   # Number of replicas (Note: When using multiple replicas, persistence should be disabled
   # or use a storage class that supports ReadWriteMany access mode)
   replicas: 1
+  # Deployment update strategy (default: Recreate - safe for RWO and RWX single-replica).
+  # Set to RollingUpdate only with RWX storage + shared filesystem supporting flock + xattrs.
+  # Even with RWX, Recreate stays active unless type is explicitly set to RollingUpdate.
+  updateStrategy:
+    type: Recreate
   # Log level
   logLevel: info
   # Log color

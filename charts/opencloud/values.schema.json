@@ -304,6 +304,15 @@
           "type": "integer",
           "minimum": 1
         },
+        "updateStrategy": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Recreate", "RollingUpdate"]
+            }
+          }
+        },
         "logLevel": {
           "type": "string",
           "enum": [

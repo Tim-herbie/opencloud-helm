@@ -1,0 +1,75 @@
+suite: OpenCloud deployment strategy tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: uses Recreate by default
+    template: opencloud/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+
+  - it: keeps Recreate when all storage PVCs are RWX
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        persistence:
+          data:
+            accessMode: ReadWriteMany
+        storage:
+          decomposed:
+            persistence:
+              accessMode: ReadWriteMany
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+
+  - it: permits RollingUpdate only when explicitly requested and all PVCs are RWX
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        updateStrategy:
+          type: RollingUpdate
+        persistence:
+          data:
+            accessMode: ReadWriteMany
+        storage:
+          decomposed:
+            persistence:
+              accessMode: ReadWriteMany
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: RollingUpdate
+      - equal:
+          path: spec.strategy.rollingUpdate.maxSurge
+          value: 1
+      - equal:
+          path: spec.strategy.rollingUpdate.maxUnavailable
+          value: 0
+
+  - it: rejects RollingUpdate when a storage PVC is RWO
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        updateStrategy:
+          type: RollingUpdate
+        persistence:
+          data:
+            accessMode: ReadWriteMany
+        storage:
+          decomposed:
+            persistence:
+              accessMode: ReadWriteOnce
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: Recreate

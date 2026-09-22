@@ -142,6 +142,10 @@ spec:
         enabled: false
       # Keep TUS uploads available until policy and antivirus postprocessing completes.
       asyncUploads: true
+      # Recreate is intentional even when the backing PVCs support RWX.
+      # RollingUpdate must be explicitly opted into in addition to RWX storage.
+      updateStrategy:
+        type: Recreate
       # Using external Keycloak OIDC + external OpenLDAP: the bundled idm/idp
       # services must NOT run, so exclude them. Demo users are also disabled.
       createDemoUsers: false
@@ -150,7 +154,7 @@ spec:
         - "idm"
       persistence:
         data:
-          accessMode: ReadWriteMany  
+          accessMode: ReadWriteMany  # RWX is retained; rollout strategy is Recreate by default
       oidc:
         scope: "openid profile email groups"
       # Web UI footer/help links (merged over the built-in theme).
@@ -339,14 +343,13 @@ spec:
         #     enabled: true
         #     size: 60Gi
         #     accessMode: ReadWriteOnce
-        #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
+        #     # accessMode: ReadWriteMany  # RWX; RollingUpdate still requires explicit opt-in
         # --- Decomposed alternative (uncomment to switch) ---
         decomposed:
           persistence:
             enabled: true
             size: 60Gi
-            # accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
-            accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+            accessMode: ReadWriteMany  # RWX is retained; rollout strategy is Recreate by default
         # --- External S3 alternative (uncomment to switch) ---
         # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
         # Reference it via `storage.s3.external.existingSecret` (below).
@@ -447,6 +450,8 @@ spec:
 #         enabled: true
 #     opencloud:
 #       logLevel: info
+#       updateStrategy:
+#         type: Recreate  # default; use RollingUpdate only with RWX and explicit opt-in
 #       migration:
 #         enabled: false
 #       # Using external Keycloak OIDC + external OpenLDAP: the bundled idm/idp
@@ -457,7 +462,7 @@ spec:
 #         - "idm"
 #       persistence:
 #         data:
-#           accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
+#           accessMode: ReadWriteOnce  # RWO; Recreate is the default independently of access mode
 #       oidc:
 #         scope: "openid profile email groups"
 #       ldap:
@@ -477,14 +482,14 @@ spec:
 #         #     enabled: true
 #         #     size: 60Gi
 #         #     accessMode: ReadWriteOnce
-#         #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
+#         #     # accessMode: ReadWriteMany  # RWX; RollingUpdate still requires explicit opt-in
 #         # --- Decomposed alternative (uncomment to switch) ---
 #         decomposed:
 #           persistence:
 #             enabled: true
 #             size: 60Gi
-#             accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
-#             # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+#             accessMode: ReadWriteOnce  # RWO; Recreate is the default independently of access mode
+#             # accessMode: ReadWriteMany  # RWX; RollingUpdate still requires explicit opt-in
 #         # --- External S3 alternative (uncomment to switch) ---
 #         # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
 #         # Reference it via `storage.s3.external.existingSecret` (below).
