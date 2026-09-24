@@ -200,7 +200,7 @@ webExtensions:
     # Importer extension
     importer:
       enabled: true
-      tag: importer-1.0.0
+      tag: importer-2.0.0
     # JSON Viewer extension
     jsonviewer:
       enabled: true
@@ -212,7 +212,7 @@ webExtensions:
     # Unzip extension
     unzip:
       enabled: true
-      tag: unzip-2.1.0
+      tag: unzip-2.2.0
     # Arcade extension
     arcade:
       enabled: false
