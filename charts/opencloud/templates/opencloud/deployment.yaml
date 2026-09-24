@@ -22,6 +22,9 @@ spec:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: opencloud
   strategy:
+    {{- $updateStrategy := .Values.opencloud.updateStrategy | default (dict) }}
+    {{- $requested := $updateStrategy.type | default "Recreate" }}
+    {{- $allowRolling := false }}
     {{- if or (eq .Values.opencloud.storage.mode "posixfs") (eq .Values.opencloud.storage.mode "decomposed") }}
       {{- $storageRwx := false }}
       {{- if eq .Values.opencloud.storage.mode "posixfs" }}
@@ -31,26 +34,23 @@ spec:
       {{- end }}
       {{- $dataRwx := eq .Values.opencloud.persistence.data.accessMode "ReadWriteMany" }}
       {{- if and $storageRwx $dataRwx }}
-    # RWX access mode allows multiple pods to mount the volume simultaneously
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-      {{- else }}
-    # At least one PVC is RWO (data or storage); only one pod can mount at a time, so use Recreate
-    type: Recreate
+        {{- $allowRolling = true }}
       {{- end }}
     {{- else }}
     # S3 mode doesn't use storage PVCs, but the data PVC may still be RWO
-    {{- if eq .Values.opencloud.persistence.data.accessMode "ReadWriteMany" }}
+      {{- if eq .Values.opencloud.persistence.data.accessMode "ReadWriteMany" }}
+        {{- $allowRolling = true }}
+      {{- end }}
+    {{- end }}
+    {{- if and (eq $requested "RollingUpdate") $allowRolling }}
+    # Explicit opt-in + RWX on all PVCs: multiple pods may mount simultaneously
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
     {{- else }}
-    # RWO data PVC only allows one pod to mount at a time, so use Recreate
+    # Default: Recreate (safe for RWO and RWX single-replica; avoids two pods writing decomposedfs)
     type: Recreate
-    {{- end }}
     {{- end }}
   template:
     metadata:
@@ -270,7 +270,7 @@ spec:
               value: {{ .Values.opencloud.logColor | quote }}
             - name: OC_LOG_PRETTY
               value: {{ .Values.opencloud.logPretty | quote }}
-            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled .Values.collaboration.enabled }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
             - name: COLLABORA_DOMAIN
               value: {{ .Values.global.domain.collabora | quote }}
             - name: COLLABORATION_WOPI_SRC
@@ -292,6 +292,12 @@ spec:
             - name: FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR
               value: "eu.opencloud.api.collaboration"
             {{- end }}
+            {{- if .Values.yjs.enabled }}
+            # The browser uses the public OpenCloud origin; the proxy forwards
+            # /yjs to the in-cluster Yjs WebSocket service.
+            - name: WEB_OPTION_YJS_SERVER_URL
+              value: "wss://{{ include "opencloud.domain" . }}/yjs"
+            {{- end }}
             # Enable services that are not started automatically
             {{- $additional := .Values.opencloud.additionalServices | default (list) }}
             {{- if .Values.opencloud.antivirus.enabled }}
@@ -309,7 +315,7 @@ spec:
                 {{- $additional = append $additional "policies" }}
               {{- end }}
             {{- end }}
-            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled .Values.collaboration.enabled }}
+            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
               {{- if not (has "collaboration" $additional) }}
                 {{- $additional = append $additional "collaboration" }}
               {{- end }}
@@ -790,6 +796,11 @@ spec:
             - name: config-files
               mountPath: /etc/opencloud/search.yaml
               subPath: search.yaml
+            {{- if not (empty .Values.opencloud.config.appRegistry) }}
+            - name: config-files
+              mountPath: /etc/opencloud/app-registry.yaml
+              subPath: app-registry.yaml
+            {{- end }}
             - name: config-files
               mountPath: /etc/opencloud/csp.yaml
               subPath: csp.yaml

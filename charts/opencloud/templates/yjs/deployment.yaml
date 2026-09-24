@@ -1,0 +1,51 @@
+{{- if .Values.yjs.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opencloud.yjs.fullname" . }}
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: yjs
+spec:
+  replicas: {{ .Values.yjs.replicas }}
+  selector:
+    matchLabels:
+      {{- include "opencloud.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: yjs
+  template:
+    metadata:
+      labels:
+        {{- include "opencloud.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: yjs
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+      terminationGracePeriodSeconds: {{ div (add .Values.yjs.shutdownGracePeriodMs 999) 1000 }}
+      containers:
+        - name: yjs
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.yjs.image "global" .Values.global) | quote }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.yjs.image.pullPolicy "global" .Values.global) }}
+          env:
+            - name: PORT
+              value: {{ .Values.yjs.port | quote }}
+            - name: OPENCLOUD_URL
+              value: "http://{{ include "opencloud.opencloud.fullname" . }}:9200"
+            - name: SHUTDOWN_GRACE_PERIOD_MS
+              value: {{ .Values.yjs.shutdownGracePeriodMs | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.yjs.port }}
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.yjs.resources | nindent 12 }}
+{{- end }}

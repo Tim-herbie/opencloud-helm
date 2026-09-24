@@ -1,0 +1,19 @@
+{{- if .Values.yjs.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opencloud.yjs.fullname" . }}
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: yjs
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.yjs.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "opencloud.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: yjs
+{{- end }}

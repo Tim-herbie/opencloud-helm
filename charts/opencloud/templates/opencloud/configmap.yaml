@@ -7,14 +7,12 @@ metadata:
     {{- include "opencloud.labels" . | nindent 4 }}
     app.kubernetes.io/component: opencloud
 data:
-  # App registry configuration
+{{- if not (empty .Values.opencloud.config.appRegistry) }}
+  # App registry MIME creation/default-app policy.
   app-registry.yaml: |-
-{{- if empty .Values.opencloud.config.appRegistry -}}
-{{ .Files.Get "files/opencloud/app-registry.yaml" | nindent 4 }}
-{{- else -}}
 {{ toYaml (dict "app_registry" .Values.opencloud.config.appRegistry) | nindent 4 }}
-{{- end }}
 
+{{- end }}
   # CSP configuration
   csp.yaml: |-
 {{- if empty .Values.opencloud.config.csp -}}

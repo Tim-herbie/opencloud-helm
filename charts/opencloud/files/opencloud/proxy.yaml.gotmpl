@@ -5,6 +5,13 @@
 additional_policies:
   - name: default
     routes:
+{{- if .Values.yjs.enabled }}
+      # Yjs authenticates the collaboration connection itself. Keep this
+      # route unprotected so the WebSocket handshake reaches Yjs.
+      - endpoint: /yjs
+        backend: http://{{ include "opencloud.yjs.fullname" . }}:{{ .Values.yjs.port }}
+        unprotected: true
+{{- end }}
       - endpoint: /caldav/
         backend: http://radicale:5232
         remote_user_header: X-Remote-User

@@ -131,12 +131,12 @@ The chart defaults to **`decomposed`** (PVC-backed metadata + blobs, no external
 
 | Backend | What to change | Effect |
 |---------|---------------|--------|
-| **Decomposed (default)** | nothing — `storage.mode: decomposed` | PVC stores metadata + blobs; no S3; `Recreate` rollout strategy (single RWO volume) |
-| **Decomposed + RWX** | under `storage.decomposed.persistence`, set `accessMode: ReadWriteMany` | Supports RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem) |
+| **Decomposed (default)** | nothing — `storage.mode: decomposed` | PVC stores metadata + blobs; no S3; `Recreate` rollout strategy (default) |
+| **Decomposed + RWX** | under `storage.decomposed.persistence`, set `accessMode: ReadWriteMany` + `opencloud.updateStrategy.type: RollingUpdate` | Opt-in RollingUpdate + multiple replicas (requires CephFS / NFS / shared filesystem, flock + xattrs) |
 | **PosixFS** | `storage.mode: posixfs` | PVC stores user files directly; simpler but no decomposed metadata tree |
-| **S3 / external S3** | set `storage.mode: s3`, `storage.s3.enabled: true`, and `storage.s3.external.endpoint` | OpenCloud talks to your external S3 / Ceph / MinIO; `RollingUpdate` (no shared PVC) |
+| **S3 / external S3** | set `storage.mode: s3`, `storage.s3.enabled: true`, and `storage.s3.external.endpoint` | OpenCloud talks to your external S3 / Ceph / MinIO; `Recreate` by default, `RollingUpdate` only with `updateStrategy.type: RollingUpdate` + RWX data PVC |
 
-> ⚠️ **PVC access mode → rollout strategy**: `ReadWriteOnce` forces `Recreate` (single pod mounts the volume). `ReadWriteMany` enables `RollingUpdate` (multi-pod). Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
+> ⚠️ **Rollout strategy**: default is `Recreate` (safe for decomposedfs, RWO and RWX single-replica). `RollingUpdate` requires explicit `opencloud.updateStrategy.type: RollingUpdate` **plus** `ReadWriteMany` on all PVCs. Switching from RWO→RWX requires recreating the PVC or creating a new one with `existingClaim`.
 
 The flux folder's `opencloud.yaml` keeps the `s3` block as a commented-out template — switch back to S3 by uncommenting it and the matching `s3secret` Secret in `secrets.yaml`, then `flux reconcile helmrelease opencloud-oc1 -n opencloud`.
 

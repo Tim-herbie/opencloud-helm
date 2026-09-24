@@ -126,6 +126,14 @@ spec:
         companion: companion.opencloud.test
       tls:
         enabled: true
+    # Collabora calls the OpenCloud WOPI endpoint over the self-signed test
+    # certificate. Use true in production with a trusted CA.
+    collabora:
+      ssl:
+        verification: false
+    # Enable Yjs for real-time Markdown and .ocnote collaboration.
+    yjs:
+      enabled: true
     opencloud:
       logLevel: info
       # Development uses self-signed certificates. Set false in production.
@@ -134,6 +142,10 @@ spec:
         enabled: false
       # Keep TUS uploads available until policy and antivirus postprocessing completes.
       asyncUploads: true
+      # Recreate is intentional even when the backing PVCs support RWX.
+      # RollingUpdate must be explicitly opted into in addition to RWX storage.
+      updateStrategy:
+        type: Recreate
       # Using external Keycloak OIDC + external OpenLDAP: the bundled idm/idp
       # services must NOT run, so exclude them. Demo users are also disabled.
       createDemoUsers: false
@@ -142,7 +154,7 @@ spec:
         - "idm"
       persistence:
         data:
-          accessMode: ReadWriteMany  
+          accessMode: ReadWriteMany  # RWX is retained; rollout strategy is Recreate by default
       oidc:
         scope: "openid profile email groups"
       # Web UI footer/help links (merged over the built-in theme).
@@ -178,6 +190,73 @@ spec:
         proxyRoleQuotas:
           'd7beeea8-8ff4-406b-8fb6-ab2dd81e6b11': 0
           '2aadd357-682c-406b-8874-293091995fdd': 0
+        # Creation offer for Collabora formats. Without this override the
+        # built-in OpenCloud defaults apply (ODT/ODS/ODP only, no DOCX/XLSX).
+        appRegistry:
+          mimetypes:
+            - mime_type: application/pdf
+              extension: pdf
+              name: PDF
+              description: PDF document
+              icon: ''
+              default_app: ''
+              allow_creation: false
+            - mime_type: application/vnd.oasis.opendocument.text
+              extension: odt
+              name: OpenDocument Text
+              description: OpenDocument text document
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.oasis.opendocument.spreadsheet
+              extension: ods
+              name: OpenDocument Spreadsheet
+              description: OpenDocument spreadsheet document
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.oasis.opendocument.presentation
+              extension: odp
+              name: OpenDocument Presentation
+              description: OpenDocument presentation document
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+              extension: docx
+              name: Microsoft Word
+              description: Microsoft Word document
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+              extension: xlsx
+              name: Microsoft Excel
+              description: Microsoft Excel spreadsheet
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: application/vnd.openxmlformats-officedocument.presentationml.presentation
+              extension: pptx
+              name: Microsoft PowerPoint
+              description: Microsoft PowerPoint presentation
+              icon: ''
+              default_app: Collabora
+              allow_creation: true
+            - mime_type: text/markdown
+              extension: md
+              name: Markdown file
+              description: Markdown file
+              icon: ''
+              default_app: ''
+              allow_creation: true
+            - mime_type: application/vnd.jupyter
+              extension: ipynb
+              name: Jupyter Notebook
+              description: Jupyter Notebook
+              icon: ''
+              default_app: ''
+              allow_creation: true
       antivirus:
         enabled: true
         infectedFileHandling: abort
@@ -264,14 +343,13 @@ spec:
         #     enabled: true
         #     size: 60Gi
         #     accessMode: ReadWriteOnce
-        #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
+        #     # accessMode: ReadWriteMany  # RWX; RollingUpdate still requires explicit opt-in
         # --- Decomposed alternative (uncomment to switch) ---
         decomposed:
           persistence:
             enabled: true
             size: 60Gi
-            # accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
-            accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+            accessMode: ReadWriteMany  # RWX is retained; rollout strategy is Recreate by default
         # --- External S3 alternative (uncomment to switch) ---
         # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
         # Reference it via `storage.s3.external.existingSecret` (below).
@@ -372,6 +450,8 @@ spec:
 #         enabled: true
 #     opencloud:
 #       logLevel: info
+#       updateStrategy:
+#         type: Recreate  # default; use RollingUpdate only with RWX and explicit opt-in
 #       migration:
 #         enabled: false
 #       # Using external Keycloak OIDC + external OpenLDAP: the bundled idm/idp
@@ -382,7 +462,7 @@ spec:
 #         - "idm"
 #       persistence:
 #         data:
-#           accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
+#           accessMode: ReadWriteOnce  # RWO; Recreate is the default independently of access mode
 #       oidc:
 #         scope: "openid profile email groups"
 #       ldap:
@@ -402,14 +482,14 @@ spec:
 #         #     enabled: true
 #         #     size: 60Gi
 #         #     accessMode: ReadWriteOnce
-#         #     # accessMode: ReadWriteMany  # RWX (e.g. CephFS / NFS >=4.2) allows RollingUpdate + multi-replica; fs must support flock + xattrs
+#         #     # accessMode: ReadWriteMany  # RWX; RollingUpdate still requires explicit opt-in
 #         # --- Decomposed alternative (uncomment to switch) ---
 #         decomposed:
 #           persistence:
 #             enabled: true
 #             size: 60Gi
-#             accessMode: ReadWriteOnce  # RWO: only one pod can mount at a time; the chart auto-switches the Deployment strategy to Recreate
-#             # accessMode: ReadWriteMany  # RWX (e.g. CephFS) allows RollingUpdate + multi-replica
+#             accessMode: ReadWriteOnce  # RWO; Recreate is the default independently of access mode
+#             # accessMode: ReadWriteMany  # RWX; RollingUpdate still requires explicit opt-in
 #         # --- External S3 alternative (uncomment to switch) ---
 #         # Requires a pre-created Secret with keys `accessKey` and `secretKey`.
 #         # Reference it via `storage.s3.external.existingSecret` (below).
