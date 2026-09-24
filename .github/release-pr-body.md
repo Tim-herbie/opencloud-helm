@@ -1,5 +1,13 @@
 ## Release 3.1.0
 
+### Action required ! ###
+🚨 After you upgrade, you must do this:
+Run 
+`kubectl exec -it <your-opencloud-pod-name> -- search index --all-spaces --force-rescan --insecure` 
+
+(Upgrade details )
+One command, once. That's the whole migration path from the opencloud version 7.x to 8.0.0.
+
 Base: changes since 3.0.0.
 
 OpenCloud version from values.yaml: 8.0.1
