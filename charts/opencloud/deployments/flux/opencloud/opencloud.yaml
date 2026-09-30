@@ -155,6 +155,7 @@ spec:
       persistence:
         data:
           accessMode: ReadWriteMany  # RWX is retained; rollout strategy is Recreate by default
+          size: 60Gi
       oidc:
         scope: "openid profile email groups"
       # Web UI footer/help links (merged over the built-in theme).
