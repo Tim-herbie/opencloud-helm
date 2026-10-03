@@ -401,7 +401,7 @@ opencloud:
       # Image that provides `openssl` for certificate generation. The image
       # should include the `openssl` binary. Default uses a lightweight
       # Alpine image with openssl.
-      image: "alpine/openssl:3.5.8"
+      image: "alpine/openssl:3.5.9"
       # Self-signed certificate validity in days
       daysValid: 365
       # Common Name for the generated certificate
