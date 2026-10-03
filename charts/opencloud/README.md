@@ -342,6 +342,24 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.cspConfigFileLocation` | CSP config file location | `/etc/opencloud/csp.yaml` |
 | `opencloud.storage.systemDriver` | Storage system driver | `decomposed` |
 
+### Yjs Real-time Collaboration Settings
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `yjs.enabled` | Enable the Yjs collaboration service | `true` |
+| `yjs.resources` | Kubernetes resource requests and limits; tune memory for expected concurrent editing sessions | `64Mi` memory request, `256Mi` memory limit |
+
+For example, to increase Yjs memory for a busier deployment:
+
+```yaml
+yjs:
+  resources:
+    requests:
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+```
+
 ### OpenCloud S3 Storage Settings
 
 The following options configure an external S3-compatible provider (AWS S3, Ceph, MinIO deployed externally, etc.) for user file storage. The chart no longer ships a bundled MinIO instance — deploy MinIO/S3 separately if you need object storage.

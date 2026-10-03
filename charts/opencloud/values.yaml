@@ -250,7 +250,12 @@ yjs:
   replicas: 1
   port: 1234
   shutdownGracePeriodMs: 15000
-  resources: {}
+  # Tune these memory values for expected concurrent collaboration sessions.
+  resources:
+    requests:
+      memory: 64Mi
+    limits:
+      memory: 256Mi
 
 # =====================================================================
 # COLLABORATION (COLLABORA)

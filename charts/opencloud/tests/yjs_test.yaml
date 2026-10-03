@@ -47,6 +47,33 @@ tests:
           path: spec.ports[0].port
           value: 1234
 
+  - it: sets default Yjs resource requests and limits
+    template: yjs/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 64Mi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 256Mi
+
+  - it: allows overriding Yjs memory requests and limits
+    template: yjs/deployment.yaml
+    set:
+      yjs:
+        resources:
+          requests:
+            memory: 128Mi
+          limits:
+            memory: 512Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 128Mi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 512Mi
+
   - it: adds the Yjs WebSocket route when enabled
     template: opencloud/configmap.yaml
     set:
