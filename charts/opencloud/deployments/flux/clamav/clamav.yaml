@@ -15,8 +15,6 @@ metadata:
   name: flux-reconciler
   namespace: clamav
 rules:
-  # Namespace-scoped namespace-admin for Helm reconciliation. This cannot
-  # create or modify cluster-scoped resources such as Namespaces or CRDs.
   - apiGroups: ["*"]
     resources: ["*"]
     verbs: ["*"]
@@ -86,3 +84,14 @@ spec:
       requests:
         cpu: "1"
         memory: 2Gi
+
+    clamdConfigDict:
+      DetectPUA: "yes"
+      AlertEncrypted: "yes"
+      AlertEncryptedArchive: "yes"
+      AlertEncryptedDoc: "yes"
+      ScanArchive: "yes"
+      MaxRecursion: "10"
+      MaxFiles: "15000"
+      MaxScanSize: "150M"
+      MaxFileSize: "30M"
