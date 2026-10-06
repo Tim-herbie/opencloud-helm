@@ -1,49 +1,34 @@
-## Release 3.1.0
+## Release 3.2.0
 
-### Action required ! ###
-🚨 After you upgrade, you must do this:
-Run 
-`kubectl exec -it <your-opencloud-pod-name> -- search index --all-spaces --force-rescan --insecure` 
+Base: changes since 3.1.0.
 
-(Upgrade details )
-One command, once. That's the whole migration path from the opencloud version 7.x to 8.0.0.
-
-Base: changes since 3.0.0.
-
-OpenCloud version from values.yaml: 8.0.1
+OpenCloud version from values.yaml: 8.1.0
 
 ### Pull Requests
-- [#177](https://github.com/Tim-herbie/opencloud-helm/pull/177) feat: enable Yjs collaboration and improve Collabora defaults
-- [#176](https://github.com/Tim-herbie/opencloud-helm/pull/176) chore(deps): update docker.io/collabora/code docker tag to v26.04.4.1.1
-- [#175](https://github.com/Tim-herbie/opencloud-helm/pull/175) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v8.0.1
-- [#173](https://github.com/Tim-herbie/opencloud-helm/pull/173) feat: expose prometheus metrics for opencloud
-- [#171](https://github.com/Tim-herbie/opencloud-helm/pull/171) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v8
-- [#170](https://github.com/Tim-herbie/opencloud-helm/pull/170) fix(opencloud): init-container creates and validates IDM LDAP cert/ke…
-- [#169](https://github.com/Tim-herbie/opencloud-helm/pull/169) fix(identity): add opencloud.ldap.keepIdm for external OIDC without OpenLDAP
-- [#168](https://github.com/Tim-herbie/opencloud-helm/pull/168) chore(ci): package and push every pr change to the registry
-- [#166](https://github.com/Tim-herbie/opencloud-helm/pull/166) option to use HTTPS protocol when TLS is provided externally
-- [#163](https://github.com/Tim-herbie/opencloud-helm/pull/163) chore(deps): update docker.io/collabora/code docker tag to v26.04.3.2.1
-- [#164](https://github.com/Tim-herbie/opencloud-helm/pull/164) Preserve storage users mount ID during legacy migration
+- [#187](https://github.com/Tim-herbie/opencloud-helm/pull/187) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v8.1.0
+- [#185](https://github.com/Tim-herbie/opencloud-helm/pull/185) feat(clamav): configure scan limits
+- [#186](https://github.com/Tim-herbie/opencloud-helm/pull/186) chore(deps): update docker.io/opencloudeu/yjs docker tag to v1.1.0
+- [#178](https://github.com/Tim-herbie/opencloud-helm/pull/178) chore(deps): update docker.io/collabora/code docker tag to v26.04.4.2.1
+- [#182](https://github.com/Tim-herbie/opencloud-helm/pull/182) chore(deps): update alpine/openssl docker tag to v3.5.9
+- [#183](https://github.com/Tim-herbie/opencloud-helm/pull/183) chore(deps): update docker.io/alpine/openssl docker tag to v3.5.9
+- [#180](https://github.com/Tim-herbie/opencloud-helm/pull/180) feat: set default Yjs memory resources
 
 ### Changelog
-## [3.1.0] - 2026-09-24
+## [3.2.0] - 2026-10-06
 
 ### Breaking Changes
 - None
 
 ### Features
-- [#177](https://github.com/Tim-herbie/opencloud-helm/pull/177) feat: enable Yjs collaboration and improve Collabora defaults
-- [#173](https://github.com/Tim-herbie/opencloud-helm/pull/173) feat: expose prometheus metrics for opencloud
+- [#185](https://github.com/Tim-herbie/opencloud-helm/pull/185) feat(clamav): configure scan limits
+- [#180](https://github.com/Tim-herbie/opencloud-helm/pull/180) feat: set default Yjs memory resources
 
 ### Fixes
-- [#170](https://github.com/Tim-herbie/opencloud-helm/pull/170) fix(opencloud): init-container creates and validates IDM LDAP cert/ke…
-- [#169](https://github.com/Tim-herbie/opencloud-helm/pull/169) fix(identity): add opencloud.ldap.keepIdm for external OIDC without OpenLDAP
+- None
 
 ### Chore / Docs / CI / Other
-- [#176](https://github.com/Tim-herbie/opencloud-helm/pull/176) chore(deps): update docker.io/collabora/code docker tag to v26.04.4.1.1
-- [#175](https://github.com/Tim-herbie/opencloud-helm/pull/175) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v8.0.1
-- [#171](https://github.com/Tim-herbie/opencloud-helm/pull/171) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v8
-- [#168](https://github.com/Tim-herbie/opencloud-helm/pull/168) chore(ci): package and push every pr change to the registry
-- [#163](https://github.com/Tim-herbie/opencloud-helm/pull/163) chore(deps): update docker.io/collabora/code docker tag to v26.04.3.2.1
-- [#166](https://github.com/Tim-herbie/opencloud-helm/pull/166) option to use HTTPS protocol when TLS is provided externally
-- [#164](https://github.com/Tim-herbie/opencloud-helm/pull/164) Preserve storage users mount ID during legacy migration
+- [#187](https://github.com/Tim-herbie/opencloud-helm/pull/187) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v8.1.0
+- [#186](https://github.com/Tim-herbie/opencloud-helm/pull/186) chore(deps): update docker.io/opencloudeu/yjs docker tag to v1.1.0
+- [#178](https://github.com/Tim-herbie/opencloud-helm/pull/178) chore(deps): update docker.io/collabora/code docker tag to v26.04.4.2.1
+- [#182](https://github.com/Tim-herbie/opencloud-helm/pull/182) chore(deps): update alpine/openssl docker tag to v3.5.9
+- [#183](https://github.com/Tim-herbie/opencloud-helm/pull/183) chore(deps): update docker.io/alpine/openssl docker tag to v3.5.9
