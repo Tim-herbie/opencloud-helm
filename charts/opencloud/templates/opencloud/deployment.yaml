@@ -110,7 +110,7 @@ spec:
         {{- if .Values.webExtensions.extensions.importer.enabled }}
         - name: init-importer
           image: {{ include "opencloud.image" (dict "imageValues" (merge (dict "tag" .Values.webExtensions.extensions.importer.tag) .Values.webExtensions.image) "global" .Values.global) | quote }}
-          command: ['sh', '-c', 'mkdir -p /extensions/importer && cp -R /usr/share/nginx/html/importer/ /extensions/']
+          command: ['sh', '-c', 'mkdir -p /extensions/importer && cp -R /usr/share/nginx/html/apps/importer/ /extensions/']
           volumeMounts:
             - name: extensions
               mountPath: /extensions
