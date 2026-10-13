@@ -1,0 +1,115 @@
+suite: Automatic identity service exclusion
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/secrets.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: should not configure the external OpenLDAP directory by default
+    template: opencloud/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_LDAP_URI
+            value: "ldaps://openldap.openldap.svc.cluster.local:636"
+
+  - it: should exclude idp and idm for external OIDC with external OpenLDAP
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_EXCLUDE_RUN_SERVICES
+            value: "idp,idm"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_LDAP_URI
+            value: "ldaps://openldap.openldap.svc.cluster.local:636"
+
+  - it: should keep the bundled IDM as account directory when keepIdm is true
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      opencloud:
+        ldap:
+          keepIdm: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_EXCLUDE_RUN_SERVICES
+            value: "idp"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_LDAP_URI
+            value: "ldaps://openldap.openldap.svc.cluster.local:636"
+
+  - it: should not duplicate services that are already excluded explicitly
+    template: opencloud/deployment.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      opencloud:
+        excludeServices:
+          - idp
+          - idm
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_EXCLUDE_RUN_SERVICES
+            value: "idp,idm"
+
+  - it: should keep the bundled idm when idp is excluded without an issuer URL
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        excludeServices:
+          - idp
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_EXCLUDE_RUN_SERVICES
+            value: "idp"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_LDAP_URI
+            value: "ldaps://openldap.openldap.svc.cluster.local:636"
+
+  - it: should render the external LDAP bind secret for external OIDC without a secretRef
+    template: opencloud/secrets.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      opencloud:
+        existingSecret: existing
+    asserts:
+      - hasDocuments:
+          count: 1
+
+  - it: should not render the external LDAP bind secret when keepIdm is true
+    template: opencloud/secrets.yaml
+    set:
+      oidc:
+        issuerUrl: https://keycloak.opencloud.test/realms/openCloud
+      opencloud:
+        existingSecret: existing
+        ldap:
+          keepIdm: true
+    asserts:
+      - hasDocuments:
+          count: 0

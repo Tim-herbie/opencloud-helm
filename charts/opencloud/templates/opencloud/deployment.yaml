@@ -1,8 +1,16 @@
 {{- if .Values.opencloud.enabled }}
 {{- /* LDAP directory selection: external OpenLDAP vs bundled IDM (LibreIDM). */}}
-{{- $excludeServices := .Values.opencloud.excludeServices | default (list) }}
+{{- $excludeServices := include "opencloud.excludeServices" . | fromJsonArray }}
 {{- $keepIdm := .Values.opencloud.ldap.keepIdm | default false }}
 {{- $useExternalLdap := and (has "idp" $excludeServices) (not $keepIdm) }}
+{{- if .Values.opencloud.smtp.enabled }}
+{{- if not .Values.opencloud.smtp.host }}
+{{- fail "opencloud.smtp.host must be set when opencloud.smtp.enabled is true" }}
+{{- end }}
+{{- if not .Values.opencloud.smtp.port }}
+{{- fail "opencloud.smtp.port must be set when opencloud.smtp.enabled is true" }}
+{{- end }}
+{{- end }}
 {{- if and $keepIdm (has "idm" $excludeServices) }}
 {{- fail "opencloud.ldap.keepIdm=true requires the bundled IDM to run: remove \"idm\" from opencloud.excludeServices" }}
 {{- end }}
@@ -259,7 +267,7 @@ spec:
             # OpenCloud URL
             {{- /* The built-in IDP requires an https issuer URL. With Gateway TLS termination the public URL is https even when internal TLS (global.tls.enabled) is off, so only fall back to http when the IDP is excluded (external OIDC). */}}
             - name: OC_URL  
-              value: "{{ if or .Values.global.tls.enabled .Values.global.tls.external }}https{{ else if (not (has "idp" (.Values.opencloud.excludeServices | default (list)))) }}https{{ else }}http{{ end }}://{{ include "opencloud.domain" . }}"
+              value: "{{ if or .Values.global.tls.enabled .Values.global.tls.external }}https{{ else if (not (has "idp" $excludeServices)) }}https{{ else }}http{{ end }}://{{ include "opencloud.domain" . }}"
             # Available roles
             - name: GRAPH_AVAILABLE_ROLES
               value: {{ .Values.opencloud.graphAvailableRoles | quote }}
@@ -299,32 +307,12 @@ spec:
               value: "wss://{{ include "opencloud.domain" . }}/yjs"
             {{- end }}
             # Enable services that are not started automatically
-            {{- $additional := .Values.opencloud.additionalServices | default (list) }}
-            {{- if .Values.opencloud.antivirus.enabled }}
-              {{- if not (has "antivirus" $additional) }}
-                {{- $additional = append $additional "antivirus" }}
-              {{- end }}
-            {{- end }}
-            {{- if or .Values.opencloud.antivirus.enabled .Values.opencloud.policies.enabled }}
-              {{- if not (has "postprocessing" $additional) }}
-                {{- $additional = append $additional "postprocessing" }}
-              {{- end }}
-            {{- end }}
-            {{- if .Values.opencloud.policies.enabled }}
-              {{- if not (has "policies" $additional) }}
-                {{- $additional = append $additional "policies" }}
-              {{- end }}
-            {{- end }}
-            {{- if or .Values.collabora.enabled .Values.collabora.external.enabled }}
-              {{- if not (has "collaboration" $additional) }}
-                {{- $additional = append $additional "collaboration" }}
-              {{- end }}
-            {{- end }}
+            {{- $additional := include "opencloud.additionalServices" . | fromJsonArray }}
             {{- if gt (len $additional) 0 }}
             - name: OC_ADD_RUN_SERVICES
               value: {{ join "," $additional | quote }}
             {{- end }}
-            {{- $exclude := .Values.opencloud.excludeServices | default (list) }}
+            {{- $exclude := $excludeServices }}
             {{- if .Values.opencloud.nats.external.enabled }}
               {{- $exclude = append $exclude "nats" }}
             {{- end }}
