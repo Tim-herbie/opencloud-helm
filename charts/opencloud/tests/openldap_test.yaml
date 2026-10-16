@@ -83,21 +83,22 @@ tests:
   # idp excluded, opencloud.ldap.keepIdm false: bind against *-opencloud-ldap; OC_LDAP_* from opencloud.ldap.
   # idp excluded, opencloud.ldap.keepIdm true: bind against the init secret; no OC_LDAP_URI.
 
-  - it: should not inject OC_LDAP_URI when only issuerUrl is set
+  - it: should exclude idp and idm and inject OC_LDAP_URI when only issuerUrl is set
     template: opencloud/deployment.yaml
     set:
       oidc:
         issuerUrl: https://auth.example.com/application/o/opencloud/
     asserts:
-      - notContains:
+      - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: OC_LDAP_URI
-      - notContains:
+            value: "ldaps://openldap.openldap.svc.cluster.local:636"
+      - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: OC_EXCLUDE_RUN_SERVICES
-            value: "idp"
+            value: "idp,idm"
 
   - it: should use the init secret for LDAP bind passwords with the built-in IDP (default)
     template: opencloud/deployment.yaml
@@ -169,7 +170,7 @@ tests:
           path: spec.template.spec.containers[0].env
           content:
             name: OC_EXCLUDE_RUN_SERVICES
-            value: "idp"
+            value: "idp,idm"
 
   - it: should keep the external LDAP configuration and custom bind secret when idp and idm are excluded
     template: opencloud/deployment.yaml

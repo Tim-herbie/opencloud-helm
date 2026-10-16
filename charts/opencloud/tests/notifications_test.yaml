@@ -1,0 +1,105 @@
+suite: Notifications service for SMTP
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/secrets.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: should not start notifications when SMTP is disabled
+    template: opencloud/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ADD_RUN_SERVICES
+            value: "collaboration"
+
+  - it: should start notifications automatically when SMTP is enabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        smtp:
+          enabled: true
+          host: smtp.example.com
+          port: "587"
+          sender: "OpenCloud <noreply@example.com>"
+      collabora:
+        enabled: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ADD_RUN_SERVICES
+            value: "notifications"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NOTIFICATIONS_SMTP_HOST
+            value: "smtp.example.com"
+
+  - it: should append notifications after the other additional services
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        smtp:
+          enabled: true
+          host: smtp.example.com
+          port: "587"
+          sender: "OpenCloud <noreply@example.com>"
+        antivirus:
+          enabled: true
+        policies:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ADD_RUN_SERVICES
+            value: "antivirus,postprocessing,policies,collaboration,notifications"
+
+  - it: should keep user-defined additional services and not duplicate notifications
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        additionalServices:
+          - notifications
+          - audit
+        smtp:
+          enabled: true
+          host: smtp.example.com
+          port: "587"
+          sender: "OpenCloud <noreply@example.com>"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ADD_RUN_SERVICES
+            value: "notifications,audit,collaboration"
+
+  - it: should fail when SMTP is enabled without a host
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        smtp:
+          enabled: true
+          host: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: 'opencloud\.smtp\.host must be set'
+
+  - it: should fail when SMTP is enabled without a port
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        smtp:
+          enabled: true
+          host: smtp.example.com
+          port: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: 'opencloud\.smtp\.port must be set'

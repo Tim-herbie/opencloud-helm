@@ -42,6 +42,29 @@ spec:
   interval: 15m
   url: https://wiremind.github.io/wiremind-helm-charts
 ---
+# Archive policy: ClamAV signature files that flag restricted file types inside archives.
+# They are mounted into /data (the chart's DatabaseDirectory) with subPath, so the pods
+# must be restarted after the rules change: kubectl -n clamav rollout restart statefulset clamav
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clamav-archive-policy
+  namespace: clamav
+data:
+  policy.cdb: |
+    Policy.Restricted.OfficeMacro.InArchive:*:*:\.([xX][lL][aA][mM]|[xX][lL][sS][bB]|[xX][lL][sS][mM]|[xX][lL][tT][mM]|[pP][pP][aA][mM]|[pP][pP][tT][mM]|[pP][pP][sS][mM]|[pP][oO][tT][mM]|[dD][oO][cC][mM]|[dD][oO][tT][mM])$:*:*:*:*:*:*
+    Policy.Restricted.Executable.InArchive:*:*:\.([eE][xX][eE]|[dD][lL][lL]|[cC][oO][mM]|[sS][cC][rR]|[cC][lL][aA][sS][sS]|[dD][yY][lL][iI][bB]|[nN][lL][mM]|[xX][eE][xX]|[mM][sS][iI]|[pP][iI][fF])$:*:*:*:*:*:*
+    Policy.Restricted.WindowsScript.InArchive:*:*:\.([bB][aA][tT]|[cC][mM][dD]|[pP][sS]1|[vV][bB][sS]|[vV][bB][eE]|[wW][sS][hH])$:*:*:*:*:*:*
+    Policy.Restricted.Script.InArchive:*:*:\.([sS][hH]|[cC][sS][hH]|[kK][sS][hH]|[zZ][sS][hH]|[tT][cC][lL]|[sS][cC][pP][tT]|[aA][pP][pP][lL][eE][sS][cC][rR][iI][pP][tT]|[sS][cC][fF]|[eE][xX][pP]|[aA][wW][kK]|[pP][lL]|[pP][mM]|[pP][yY]|[rR][bB]|[sS][cC][mM]|[sS][sS])$:*:*:*:*:*:*
+    Policy.Restricted.Mobile.InArchive:*:*:\.([cC][oO][dD]|[sS][iI][sS]|[sS][iI][sS][xX]|[nN]-[gG][aA][gG][eE]|[iI][pP][aA]|[mM][pP][nN]|[lL][aA][vV])$:*:*:*:*:*:*
+    Policy.Restricted.WebApp.InArchive:*:*:\.([xX][aA][pP]|[uU][nN][iI][tT][yY]3[dD]|[dD][fF][aA][pP][pP]|[oO][zZ][aA])$:*:*:*:*:*:*
+    Policy.Restricted.Other.InArchive:*:*:\.([oO][xX][tT]|[jJ][oO][dD][aA]|[tT][rR][aA]|[hH][vV][sS])$:*:*:*:*:*:*
+    Policy.Restricted.VBA.Container.InArchive:*:*:[vV][bB][aA][pP][rR][oO][jJ][eE][cC][tT]\.[bB][iI][nN]$:*:*:*:*:*:*
+  policy.ldb: |
+    Policy.Restricted.PE.InArchive;Engine:51-255,Target:1,Intermediates:CL_TYPE_ANY;0;0:4d5a
+    Policy.Restricted.ELF.InArchive;Engine:51-255,Target:6,Intermediates:CL_TYPE_ANY;0;0:7f454c46
+    Policy.Restricted.VBA.Legacy.InArchive;Engine:81-255,Target:2,Intermediates:CL_TYPE_ANY;0;5f5642415f50524f4a454354::w
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -95,3 +118,17 @@ spec:
       MaxFiles: "15000"
       MaxScanSize: "150M"
       MaxFileSize: "30M"
+
+    extraVolumes:
+      - name: archive-policy
+        configMap:
+          name: clamav-archive-policy
+    extraVolumeMounts:
+      - name: archive-policy
+        mountPath: /data/policy.cdb
+        subPath: policy.cdb
+        readOnly: true
+      - name: archive-policy
+        mountPath: /data/policy.ldb
+        subPath: policy.ldb
+        readOnly: true

@@ -122,6 +122,47 @@ Return the OIDC account URL
 {{- end }}
 
 {{/*
+Return the services excluded from starting as a JSON list. An external OIDC provider
+(oidc.issuerUrl) excludes the bundled idp. With an external OIDC provider and
+ldap.keepIdm=false, accounts come from the external OpenLDAP, so the bundled idm is
+excluded too. With keepIdm=true the accounts stay in the bundled idm, which keeps running.
+*/}}
+{{- define "opencloud.excludeServices" -}}
+{{- $services := .Values.opencloud.excludeServices | default (list) -}}
+{{- if .Values.oidc.issuerUrl -}}
+{{- $services = append $services "idp" -}}
+{{- if not (.Values.opencloud.ldap.keepIdm | default false) -}}
+{{- $services = append $services "idm" -}}
+{{- end -}}
+{{- end -}}
+{{- $services | uniq | toJson -}}
+{{- end -}}
+
+{{/*
+Return the services started in addition to the defaults as a JSON list. Every feature that
+needs a service adds it here, so the deployment template does not repeat the conditions.
+*/}}
+{{- define "opencloud.additionalServices" -}}
+{{- $services := .Values.opencloud.additionalServices | default (list) -}}
+{{- if .Values.opencloud.antivirus.enabled -}}
+{{- $services = append $services "antivirus" -}}
+{{- end -}}
+{{- if or .Values.opencloud.antivirus.enabled .Values.opencloud.policies.enabled -}}
+{{- $services = append $services "postprocessing" -}}
+{{- end -}}
+{{- if .Values.opencloud.policies.enabled -}}
+{{- $services = append $services "policies" -}}
+{{- end -}}
+{{- if or .Values.collabora.enabled .Values.collabora.external.enabled -}}
+{{- $services = append $services "collaboration" -}}
+{{- end -}}
+{{- if .Values.opencloud.smtp.enabled -}}
+{{- $services = append $services "notifications" -}}
+{{- end -}}
+{{- $services | uniq | toJson -}}
+{{- end -}}
+
+{{/*
 Create a fully qualified Tika name.
 */}}
 {{- define "opencloud.tika.fullname" -}}

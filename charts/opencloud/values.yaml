@@ -75,7 +75,9 @@ busybox:
 # OIDC (OpenID Connect) settings for identity and access management
 # Leave oidc.issuerUrl empty to use the integrated IDM (built-in identity provider).
 # Set oidc.issuerUrl to an external OIDC provider (e.g., Keycloak, Auth0, Okta, Azure AD)
-# to use external authentication instead.
+# to use external authentication instead. This excludes the bundled idp automatically.
+# With ldap.keepIdm=false (default) the bundled idm is excluded too and accounts come from
+# the external OpenLDAP (ldap.uri).
 oidc:
   # OIDC Issuer URL (optional)
   # Leave empty to use the integrated IDM (no external OIDC provider required).
@@ -372,11 +374,11 @@ opencloud:
   proxyOidcAccessTokenVerifyMethod: "jwt"
   # LDAP server write enabled (default: true)
   ldapServerWriteEnabled: true
-  # LDAP directory used when excludeServices contains "idp".
+  # LDAP directory used with an external OIDC provider (oidc.issuerUrl).
   ldap:
-    # Keep the bundled IDM as the user directory when idp is excluded.
-    # false: OC_LDAP_* points at opencloud.ldap.uri (external OpenLDAP).
-    # true: accounts stay in the bundled IDM. Do not exclude idm.
+    # Keep the bundled IDM as the user directory with an external OIDC provider.
+    # false: OC_LDAP_* points at opencloud.ldap.uri (external OpenLDAP) and idm is excluded.
+    # true: accounts stay in the bundled IDM, which keeps running.
     keepIdm: false
     uri: "ldaps://openldap.openldap.svc.cluster.local:636"
     insecure: true
@@ -467,13 +469,14 @@ opencloud:
   createDemoUsers: true
   # Keep upload sessions available while postprocessing policies and antivirus run.
   asyncUploads: true
-  # Additional services to start
+  # Additional services to start. Services needed by enabled features are added
+  # automatically: antivirus, postprocessing, policies, collaboration (Collabora) and
+  # notifications (SMTP).
   additionalServices: []
-  # Services to exclude from starting.
-  # Leave empty so the bundled IDP and IDM both run.
-  # Add "idp" to use an external OIDC provider.
-  # Add "idm" when an external LDAP server replaces the bundled IDM.
-  excludeServices: [] # necessary that idp runs
+  # Services to exclude from starting. Leave empty so the bundled IDP and IDM both run.
+  # With oidc.issuerUrl set, idp is excluded automatically; with ldap.keepIdm=false idm is
+  # excluded too. Only list services here for other exclusions.
+  excludeServices: [] # necessary that idp runs unless oidc.issuerUrl is set
   env: []
   envFrom: []
   # Web UI theme customization.
@@ -664,7 +667,7 @@ opencloud:
   
   # SMTP settings for email notifications
   smtp:
-    # Enable SMTP
+    # Enable SMTP. This also starts the notifications service; host and port are required.
     enabled: false
     # SMTP host
     host: ""

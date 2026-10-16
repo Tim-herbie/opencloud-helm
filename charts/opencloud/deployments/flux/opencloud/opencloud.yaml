@@ -136,6 +136,11 @@ spec:
       enabled: true
     opencloud:
       logLevel: info
+      resources:
+        requests:
+          memory: 512Mi   # example; chart default is 128Mi
+        limits:
+          memory: 16Gi    # example; chart default is 10Gi
       # Development uses self-signed certificates. Set false in production.
       insecure: true
       migration:
@@ -310,8 +315,14 @@ spec:
                   utils.is_extension_restricted(input.resource.name)
               }
               granted = false if {
-                  bytes := opencloud.resource.download(input.resource.url)
-                  mimetype := opencloud.mimetype.detect(bytes)
+                  resp := http.send({
+                      "method": "GET",
+                      "url": input.resource.url,
+                      "headers": {"Range": "bytes=0-4095"},
+                      "raise_error": true
+                  })
+                  resp.status_code == 206
+                  mimetype := opencloud.mimetype.detect(base64.encode(resp.raw_body))
                   utils.is_mimetype_restricted(mimetype)
               }
           - fileName: utils.rego
@@ -569,8 +580,14 @@ spec:
 #                   utils.is_extension_restricted(input.resource.name)
 #               }
 #               granted = false if {
-#                   bytes := opencloud.resource.download(input.resource.url)
-#                   mimetype := opencloud.mimetype.detect(bytes)
+#                   resp := http.send({
+#                       "method": "GET",
+#                       "url": input.resource.url,
+#                       "headers": {"Range": "bytes=0-4095"},
+#                       "raise_error": true
+#                   })
+#                   resp.status_code == 206
+#                   mimetype := opencloud.mimetype.detect(base64.encode(resp.raw_body))
 #                   utils.is_mimetype_restricted(mimetype)
 #               }
 #           - fileName: utils.rego

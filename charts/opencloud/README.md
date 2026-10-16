@@ -289,8 +289,9 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.adminPassword` | Admin password | `admin` |
 | `opencloud.createDemoUsers` | Create demo users (default `true` for integrated IDM) | `true` |
 | `opencloud.asyncUploads` | Keep upload sessions available during postprocessing | `true` |
-| `opencloud.excludeServices` | Services to exclude from starting. Set `["idp"]` for external OIDC with bundled IDM. For external OIDC with external LDAP, set `["idp", "idm"]`. | `[]` |
-| `opencloud.ldap.keepIdm` | Keep the bundled IDM as the user directory when `idp` is excluded. `false`: `OC_LDAP_*` points at `opencloud.ldap.uri`. `true`: accounts stay in IDM. | `false` |
+| `opencloud.additionalServices` | Services to start in addition to the defaults. Services needed by enabled features are added automatically: `antivirus` and `postprocessing` (ClamAV), `policies`, `collaboration` (Collabora), `notifications` (SMTP). | `[]` |
+| `opencloud.excludeServices` | Services to exclude from starting. With `oidc.issuerUrl` set, `idp` is excluded automatically, and `idm` too when `ldap.keepIdm` is `false`. | `[]` |
+| `opencloud.ldap.keepIdm` | Keep the bundled IDM as the user directory with an external OIDC provider. `false`: `OC_LDAP_*` points at `opencloud.ldap.uri` and `idm` is excluded automatically. `true`: accounts stay in IDM, which keeps running. | `false` |
 | `opencloud.ldap.secretRef` | Existing Secret with `reva-ldap-bind-password` / `graph-ldap-bind-password` (used when `idp` is excluded and `ldap.keepIdm` is false) | `""` |
 | `opencloud.theme.urls.imprint` | Imprint URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/legal-notice` |
 | `opencloud.theme.urls.privacy` | Privacy policy URL shown in the web UI footer (empty = hidden) | `https://opencloud.eu/en/data-protection-notice` |
@@ -303,7 +304,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.persistence.data.storageClass` | Storage class | `""` |
 | `opencloud.persistence.data.accessMode` | Access mode (RWO or RWX) | `ReadWriteOnce` |
 | `opencloud.initSecrets.existingSecret` | Use a pre-created Secret for init credentials (see [Init Secrets](#init-secrets)) | `""` |
-| `opencloud.smtp.enabled` | Enable smtp for opencloud | `false` |
+| `opencloud.smtp.enabled` | Enable SMTP. This also starts the `notifications` service automatically; `host` and `port` must be set. | `false` |
 | `opencloud.smtp.host` | SMTP host | `` |
 | `opencloud.smtp.port` | SMTP port | `587` |
 | `opencloud.smtp.sender` | SMTP sender | `` |
@@ -487,10 +488,10 @@ The chart uses the **bundled IDP** (LibreGraph Connect) and **bundled IDM** (Lib
 
 | Piece | What it is | Bundled process | External replacement |
 | ----- | ---------- | --------------- | -------------------- |
-| **IDP** | Login (OIDC) | `idp` | Authentik, Keycloak, Authelia, Auth0, … (`oidc.issuerUrl` + `excludeServices: [idp]`) |
-| **IDM** | User directory (LDAP) | `idm` | OpenLDAP / AD (`OC_LDAP_*` + `excludeServices: [idp, idm]`) |
+| **IDP** | Login (OIDC) | `idp` | Authentik, Keycloak, Authelia, Auth0 (set `oidc.issuerUrl`; `idp` is excluded automatically) |
+| **IDM** | User directory (LDAP) | `idm` | OpenLDAP / AD (`OC_LDAP_*` from `opencloud.ldap`; `idm` is excluded automatically with `oidc.issuerUrl` and `ldap.keepIdm: false`) |
 
-When `excludeServices` contains `idp` and `ldap.keepIdm` is `false`, the chart sets `OC_LDAP_*` from `opencloud.ldap` (default `ldaps://openldap.openldap.svc.cluster.local:636`). For the supported external-LDAP layout, also exclude `idm`. Set `opencloud.ldap.keepIdm: true` to keep accounts in the bundled IDM instead.
+When `oidc.issuerUrl` is set, the chart excludes `idp` and sets `OC_LDAP_*` from `opencloud.ldap` (default `ldaps://openldap.openldap.svc.cluster.local:636`). With `ldap.keepIdm: false` (the default) `idm` is excluded as well. Set `opencloud.ldap.keepIdm: true` to keep accounts in the bundled IDM instead. You don't need to list `idp` or `idm` in `opencloud.excludeServices` for this.
 
 `keepIdm` selects the directory; it does not migrate users. Do not toggle it on an existing installation without migrating the user directory and checking user IDs, ownership, and shares.
 
@@ -498,7 +499,7 @@ When `excludeServices` contains `idp` and `ldap.keepIdm` is `false`, the chart s
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `oidc.issuerUrl` | OIDC Issuer URL (leave empty for the bundled IDP) | `""` |
+| `oidc.issuerUrl` | OIDC Issuer URL (leave empty for the bundled IDP). Setting it excludes `idp` automatically, and `idm` too unless `ldap.keepIdm` is `true`. | `""` |
 | `oidc.clientId` | OIDC Client ID | `"web"` |
 | `oidc.accountUrl` | Account management URL (optional; derived from `issuerUrl` if empty) | `""` |
 | `oidc.oidcIdpInsecure` | Disable TLS certificate validation for OIDC provider | `false` |
@@ -538,7 +539,7 @@ opencloud:
 
 #### Example: External OIDC + OpenLDAP
 
-Excluding `idp` with `ldap.keepIdm: false` points LDAP at `opencloud.ldap.uri`. Deploy OpenLDAP yourself (the chart does not ship it).
+With `oidc.issuerUrl` set and `ldap.keepIdm: false` (the default), the chart excludes `idp` and `idm` and points LDAP at `opencloud.ldap.uri`. Deploy OpenLDAP yourself (the chart does not ship it).
 
 ```yaml
 oidc:
@@ -548,9 +549,6 @@ oidc:
 
 opencloud:
   createDemoUsers: false
-  excludeServices:
-    - idp
-    - idm
   ldap:
     uri: "ldaps://openldap.openldap.svc.cluster.local:636"
     bindDN: "cn=admin,dc=opencloud,dc=eu"
