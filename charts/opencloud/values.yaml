@@ -248,7 +248,7 @@ yjs:
     registry: docker.io
     repository: opencloudeu/yjs
     pullPolicy: IfNotPresent
-    tag: "1.1.0"
+    tag: "1.1.1"
   replicas: 1
   port: 1234
   shutdownGracePeriodMs: 15000
