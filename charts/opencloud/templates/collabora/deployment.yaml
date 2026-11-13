@@ -90,13 +90,13 @@ spec:
             {{- toYaml .Values.collabora.resources | nindent 12 }}
           livenessProbe:
             httpGet:
-              path: /hosting/discovery
+              path: /
               port: http
             initialDelaySeconds: 60
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /hosting/discovery
+              path: /
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
