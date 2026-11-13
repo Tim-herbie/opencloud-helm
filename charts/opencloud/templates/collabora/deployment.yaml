@@ -61,6 +61,7 @@ spec:
                 --o:net.lok_allow.host[14]={{ include "opencloud.domain" . }} \
                 --o:home_mode.enable=false \
                 --o:security.capabilities=false \
+                --o:mount_jail_tree=false \
                 --o:child_root_path=/tmp/coolwsd-child-roots \
                 --o:cache_files.path=/tmp/coolwsd-cache \
                 --o:logging.disable_server_audit=true
