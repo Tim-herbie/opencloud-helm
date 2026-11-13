@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 <!-- release-bot:start -->
 
+## [3.2.2] - 2026-11-13
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- [#198](https://github.com/Tim-herbie/opencloud-helm/pull/198) fix(collabora): disable jail tree mounting
+- [#199](https://github.com/Tim-herbie/opencloud-helm/pull/199) fix(collabora): probe / instead of /hosting/discovery
+
+### Chore / Docs / CI / Other
+- [#196](https://github.com/Tim-herbie/opencloud-helm/pull/196) chore(deps): update docker.io/collabora/code docker tag to v26.04.6.1.1
+- [#197](https://github.com/Tim-herbie/opencloud-helm/pull/197) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v9.1.0
+
+
 ## [3.2.1] - 2026-10-28
 
 ### Breaking Changes
