@@ -16,6 +16,22 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### Chore / Docs / CI / Other
+- [#203](https://github.com/Tim-herbie/opencloud-helm/pull/203) chore(release): v3.2.3
+- [#202](https://github.com/Tim-herbie/opencloud-helm/pull/202) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v9.2.0
+
+
+## [3.2.3] - 2026-11-18
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- None
+
+### Chore / Docs / CI / Other
 - [#202](https://github.com/Tim-herbie/opencloud-helm/pull/202) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v9.2.0
 
 
