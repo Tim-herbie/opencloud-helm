@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 <!-- release-bot:start -->
 
+## [3.2.3] - 2026-11-18
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- None
+
+### Chore / Docs / CI / Other
+- [#202](https://github.com/Tim-herbie/opencloud-helm/pull/202) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v9.2.0
+
+
 ## [3.2.2] - 2026-11-13
 
 ### Breaking Changes
