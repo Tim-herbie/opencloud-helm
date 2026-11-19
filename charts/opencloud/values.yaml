@@ -230,7 +230,7 @@ webExtensions:
     # Maps extension
     maps:
       enabled: false
-      tag: maps-3.1.0
+      tag: maps-3.1.1
     # Pastebin extension
     pastebin:
       enabled: false
@@ -248,7 +248,7 @@ yjs:
     registry: docker.io
     repository: opencloudeu/yjs
     pullPolicy: IfNotPresent
-    tag: "1.1.0"
+    tag: "1.1.1"
   replicas: 1
   port: 1234
   shutdownGracePeriodMs: 15000
@@ -269,7 +269,7 @@ collabora:
     registry: docker.io
     repository: collabora/code
     pullPolicy: IfNotPresent
-    tag: 26.04.4.2.1
+    tag: 26.04.6.1.1
   proofKey:
     image:
       registry: docker.io
@@ -321,7 +321,7 @@ image:
   # OpenCloud image repository
   repository: opencloudeu/opencloud-rolling
   # OpenCloud image tag
-  tag: "8.1.0"
+  tag: "9.2.0"
   # Image pull policy
   pullPolicy: IfNotPresent
   # Image pull secrets
