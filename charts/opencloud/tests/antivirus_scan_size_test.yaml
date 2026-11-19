@@ -1,0 +1,44 @@
+suite: ClamAV scan size limits
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: should set the scan size limit and mode when configured
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+          infectedFileHandling: abort
+          maxScanSize: "150MB"
+          maxScanSizeMode: partial
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_MAX_SCAN_SIZE
+            value: "150MB"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_MAX_SCAN_SIZE_MODE
+            value: partial
+
+  - it: should reject an unknown scan size mode
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          maxScanSizeMode: truncate
+    asserts:
+      - failedTemplate:
+          errorPattern: 'maxScanSizeMode'

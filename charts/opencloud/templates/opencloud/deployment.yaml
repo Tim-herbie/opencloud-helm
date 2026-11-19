@@ -11,6 +11,14 @@
 {{- fail "opencloud.smtp.port must be set when opencloud.smtp.enabled is true" }}
 {{- end }}
 {{- end }}
+{{- /* New keys are read nil-safe so `helm upgrade --reuse-values` with older values still renders. */}}
+{{- $guestLinks := .Values.opencloud.guestLinks | default dict }}
+{{- $thumbnails := .Values.opencloud.thumbnails | default dict }}
+{{- $imagor := .Values.imagor | default dict }}
+{{- $extensions := .Values.webExtensions.extensions }}
+{{- if and $guestLinks.enabled (not .Values.opencloud.smtp.enabled) }}
+{{- fail "opencloud.guestLinks.enabled requires opencloud.smtp.enabled: guests receive their links and PINs by email" }}
+{{- end }}
 {{- if and $keepIdm (has "idm" $excludeServices) }}
 {{- fail "opencloud.ldap.keepIdm=true requires the bundled IDM to run: remove \"idm\" from opencloud.excludeServices" }}
 {{- end }}
@@ -88,6 +96,18 @@ spec:
                 sleep 2
               done
         {{- end }}
+        {{- if $imagor.enabled }}
+        - name: wait-for-imagor
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
+          command:
+            - sh
+            - -ec
+            - |
+              until wget -q -O /dev/null --timeout=2 {{ include "opencloud.imagor.url" . }}/healthcheck; do
+                sleep 2
+              done
+        {{- end }}
         - name: init-config
           image: {{ include "opencloud.image" (dict "imageValues" .Values.busybox.image "global" .Values.global) | quote }}
           imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.busybox.image.pullPolicy "global" .Values.global) | quote }}
@@ -118,7 +138,8 @@ spec:
         {{- if .Values.webExtensions.extensions.importer.enabled }}
         - name: init-importer
           image: {{ include "opencloud.image" (dict "imageValues" (merge (dict "tag" .Values.webExtensions.extensions.importer.tag) .Values.webExtensions.image) "global" .Values.global) | quote }}
-          command: ['sh', '-c', 'mkdir -p /extensions/importer && cp -R /usr/share/nginx/html/importer/ /extensions/']
+          # 2.x images ship the app under apps/importer, 1.x under importer
+          command: ['sh', '-c', 'mkdir -p /extensions/importer && if [ -d /usr/share/nginx/html/apps/importer ]; then cp -R /usr/share/nginx/html/apps/importer/ /extensions/; else cp -R /usr/share/nginx/html/importer/ /extensions/; fi']
           volumeMounts:
             - name: extensions
               mountPath: /extensions
@@ -183,6 +204,30 @@ spec:
         - name: init-pastebin
           image: {{ include "opencloud.image" (dict "imageValues" (merge (dict "tag" .Values.webExtensions.extensions.pastebin.tag) .Values.webExtensions.image) "global" .Values.global) | quote }}
           command: ['sh', '-c', 'mkdir -p /extensions/pastebin && cp -R /usr/share/nginx/html/apps/pastebin/ /extensions/']
+          volumeMounts:
+            - name: extensions
+              mountPath: /extensions
+        {{- end }}
+        {{- if ($extensions.excalidraw | default dict).enabled }}
+        - name: init-excalidraw
+          image: {{ include "opencloud.image" (dict "imageValues" (merge (dict "tag" .Values.webExtensions.extensions.excalidraw.tag) .Values.webExtensions.image) "global" .Values.global) | quote }}
+          command: ['sh', '-c', 'mkdir -p /extensions/excalidraw && cp -R /usr/share/nginx/html/apps/excalidraw/ /extensions/']
+          volumeMounts:
+            - name: extensions
+              mountPath: /extensions
+        {{- end }}
+        {{- if ($extensions.apollon | default dict).enabled }}
+        - name: init-apollon
+          image: {{ include "opencloud.image" (dict "imageValues" (merge (dict "tag" .Values.webExtensions.extensions.apollon.tag) .Values.webExtensions.image) "global" .Values.global) | quote }}
+          command: ['sh', '-c', 'mkdir -p /extensions/apollon && cp -R /usr/share/nginx/html/apps/apollon/ /extensions/']
+          volumeMounts:
+            - name: extensions
+              mountPath: /extensions
+        {{- end }}
+        {{- if ($extensions.bpmn | default dict).enabled }}
+        - name: init-bpmn
+          image: {{ include "opencloud.image" (dict "imageValues" (merge (dict "tag" .Values.webExtensions.extensions.bpmn.tag) .Values.webExtensions.image) "global" .Values.global) | quote }}
+          command: ['sh', '-c', 'mkdir -p /extensions/bpmn && cp -R /usr/share/nginx/html/apps/bpmn/ /extensions/']
           volumeMounts:
             - name: extensions
               mountPath: /extensions
@@ -352,7 +397,30 @@ spec:
               value: {{ .Values.opencloud.sharingPublicShareMustHavePassword | quote }}
             - name: OC_PASSWORD_POLICY_BANNED_PASSWORDS_LIST
               value: {{ .Values.opencloud.passwordPolicyBannedPasswordsList | quote }}
-            # Gateway: disable CreateHome on login (external IdP handles home creation)
+            {{- /* Only rendered when enabled, so existing opencloud.env entries with the same name don't collide. */}}
+            {{- if .Values.opencloud.sharingPublicWriteableShareMustHavePassword }}
+            - name: OC_SHARING_PUBLIC_WRITEABLE_SHARE_MUST_HAVE_PASSWORD
+              value: "true"
+            {{- end }}
+            {{- if $guestLinks.enabled }}
+            # Guest access (auth-guest service). Needs SMTP, see opencloud.smtp.
+            - name: OC_ENABLE_GUEST_LINKS
+              value: "true"
+            {{- end }}
+            {{- with .Values.opencloud.defaultLanguage }}
+            - name: OC_DEFAULT_LANGUAGE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.opencloud.spacesDefaultQuota }}
+            # Read by graph and frontend, so both report the same default quota for project spaces.
+            - name: OC_SPACES_DEFAULT_QUOTA
+              value: {{ include "opencloud.stringValue" . | quote }}
+            {{- end }}
+            {{- with .Values.opencloud.archiverMaxSize }}
+            - name: FRONTEND_ARCHIVER_MAX_SIZE
+              value: {{ include "opencloud.stringValue" . | quote }}
+            {{- end }}
+            # Gateway: do not create the home space on login (OpenCloud default, set explicitly)
             - name: GATEWAY_DISABLE_HOME_CREATION_ON_LOGIN
               value: "true"
             # Search settings
@@ -366,6 +434,19 @@ spec:
             {{- with .Values.opencloud.searchExtractorSizeLimit }}
             - name: SEARCH_CONTENT_EXTRACTION_SIZE_LIMIT
               value: {{ int64 . | quote }}
+            {{- end }}
+            {{- with $thumbnails.maxInputImageFileSize }}
+            - name: OC_THUMBNAILS_MAX_INPUT_IMAGE_FILE_SIZE
+              value: {{ include "opencloud.stringValue" . | quote }}
+            {{- end }}
+            {{- with include "opencloud.thumbnails.additionalSourceTypes" . }}
+            - name: OC_THUMBNAILS_ADDITIONAL_SOURCE_TYPES
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if $imagor.enabled }}
+            # Previews are requested from imagor instead of the built-in thumbnail generator.
+            - name: WEBDAV_THUMBNAILS_GENERATOR_URL
+              value: {{ include "opencloud.imagor.url" . | quote }}
             {{- end }}
             # Performance settings
             - name: OC_GRPC_MAX_RECEIVED_MESSAGE_SIZE
@@ -408,6 +489,14 @@ spec:
               value: "true"
             - name: ANTIVIRUS_INFECTED_FILE_HANDLING
               value: {{ .Values.opencloud.antivirus.infectedFileHandling | quote }}
+            {{- with .Values.opencloud.antivirus.maxScanSize }}
+            - name: ANTIVIRUS_MAX_SCAN_SIZE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.opencloud.antivirus.maxScanSizeMode }}
+            - name: ANTIVIRUS_MAX_SCAN_SIZE_MODE
+              value: {{ . | quote }}
+            {{- end }}
             - name: ANTIVIRUS_SCANNER_TYPE
               value: {{ .Values.opencloud.antivirus.scannerType | quote }}
             {{- if eq .Values.opencloud.antivirus.scannerType "clamav" }}
@@ -559,6 +648,7 @@ spec:
                 secretKeyRef:
                   name: {{ $initSecretName }}
                   key: urlSigningSecret
+            # Only OpenCloud 8.x thumbnails read this token. OpenCloud 9.x ignores it.
             - name: THUMBNAILS_TRANSFER_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -674,6 +764,23 @@ spec:
             {{- if not .Values.opencloud.nats.external.tls.certTrusted }}
             - name: OC_EVENTS_TLS_ROOT_CA_CERTIFICATE
               value: /etc/opencloud/nats-ca/ca.crt
+            {{- end }}
+            {{- if .Values.opencloud.nats.external.tls.enabled }}
+            # TLS for the cache and persistent store clients, which use the same external NATS server
+            - name: OC_CACHE_ENABLE_TLS
+              value: "true"
+            - name: OC_CACHE_TLS_INSECURE
+              value: {{ .Values.opencloud.nats.external.tls.insecure | quote }}
+            - name: OC_PERSISTENT_STORE_ENABLE_TLS
+              value: "true"
+            - name: OC_PERSISTENT_STORE_TLS_INSECURE
+              value: {{ .Values.opencloud.nats.external.tls.insecure | quote }}
+            {{- if not .Values.opencloud.nats.external.tls.certTrusted }}
+            - name: OC_CACHE_TLS_ROOT_CA_CERTIFICATE
+              value: /etc/opencloud/nats-ca/ca.crt
+            - name: OC_PERSISTENT_STORE_TLS_ROOT_CA_CERTIFICATE
+              value: /etc/opencloud/nats-ca/ca.crt
+            {{- end }}
             {{- end }}
             {{- else }}
             - name: MICRO_REGISTRY_ADDRESS

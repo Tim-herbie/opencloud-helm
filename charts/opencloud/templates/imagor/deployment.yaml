@@ -1,0 +1,82 @@
+{{- if and .Values.opencloud.enabled (.Values.imagor | default dict).enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opencloud.imagor.fullname" . }}
+  labels:
+    {{- include "opencloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: imagor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "opencloud.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: imagor
+  template:
+    metadata:
+      labels:
+        {{- include "opencloud.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: imagor
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        # The image runs as the named user "nobody"; a numeric UID is needed for runAsNonRoot.
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: imagor
+          image: {{ include "opencloud.image" (dict "imageValues" .Values.imagor.image "global" .Values.global) | quote }}
+          imagePullPolicy: {{ include "opencloud.image.pullPolicy" (dict "pullPolicy" .Values.imagor.image.pullPolicy "global" .Values.global) | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            # Only images that OpenCloud uploads are processed; loading images from URLs is disabled.
+            - name: IMAGOR_UNSAFE
+              value: "true"
+            - name: UPLOAD_LOADER_ENABLE
+              value: "true"
+            - name: UPLOAD_LOADER_MAX_ALLOWED_SIZE
+              value: {{ include "opencloud.stringValue" .Values.imagor.maxSourceSize | quote }}
+            - name: HTTP_LOADER_DISABLE
+              value: "true"
+            - name: VIPS_MAX_WIDTH
+              value: "7680"
+            - name: VIPS_MAX_HEIGHT
+              value: "7680"
+            - name: VIPS_MAX_ANIMATION_FRAMES
+              value: "100"
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.imagor.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+{{- end }}

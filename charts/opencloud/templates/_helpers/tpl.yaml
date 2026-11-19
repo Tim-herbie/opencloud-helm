@@ -169,6 +169,46 @@ Create a fully qualified Tika name.
 {{- printf "%s-tika" (include "opencloud.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{/*
+Create a fully qualified imagor name.
+*/}}
+{{- define "opencloud.imagor.fullname" -}}
+{{- printf "%s-imagor" (include "opencloud.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Render a value that is either a number or a string as a plain string. Numbers from a values file
+are float64, which would print as exponent notation (5e+07), so they are converted to integers first.
+*/}}
+{{- define "opencloud.stringValue" -}}
+{{- if or (kindIs "float64" .) (kindIs "int64" .) (kindIs "int" .) -}}
+{{- . | int64 | toString -}}
+{{- else -}}
+{{- . | toString -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the in-cluster URL of the imagor thumbnail generator.
+*/}}
+{{- define "opencloud.imagor.url" -}}
+http://{{ include "opencloud.imagor.fullname" . }}:8000
+{{- end }}
+
+{{/*
+Return the additional thumbnail source types as a comma separated string: the imagor types
+(when imagor is enabled) followed by opencloud.thumbnails.additionalSourceTypes, without duplicates.
+*/}}
+{{- define "opencloud.thumbnails.additionalSourceTypes" -}}
+{{- $types := list -}}
+{{- $imagor := .Values.imagor | default dict -}}
+{{- if $imagor.enabled -}}
+{{- $types = concat $types ($imagor.sourceTypes | default (list)) -}}
+{{- end -}}
+{{- $types = concat $types ((.Values.opencloud.thumbnails | default dict).additionalSourceTypes | default (list)) -}}
+{{- $types | uniq | join "," -}}
+{{- end -}}
+
 {{/* namespace helper removed - use .Release.Namespace directly */}}
 
 {{/*
