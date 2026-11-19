@@ -1,0 +1,35 @@
+suite: posixfs ID cache store
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: should use nats-js-kv for the posixfs ID cache store by default
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: posixfs
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: STORAGE_USERS_ID_CACHE_STORE
+            value: "nats-js-kv"
+
+  - it: should reject redis-sentinel, which OpenCloud 9.1.1 and later no longer support
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        storage:
+          mode: posixfs
+          posixfs:
+            idCacheStore: redis-sentinel
+    asserts:
+      - failedTemplate:
+          errorPattern: 'idCacheStore'

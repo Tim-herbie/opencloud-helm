@@ -1,0 +1,89 @@
+suite: External NATS TLS for the cache and persistent store
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: should not set cache TLS when the internal NATS is used
+    template: opencloud/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_CACHE_ENABLE_TLS
+            value: "true"
+
+  - it: should not set cache TLS for an external NATS without TLS
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        nats:
+          external:
+            enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          any: true
+          content:
+            name: OC_CACHE_ENABLE_TLS
+
+  - it: should enable TLS for the cache and persistent store with a trusted certificate
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        nats:
+          external:
+            enabled: true
+            tls:
+              enabled: true
+              certTrusted: true
+              insecure: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_CACHE_ENABLE_TLS
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_PERSISTENT_STORE_ENABLE_TLS
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_PERSISTENT_STORE_TLS_INSECURE
+            value: "false"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_CACHE_TLS_ROOT_CA_CERTIFICATE
+            value: /etc/opencloud/nats-ca/ca.crt
+
+  - it: should use the NATS CA certificate for the cache and persistent store when it is not trusted
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        nats:
+          external:
+            enabled: true
+            tls:
+              enabled: true
+              certTrusted: false
+              insecure: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_CACHE_TLS_ROOT_CA_CERTIFICATE
+            value: /etc/opencloud/nats-ca/ca.crt
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_PERSISTENT_STORE_TLS_ROOT_CA_CERTIFICATE
+            value: /etc/opencloud/nats-ca/ca.crt

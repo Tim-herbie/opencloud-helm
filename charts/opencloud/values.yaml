@@ -177,6 +177,33 @@ tika:
       failureThreshold: 3
       successThreshold: 1
 
+# imagor: optional thumbnail generator for HEIC, HEIF and AVIF previews (OpenCloud 9.0.0 or later).
+# The chart deploys it as an internal ClusterIP service. It is not published through the
+# HTTPRoute or Ingress, and imagor does not authenticate requests, so keep it internal.
+imagor:
+  enabled: false
+  image:
+    registry: docker.io
+    repository: shumc/imagor
+    tag: "1.10.4"
+    pullPolicy: IfNotPresent
+  # Largest source image in bytes that imagor accepts
+  maxSourceSize: 50000000
+  # MIME types imagor can read. Added to OC_THUMBNAILS_ADDITIONAL_SOURCE_TYPES when enabled.
+  sourceTypes:
+    - image/heic
+    - image/heif
+    - image/avif
+    - image/heic-sequence
+    - image/heif-sequence
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2
+      memory: 1Gi
+
 # Web Extensions settings
 webExtensions:
   # Enable web extensions
@@ -199,10 +226,10 @@ webExtensions:
     externalsites:
       enabled: true
       tag: external-sites-2.1.0
-    # Importer extension
+    # Importer extension (1.x and 2.x image layouts are both supported)
     importer:
       enabled: true
-      tag: importer-1.0.0
+      tag: importer-2.0.2
     # JSON Viewer extension
     jsonviewer:
       enabled: true
@@ -235,6 +262,18 @@ webExtensions:
     pastebin:
       enabled: false
       tag: pastebin-2.1.0
+    # Excalidraw whiteboards (.excalidraw files). Live collaboration uses the Yjs server.
+    excalidraw:
+      enabled: false
+      tag: excalidraw-1.2.0
+    # Apollon UML diagrams (.apollon files). Live collaboration uses the Yjs server.
+    apollon:
+      enabled: false
+      tag: apollon-1.1.1
+    # BPMN diagrams
+    bpmn:
+      enabled: false
+      tag: bpmn-1.1.2
 
 # =====================================================================
 # REAL-TIME COLLABORATION (YJS)
@@ -341,6 +380,19 @@ opencloud:
   sharingPublicShareMustHavePassword: false
   # File name for banned password list (default: banned-password-list.txt)
   passwordPolicyBannedPasswordsList: "banned-password-list.txt"
+  # Default language for services and the web UI (ISO 639-1, e.g. "de"). Empty = English.
+  defaultLanguage: ""
+  # Require a password for writable public shares. Only effective when
+  # sharingPublicShareMustHavePassword is false. OpenCloud default: false.
+  sharingPublicWriteableShareMustHavePassword: false
+  # Max size in bytes of a zip archive the archiver creates (downloads of folders).
+  # Empty = OpenCloud default.
+  archiverMaxSize: ""
+  # Default quota in bytes for new project spaces (not personal spaces; those use
+  # config.proxyRoleQuotas). The chart sets one variable that graph and frontend both read,
+  # so they cannot disagree. Empty = OpenCloud default of 1 GB (1000000000). 0 = no default quota.
+  # Only applies to spaces created afterwards.
+  spacesDefaultQuota: ""
   # Search extractor type (default: tika)
   searchExtractorType: "tika"
   # Search content extraction size limit in bytes (default: empty = uses OpenCloud default)
@@ -362,8 +414,6 @@ opencloud:
   proxyUserOidcClaim: "preferred_username"
   # CS3 claim for user (default: username)
   proxyUserCs3Claim: "username"
-  # Admin user id (default: empty string)
-  adminUserId: ""
   # Assign default user role in graph (default: false)
   graphAssignDefaultUserRole: false
   # Username match strategy for graph (default: none)
@@ -469,6 +519,19 @@ opencloud:
   createDemoUsers: true
   # Keep upload sessions available while postprocessing policies and antivirus run.
   asyncUploads: true
+  # Guest access: share files and folders with people without an account, by email.
+  # Needs SMTP (opencloud.smtp.enabled), which also starts the notifications service.
+  # Guest sessions are signed with a key derived from OC_JWT_SECRET (initSecrets.jwtSecret).
+  # Changing that secret logs out all guests; shares and guest links are not affected.
+  guestLinks:
+    enabled: false
+  # Preview generator settings (OpenCloud 9.0.0 or later). Empty values keep the OpenCloud defaults.
+  thumbnails:
+    # Largest source image that gets a preview, e.g. "50MB" (OpenCloud default: 50MB).
+    maxInputImageFileSize: ""
+    # Extra MIME types a preview is requested for, e.g. ["image/heic"]. The imagor types
+    # are added automatically when imagor.enabled is true.
+    additionalSourceTypes: []
   # Additional services to start. Services needed by enabled features are added
   # automatically: antivirus, postprocessing, policies, collaboration (Collabora) and
   # notifications (SMTP).
@@ -740,7 +803,8 @@ opencloud:
         # Access mode (ReadWriteOnce or ReadWriteMany for multiple replicas)
         accessMode: ReadWriteOnce
     posixfs:
-      # The type of the cache store, supported values are: 'memory', 'redis-sentinel', 'nats-js-kv' (default), 'noop'
+      # Cache store for the posix driver. Only 'nats-js-kv' (default) is supported.
+      # 'redis-sentinel' was removed in OpenCloud 9.1.1.
       idCacheStore: nats-js-kv
       # Path of storage root directory, default is /var/lib/opencloud/storage
       rootPath: "/var/lib/opencloud/storage"
@@ -776,6 +840,11 @@ opencloud:
     icapUrl: ""
     # ICAP service name (when scannerType is "icap")
     icapService: "avscan"
+    # Largest file that is scanned, e.g. "100MB". Empty = OpenCloud default.
+    # With ClamAV keep it at or below clamd's StreamMaxLength.
+    maxScanSize: ""
+    # What happens to files above maxScanSize: "partial" or "skip". Empty = OpenCloud default.
+    maxScanSizeMode: ""
 
   # =====================================================================
   # OPA REGO POLICIES
@@ -821,11 +890,6 @@ httpRoute:
     # Name of the Collabora HTTPS HTTPRoute (default: "<release-fullname>-collabora-httproute")
     routeName: ""
     # Name of the Collabora HTTP->HTTPS redirect HTTPRoute (default: "<release-fullname>-collabora-http-redirect")
-    redirectRouteName: ""
-  collaboration:
-    # Name of the Collaboration (WOPI) HTTPS HTTPRoute (default: "<release-fullname>-collaboration-httproute")
-    routeName: ""
-    # Name of the Collaboration (WOPI) HTTP->HTTPS redirect HTTPRoute (default: "<release-fullname>-collaboration-http-redirect")
     redirectRouteName: ""
 
   # Gateway configuration

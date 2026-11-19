@@ -1,4 +1,12 @@
 suite: Web Extensions Tests
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
 
 tests:
   - it: web-extensions ConfigMap is created when webExtensions is enabled
@@ -8,3 +16,100 @@ tests:
           count: 1
       - isKind:
           of: ConfigMap
+
+  - it: should read the importer from the apps path of the 2.x image
+    template: opencloud/deployment.yaml
+    set:
+      tika:
+        enabled: false
+      webExtensions:
+        extensions:
+          drawio:
+            enabled: false
+          externalsites:
+            enabled: false
+          jsonviewer:
+            enabled: false
+          progressbars:
+            enabled: false
+          unzip:
+            enabled: false
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: init-config
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: init-importer
+      - matchRegex:
+          path: spec.template.spec.initContainers[1].command[2]
+          pattern: "cp -R /usr/share/nginx/html/apps/importer/ /extensions/"
+
+  - it: should still support a pinned 1.x importer image layout
+    template: opencloud/deployment.yaml
+    set:
+      tika:
+        enabled: false
+      webExtensions:
+        extensions:
+          importer:
+            tag: importer-1.0.0
+          drawio:
+            enabled: false
+          externalsites:
+            enabled: false
+          jsonviewer:
+            enabled: false
+          progressbars:
+            enabled: false
+          unzip:
+            enabled: false
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[1].command[2]
+          pattern: "else cp -R /usr/share/nginx/html/importer/ /extensions/"
+
+  - it: should install excalidraw, apollon and bpmn only when they are enabled
+    template: opencloud/deployment.yaml
+    set:
+      tika:
+        enabled: false
+      webExtensions:
+        extensions:
+          importer:
+            enabled: false
+          drawio:
+            enabled: false
+          externalsites:
+            enabled: false
+          jsonviewer:
+            enabled: false
+          progressbars:
+            enabled: false
+          unzip:
+            enabled: false
+          excalidraw:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: init-excalidraw
+      - equal:
+          path: spec.template.spec.initContainers[1].image
+          value: "docker.io/opencloudeu/web-extensions:excalidraw-1.2.0"
+
+  - it: should not install apollon or bpmn by default
+    template: opencloud/deployment.yaml
+    set:
+      tika:
+        enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.initContainers
+          content:
+            name: init-apollon
+            image: "docker.io/opencloudeu/web-extensions:apollon-1.1.1"
+            command: ["sh", "-c", "mkdir -p /extensions/apollon && cp -R /usr/share/nginx/html/apps/apollon/ /extensions/"]
+            volumeMounts:
+              - name: extensions
+                mountPath: /extensions

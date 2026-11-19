@@ -1,10 +1,8 @@
 global:
   domain:
     opencloud: opencloud.my-domain.de
-    wopi: wopiserver.my-domain.de
     collabora: collabora.my-domain.de
-    onlyoffice: onlyoffice.my-domain.de
-    companion: companion.my-domain.de 
+    companion: companion.my-domain.de
 
 collabora:
   enabled: true
@@ -25,9 +23,6 @@ opencloud:
 
   persistence:
     data:
-      accessMode: ReadWriteOnce
-      size: 10Gi
-    config:
       accessMode: ReadWriteOnce
       size: 10Gi
   

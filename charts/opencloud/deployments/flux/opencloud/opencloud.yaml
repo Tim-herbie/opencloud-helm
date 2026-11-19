@@ -121,7 +121,7 @@ spec:
       domain:
         opencloud: cloud.opencloud.test
         oidc: keycloak.opencloud.test
-        wopi: wopiserver.opencloud.test
+        # No wopi domain: WOPI runs inside OpenCloud and is served on the main domain.
         collabora: collabora.opencloud.test
         companion: companion.opencloud.test
       tls:
@@ -136,6 +136,12 @@ spec:
       enabled: true
     opencloud:
       logLevel: info
+      # Tika full-text extraction, but only for files <= 300 KiB.
+      # Files above this are still indexed with metadata; their content is skipped.
+      # This is an input-file-size limit, not a hard index-size cap: Tika output
+      # from a small compressed file can still be larger than the input.
+      searchExtractorType: "tika"
+      searchExtractorSizeLimit: "307200"   # 300 KiB, in bytes
       resources:
         requests:
           memory: 512Mi   # example; chart default is 128Mi
@@ -268,6 +274,10 @@ spec:
         infectedFileHandling: abort
         scannerType: clamav
         clamavSocket: tcp://clamav.clamav.svc.cluster.local:3310
+        # Must stay at or below clamd's StreamMaxLength (150M in clamav/clamav.yaml).
+        # OpenCloud's default is 100MB, so the raised clamd limit only takes effect with this.
+        maxScanSize: "150MB"
+        maxScanSizeMode: partial
       smtp:
         enabled: false
         host: ""
@@ -275,6 +285,9 @@ spec:
         sender: ""
         authentication: none
         encryption: ssltls
+      # Guest access by email (OpenCloud 9.x). Needs smtp.enabled with a working host above.
+      guestLinks:
+        enabled: false
       policies:
         enabled: true
         policies:
@@ -455,7 +468,6 @@ spec:
 #       domain:
 #         opencloud: cloud2.opencloud.test
 #         oidc: keycloak.opencloud.test
-#         wopi: wopiserver2.opencloud.test
 #         collabora: collabora2.opencloud.test
 #         companion: companion2.opencloud.test
 #       tls:
@@ -516,112 +528,10 @@ spec:
 #     oidc:
 #       issuerUrl: https://keycloak.opencloud.test/realms/openCloud
 #       clientId: web
-#     features:
-#       externalUserManagement:
-#         enabled: true
-#         autoprovisionAccounts:
-#           enabled: true
-#           claimUserName: sub
-#         oidc:
-#           domain: keycloak.opencloud.test
-#           issuerURI: https://keycloak.opencloud.test/realms/openCloud
-#           userIDClaim: sub
-#           userIDClaimAttributeMapping: username
-#           roleAssignment:
-#             claim: roles
-#         ldap:
-#           writeable: true
-#           uri: ldaps://openldap.openldap.svc.cluster.local:636
-#           insecure: true
-#           bindDN: cn=admin,dc=opencloud,dc=eu
-#           user:
-#             userNameMatch: none
-#             schema:
-#               id: openCloudUUID
-#           group:
-#             schema:
-#               id: openCloudUUID
-#       virusscan:
-#         enabled: enable
-#         infectedFileHandling: "abort"
-#         scannerType: "clamav"
-#         clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
-#       emailNotifications:
-#         enabled: false
-#         smtp:
-#           host: ""
-#           port: ""
-#           sender: ""
-#           authentication: none
-#           encryption: ssltls
-#       policies:
-#         enabled: enable
-#         policies:
-#           - fileName: proxy.rego
-#             content: |
-#               package proxy
-#               import future.keywords.if
-#               import data.utils
-#               default granted := true
-#               granted = false if {
-#                   input.request.method == "PUT"
-#                   pathPrefixes := ["/dav", "/remote.php/webdav", "/remote.php/dav", "/webdav"]
-#                   restricted := pathPrefixes[_]
-#                   startswith(input.request.path, restricted)
-#                   utils.is_extension_restricted(input.resource.name)
-#               }
-#           - fileName: postprocessing.rego
-#             content: |
-#               package postprocessing
-#               import future.keywords.if
-#               import data.utils
-#               default granted := true
-#               granted = false if {
-#                   utils.is_extension_restricted(input.resource.name)
-#               }
-#               granted = false if {
-#                   resp := http.send({
-#                       "method": "GET",
-#                       "url": input.resource.url,
-#                       "headers": {"Range": "bytes=0-4095"},
-#                       "raise_error": true
-#                   })
-#                   resp.status_code == 206
-#                   mimetype := opencloud.mimetype.detect(base64.encode(resp.raw_body))
-#                   utils.is_mimetype_restricted(mimetype)
-#               }
-#           - fileName: utils.rego
-#             content: |
-#               package utils
-#               RESTRICTED_EXTENSIONS := {".exe", ".dll", ".msi", ".scr", ".com", ".pif", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".wsh"}
-#               RESTRICTED_EXTENSIONS_NO_DOT := {"exe", "dll", "msi", "scr", "com", "pif", "bat", "cmd", "ps1", "vbs", "vbe", "wsh"}
-#               RESTRICTED_MIMETYPES := {"application/x-msdownload", "application/x-dosexec", "application/x-executable", "application/vnd.microsoft.portable-executable", "application/x-msi", "application/x-ms-dos-executable", "application/x-msdos-program", "application/x-bat", "application/bat", "application/x-sh", "application/x-shellscript"}
-#               is_extension_restricted(identifier) {
-#                   extension := RESTRICTED_EXTENSIONS[_]
-#                   endswith(lower(identifier), extension)
-#               }
-#               is_mimetype_restricted(mimetype) {
-#                   RESTRICTED_MIMETYPES[mimetype]
-#               }
-#               is_mimetype_restricted(mimetype) {
-#                   extensions := opencloud.mimetype.extensions(mimetype)
-#                   ext := extensions[_]
-#                   RESTRICTED_EXTENSIONS_NO_DOT[ext]
-#               }
-#       appsIntegration:
-#         enabled: true
-#         wopiIntegration:
-#           officeSuites:
-#             - name: Collabora
-#               product: Collabora
-#               enabled: true
-#               uri: "https://collabora2.opencloud.test"
-#               insecure: true
-#               disableProof: false
-#               iconURI: https://collabora2.opencloud.test/favicon.ico
-#     insecure:
-#       oidcIdpInsecure: true
-#       ocHttpApiInsecure: true
+#     # The pre-3.0 `features:`, `appsIntegration:` and top-level `insecure:` keys are
+#     # not read by this chart. Copy the matching oc1 blocks instead:
+#     # opencloud.antivirus, opencloud.smtp, opencloud.guestLinks, opencloud.policies
+#     # (policies.enabled is a boolean) and oidc.oidcIdpInsecure.
 #     ingress:
 #       enabled: false
 #       ingressClassName: nginx
@@ -635,4 +545,3 @@ spec:
 #         namespace: kube-system
 #         port: 443
 #         sectionName: opencloud2
-#     replicas: 1

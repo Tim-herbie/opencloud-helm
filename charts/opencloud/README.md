@@ -19,8 +19,10 @@ Welcome to the **OpenCloud Helm Charts** repository! This repository is intended
   - [OpenCloud Settings](#opencloud-settings)
   - [OIDC Settings](#oidc-settings)
   - [Collabora Settings](#collabora-settings)
-  - [Collaboration Service Settings](#collaboration-service-settings)
+  - [Guest Links](#guest-links)
+  - [Thumbnails and imagor](#thumbnails-and-imagor)
   - [Web Extensions Settings](#web-extensions-settings)
+- [Upgrading to OpenCloud 9](#upgrading-to-opencloud-9)
 - [Gateway API Configuration](#gateway-api-configuration)
   - [HTTPRoute Settings](#httproute-settings)
 - [Setting Up Gateway API with Talos, Cilium, and cert-manager](#setting-up-gateway-api-with-talos-cilium-and-cert-manager)
@@ -144,10 +146,11 @@ The flux folder's `opencloud.yaml` keeps the `s3` block as a commented-out templ
 
 This Helm chart deploys the following components:
 
-1. **OpenCloud** - Main application (ownCloud Infinite Scale fork) with integrated IDM
+1. **OpenCloud** - Main application with integrated IDM. The collaboration (WOPI) service runs inside this process and is served on the main domain under `/wopi` and `/collaboration`.
 2. **Collabora** - Online document editor (CODE - Collabora Online Development Edition)
-3. **Collaboration Service** - WOPI server that connects OpenCloud with document editors
+3. **Yjs** - Real-time collaboration server for Markdown, `.ocnote`, Excalidraw and Apollon, reached through the OpenCloud proxy at `/yjs`
 4. **Tika** - Full-text search extractor
+5. **imagor** (optional, `imagor.enabled`) - Thumbnail generator for HEIC, HEIF and AVIF previews
 
 The following are **optional external** dependencies (deploy separately, e.g., via FluxCD):
 - **Keycloak** - OIDC authentication (when `oidc.issuerUrl` is set)
@@ -166,21 +169,17 @@ graph TD
     User[User Browser] -->|Accesses| Gateway[Gateway API]
     
     subgraph "OpenCloud System"
-        Gateway -->|cloud.opencloud.test| OpenCloud[OpenCloud Pod]
+        Gateway -->|cloud.opencloud.test incl. /wopi and /yjs| OpenCloud[OpenCloud Pod incl. WOPI]
         Gateway -->|collabora.opencloud.test| Collabora[Collabora Pod]
-        Gateway -->|collaboration.opencloud.test| Collaboration[Collaboration Pod]
-        Gateway -->|wopiserver.opencloud.test| Collaboration
         Gateway -->|keycloak.opencloud.test| Keycloak[Keycloak Pod - external]
         
         OpenCloud -->|Authentication| Keycloak
         OpenCloud -->|File Storage| Storage[(PVC / External S3)]
+        OpenCloud -->|/yjs| Yjs[Yjs Pod]
+        OpenCloud -->|Text extraction| Tika[Tika Pod]
+        OpenCloud -.->|Previews, optional| Imagor[imagor Pod]
         
-        Collabora -->|WOPI Protocol| Collaboration
-        Collaboration -->|File Access| Storage
-        
-        Collaboration -->|Authentication| Keycloak
-        
-        OpenCloud -->|Collaboration API| Collaboration
+        Collabora -->|WOPI on cloud.opencloud.test| OpenCloud
     end
     
     classDef pod fill:#f9f,stroke:#333,stroke-width:2px;
@@ -188,7 +187,7 @@ graph TD
     classDef user fill:#bfb,stroke:#333,stroke-width:2px;
     classDef storage fill:#ffd,stroke:#333,stroke-width:2px;
     
-    class OpenCloud,Collabora,Collaboration,Keycloak pod;
+    class OpenCloud,Collabora,Keycloak,Yjs,Tika,Imagor pod;
     class Storage storage;
     class Gateway gateway;
     class User user;
@@ -203,20 +202,13 @@ Key interactions:
    - Main application that users interact with
    - Authenticates users via Keycloak (external OIDC) or integrated IDM (default)
    - Stores files in a PVC (posixfs/decomposed) or external S3
-   - Communicates with Collaboration service for collaborative editing
+   - Runs the collaboration (WOPI) service in-process, served on the main domain
 
 3. **Collabora Pod**:
    - Office document editor
-   - Connects to the Collaboration pod via WOPI protocol
-   - Uses token server secret for authentication
+   - Talks WOPI to OpenCloud on the main domain (no separate `wopiserver` domain)
 
-4. **Collaboration Pod**:
-   - Implements WOPI server functionality
-   - Acts as intermediary between document editors and file storage
-   - Handles collaborative editing sessions
-   - Accesses files via OpenCloud storage (PVC or external S3)
-
-5. **Keycloak Pod** (external, optional):
+4. **Keycloak Pod** (external, optional):
    - Handles authentication for all services (when `oidc.issuerUrl` is set)
    - Deployed separately (e.g., via FluxCD HelmRelease); this chart does not
      manage its HTTPRoute — deploy and configure it alongside your Keycloak
@@ -242,8 +234,8 @@ helm install opencloud ./charts/opencloud \
 ```
 
 This will prepend `my-registry.com/` to all image references in the chart. For example:
-- `collabora/code:26.04.2.1.1` becomes `my-registry.com/collabora/code:26.04.2.1.1`
-- `opencloudeu/opencloud-rolling:7.3.0` becomes `my-registry.com/opencloudeu/opencloud-rolling:7.3.0`
+- `collabora/code:26.04.6.1.1` becomes `my-registry.com/collabora/code:26.04.6.1.1`
+- `opencloudeu/opencloud-rolling:9.2.0` becomes `my-registry.com/opencloudeu/opencloud-rolling:9.2.0`
 
 ### Global Settings
 
@@ -254,7 +246,6 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `global.domain.oidc` | Domain for OIDC provider (used when `oidc.issuerUrl` is set) | `keycloak.opencloud.test` |
 | `global.domain.collabora` | Domain for Collabora | `collabora.opencloud.test` |
 | `global.domain.companion` | Domain for Companion | `companion.opencloud.test` |
-| `global.domain.wopi` | Domain for WOPI server | `wopiserver.opencloud.test` |
 | `global.tls.external` | Indicate TLS will be provided externally. Configures opencloud to use "https://" URLS | `true` |
 | `global.tls.enabled` | Enable TLS (set to false when using gateway TLS termination externally) | `false` |
 | `global.tls.secretName` | secretName for TLS certificate | `""` |
@@ -268,7 +259,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | --------- | ----------- | ------- |
 | `image.registry` | OpenCloud image registry | `docker.io` |
 | `image.repository` | OpenCloud image repository | `opencloudeu/opencloud-rolling` |
-| `image.tag` | OpenCloud image tag | `7.3.0` |
+| `image.tag` | OpenCloud image tag | `9.2.0` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `image.pullSecrets` | Image pull secrets | `[]` |
 
@@ -319,7 +310,16 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.gatewayGrpcAddr` | gRPC address for the REVA gateway | `0.0.0.0:9142` |
 | `opencloud.proxyEnableBasicAuth` | Enable basic auth for proxy | `false` |
 | `opencloud.sharingPublicShareMustHavePassword` | Require password for public shares | `false` |
+| `opencloud.sharingPublicWriteableShareMustHavePassword` | Require a password for writable public shares (only when `sharingPublicShareMustHavePassword` is `false`) | `false` |
 | `opencloud.passwordPolicyBannedPasswordsList` | File name for banned password list | `banned-password-list.txt` |
+| `opencloud.defaultLanguage` | Default language for services and the web UI (ISO 639-1, e.g. `de`). Empty = English | `""` |
+| `opencloud.spacesDefaultQuota` | Default quota in bytes for new project spaces (`OC_SPACES_DEFAULT_QUOTA`, read by graph and frontend). Empty = OpenCloud default of 1 GB; `0` = no default quota. Existing spaces are not changed. Personal-space quotas per role: `opencloud.config.proxyRoleQuotas` | `""` |
+| `opencloud.archiverMaxSize` | Max size in bytes of zip archives for folder downloads. Empty = OpenCloud default | `""` |
+| `opencloud.guestLinks.enabled` | Enable guest access by email (see [Guest Links](#guest-links)). Requires `opencloud.smtp.enabled` | `false` |
+| `opencloud.thumbnails.maxInputImageFileSize` | Largest source image that gets a preview, e.g. `50MB`. Empty = OpenCloud default | `""` |
+| `opencloud.thumbnails.additionalSourceTypes` | Extra MIME types previews are requested for | `[]` |
+| `opencloud.antivirus.maxScanSize` | Largest file that is scanned, e.g. `100MB`. Keep at or below clamd's `StreamMaxLength`. Empty = OpenCloud default | `""` |
+| `opencloud.antivirus.maxScanSizeMode` | Handling of files above `maxScanSize`: `partial` or `skip`. Empty = OpenCloud default | `""` |
 | `opencloud.searchExtractorType` | Search extractor type | `tika` |
 | `opencloud.grpcMaxReceivedMessageSize` | Max gRPC received message size | `102400000` |
 | `opencloud.proxyAutoprovisionAccounts` | Autoprovision accounts via proxy | `true` |
@@ -328,7 +328,6 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.proxyOidcRewriteWellknown` | Rewrite OIDC .well-known endpoint | `true` |
 | `opencloud.proxyUserOidcClaim` | OIDC claim for user | `preferred_username` |
 | `opencloud.proxyUserCs3Claim` | CS3 claim for user | `username` |
-| `opencloud.adminUserId` | Admin user id (legacy; `OC_ADMIN_USER_ID` now sourced from init secret `adminUserID` key) | `""` |
 | `opencloud.graphAssignDefaultUserRole` | Assign default user role in graph | `false` |
 | `opencloud.graphUsernameMatch` | Username match strategy for graph | `none` |
 | `opencloud.proxyRoleAssignmentOidcClaim` | OIDC claim for role assignment | `roles` |
@@ -384,7 +383,7 @@ The following options allow setting up a POSIX-compatible filesystem (such as NF
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `opencloud.storage.posixfs.idCacheStore` | Cache store, between 'memory', 'redis-sentinel', 'nats-js-kv', 'noop' | `nats-js-kv` |
+| `opencloud.storage.posixfs.idCacheStore` | ID cache store of the posix driver. Only `nats-js-kv` is supported (`redis-sentinel` was removed in OpenCloud 9.1.1) | `nats-js-kv` |
 | `opencloud.storage.posixfs.rootPath` | Path of storage root directory in openCloud pod | `/var/lib/opencloud/storage` |
 | `opencloud.storage.posixfs.persistence.enabled` | Enable persistence for PosixFS | `true` |
 | `opencloud.storage.posixfs.persistence.existingClaim` | Name of existing PVC instead of the settings below | `""` |
@@ -452,6 +451,8 @@ thumbnailsTransferSecret
 systemUserID, adminUserID, serviceAccountID, graphApplicationID,
 storageUsersMountID
 ```
+
+`thumbnailsTransferSecret` is only read by OpenCloud 8.x; OpenCloud 9.x ignores it. Keep the key so existing Secrets stay valid.
 
 The chart maps these keys to the correct runtime ENV vars for each OpenCloud service, including per-service LDAP bind passwords (e.g., `USERS_LDAP_BIND_PASSWORD` ← `idmRevaServicePassword`).
 
@@ -561,7 +562,7 @@ opencloud:
 | --------- | ----------- | ------- |
 | `collabora.enabled` | Enable Collabora | `true` |
 | `collabora.image.repository` | Collabora image repository | `collabora/code` |
-| `collabora.image.tag` | Collabora image tag | `26.04.2.1.1` |
+| `collabora.image.tag` | Collabora image tag | `26.04.6.1.1` |
 | `collabora.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `collabora.existingSecret` | Name of the existing secret | `` |
 | `collabora.admin.username` | Admin username | `admin` |
@@ -570,12 +571,45 @@ opencloud:
 | `collabora.ssl.verification` | SSL verification | `true` |
 | `collabora.resources` | CPU/Memory resource requests/limits | `100m/256Mi` requests, `4/10Gi` limits |
 
-### Collaboration Service Settings
+The collaboration (WOPI) service has no settings of its own: it starts inside the OpenCloud process whenever `collabora.enabled` or `collabora.external.enabled` is `true`, and is served on `global.domain.opencloud`.
+
+### Guest Links
+
+OpenCloud 9 can share files and folders with people who have no account, by email address (the `auth-guest` service). Guests get a single-use link and a PIN by email, so SMTP is required:
+
+```yaml
+opencloud:
+  guestLinks:
+    enabled: true
+  smtp:
+    enabled: true          # also starts the notifications service
+    host: smtp.example.com
+    port: "587"
+    sender: "OpenCloud <noreply@example.com>"
+```
+
+The chart fails to render if `guestLinks.enabled` is `true` without `smtp.enabled`.
+
+The chart does not run `opencloud init`, so the `opencloud init --diff` step from the upstream upgrade guide does not apply. The `auth-guest` service account is read from `OC_SERVICE_ACCOUNT_ID` / `OC_SERVICE_ACCOUNT_SECRET`, which the chart already injects from the init Secret. Guest tokens are stored under `/var/lib/opencloud/auth-guest` on the data PVC.
+
+Guest sessions are signed with a key derived from `OC_JWT_SECRET` (`jwtSecret` in the init Secret). If that secret changes, all guests are logged out and request a new link. Shares and guest links themselves stay valid. Session lifetime, PIN lifetime and rate limits are configurable with the `AUTH_GUEST_*` variables via `opencloud.env`.
+
+### Thumbnails and imagor
+
+As of OpenCloud 9 the `webdav` service owns the thumbnail cache (`/var/lib/opencloud/thumbnails/cache` on the data PVC) and the built-in generator creates the previews. No action is needed for the defaults. After upgrading from 8.x, the old cache folder `/var/lib/opencloud/thumbnails/files` is unused and can be deleted once previews show up.
+
+The OpenCloud image cannot decode HEIC, HEIF and AVIF. Enable the optional imagor generator for those:
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `collaboration.enabled` | Enable collaboration service | `true` |
-| `collaboration.resources` | CPU/Memory resource requests/limits | `100m/256Mi` requests, `4/10Gi` limits |
+| `imagor.enabled` | Deploy imagor and send preview requests to it (`WEBDAV_THUMBNAILS_GENERATOR_URL`) | `false` |
+| `imagor.image.repository` | imagor image (`ghcr.io/cshum/imagor-magick` adds PSD, XCF, BMP at the cost of speed, memory and attack surface) | `shumc/imagor` |
+| `imagor.image.tag` | imagor image tag | `1.10.4` |
+| `imagor.maxSourceSize` | Largest source image in bytes | `50000000` |
+| `imagor.sourceTypes` | MIME types announced for previews (merged with `opencloud.thumbnails.additionalSourceTypes`) | HEIC, HEIF, AVIF and their sequences |
+| `imagor.resources` | CPU/Memory resource requests/limits | `100m/256Mi` requests, `2/1Gi` limits |
+
+imagor runs as a ClusterIP service only. It does not authenticate requests, so do not expose it through the Gateway or an Ingress. URL loading is disabled; it only processes images OpenCloud uploads to it.
 
 ### Web Extensions Settings
 
@@ -586,11 +620,11 @@ opencloud:
 | `webExtensions.image.repository` | Repository for web extensions images | `opencloudeu/web-extensions` |
 | `webExtensions.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `webExtensions.extensions.drawio.enabled` | Enable Draw.io extension | `true` |
-| `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-2.1.0` |
+| `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-2.2.0` |
 | `webExtensions.extensions.externalsites.enabled` | Enable External Sites extension | `true` |
 | `webExtensions.extensions.externalsites.tag` | External Sites image tag | `external-sites-2.1.0` |
 | `webExtensions.extensions.importer.enabled` | Enable Importer extension | `true` |
-| `webExtensions.extensions.importer.tag` | Importer image tag | `importer-1.0.0` |
+| `webExtensions.extensions.importer.tag` | Importer image tag (1.x and 2.x image layouts both work) | `importer-2.0.2` |
 | `webExtensions.extensions.jsonviewer.enabled` | Enable JSON Viewer extension | `true` |
 | `webExtensions.extensions.jsonviewer.tag` | JSON Viewer image tag | `json-viewer-2.1.0` |
 | `webExtensions.extensions.progressbars.enabled` | Enable Progress Bars extension | `true` |
@@ -604,9 +638,31 @@ opencloud:
 | `webExtensions.extensions.cast.enabled` | Enable Cast extension | `false` |
 | `webExtensions.extensions.cast.tag` | Cast image tag | `cast-1.0.0` |
 | `webExtensions.extensions.maps.enabled` | Enable Maps extension | `false` |
-| `webExtensions.extensions.maps.tag` | Maps image tag | `maps-3.1.0` |
+| `webExtensions.extensions.maps.tag` | Maps image tag | `maps-3.1.1` |
 | `webExtensions.extensions.pastebin.enabled` | Enable Pastebin extension | `false` |
 | `webExtensions.extensions.pastebin.tag` | Pastebin image tag | `pastebin-2.1.0` |
+| `webExtensions.extensions.excalidraw.enabled` | Enable Excalidraw whiteboards (live collaboration via Yjs) | `false` |
+| `webExtensions.extensions.excalidraw.tag` | Excalidraw image tag | `excalidraw-1.2.0` |
+| `webExtensions.extensions.apollon.enabled` | Enable Apollon UML diagrams (live collaboration via Yjs) | `false` |
+| `webExtensions.extensions.apollon.tag` | Apollon image tag | `apollon-1.1.1` |
+| `webExtensions.extensions.bpmn.enabled` | Enable BPMN diagrams | `false` |
+| `webExtensions.extensions.bpmn.tag` | BPMN image tag | `bpmn-1.1.2` |
+
+Excalidraw and Apollon need `yjs.enabled: true` (the default) for live collaboration; without it each user edits alone.
+
+## Upgrading to OpenCloud 9
+
+Upstream guides: [Upgrade 9.x.x (rolling, from 8.x)](https://docs.opencloud.eu/docs/next/admin/maintenance/upgrade/upgrade-9.x.x) and [Upgrade 9.1.x (production, from 7.2.x)](https://docs.opencloud.eu/docs/admin/maintenance/upgrade/production/upgrade-9.1.x). What they mean for this chart:
+
+| Upstream change | Chart |
+| --------------- | ----- |
+| `opencloud init --diff` config migration (`auth_guest.service_account`) | Not needed: the chart runs without `opencloud.yaml` and injects the service account by env |
+| Guest links (`auth-guest`) | Off by default; see [Guest Links](#guest-links) |
+| Push-based thumbnailer, cache moves to `thumbnails/cache` | Works with defaults. Delete `/var/lib/opencloud/thumbnails/files` after checking previews. `THUMBNAILS_TRANSFER_TOKEN` is ignored by 9.x |
+| `GRAPH_SPACES_DEFAULT_QUOTA` renamed to `OC_SPACES_DEFAULT_QUOTA` | Use `opencloud.spacesDefaultQuota`. If you set the old name via `opencloud.env`, remove it |
+| Redis removed as cache/store backend (9.1.1) | `idCacheStore: redis-sentinel` is now rejected by the schema |
+| Search index is versioned since 8.x | Coming from 7.x: run `opencloud search index --all-spaces --force-rescan` in the pod, then remove `/var/lib/opencloud/search/bleve` |
+| Reverse proxy must forward `/wopi`, `/collaboration`, `/yjs` | Covered: the HTTPRoute/Ingress forwards the whole main domain |
 
 ## Ingress Configuration
 
@@ -640,8 +696,6 @@ This chart includes HTTPRoute resources that can be used to expose the OpenCloud
 | `httpRoute.opencloud.redirectRouteName` | Name of the OpenCloud HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-http-redirect`) |
 | `httpRoute.collabora.routeName` | Name of the Collabora HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-collabora-httproute`) |
 | `httpRoute.collabora.redirectRouteName` | Name of the Collabora HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-collabora-http-redirect`) |
-| `httpRoute.collaboration.routeName` | Name of the Collaboration (WOPI) HTTPS HTTPRoute | `""` (defaults to `{{ release-name }}-collaboration-httproute`) |
-| `httpRoute.collaboration.redirectRouteName` | Name of the Collaboration (WOPI) HTTP→HTTPS redirect HTTPRoute | `""` (defaults to `{{ release-name }}-collaboration-http-redirect`) |
 
 The following HTTPRoutes are created when `httpRoute.enabled` is set to `true`:
 
@@ -656,10 +710,7 @@ The following HTTPRoutes are created when `httpRoute.enabled` is set to `true`:
    - Service: `{{ release-name }}-collabora`
    - Port: 9980
 
-3. **Collaboration (WOPI) HTTPRoute** (when `collaboration.enabled` is `true`; default names: `{{ release-name }}-collaboration-httproute` and `{{ release-name }}-collaboration-http-redirect`):
-   - Hostname: `global.domain.wopi`
-   - Service: `{{ release-name }}-collaboration`
-   - Port: 9300
+There is no separate WOPI route: the WOPI endpoints (`/wopi`, `/collaboration`) and `/yjs` are served by OpenCloud on `global.domain.opencloud` and covered by the OpenCloud HTTPRoute.
 
 The HTTPRoute resource names can be customized via the `httpRoute.<component>.routeName` / `httpRoute.<component>.redirectRouteName` values listed above. If left empty, the default names are used.
 
@@ -769,8 +820,6 @@ Alternatively, for local testing, you can add entries to your `/etc/hosts` file:
 192.168.178.77  cloud.opencloud.test
 192.168.178.77  keycloak.opencloud.test
 192.168.178.77  collabora.opencloud.test
-192.168.178.77  collaboration.opencloud.test
-192.168.178.77  wopiserver.opencloud.test
 192.168.178.77  companion.opencloud.test
 ```
 
@@ -791,11 +840,11 @@ helm install opencloud . \
 
 ### Troubleshooting
 
-If you encounter issues with the Collabora pod connecting to the WOPI server, ensure that:
+If Collabora cannot open documents (WOPI runs inside OpenCloud on the main domain), ensure that:
 
-1. The WOPI server certificate is properly created in the kube-system namespace
-2. The Collabora pod is configured with the correct token settings in the configmap
-3. The Gateway is properly configured to route traffic to the WOPI server
+1. The certificate for `global.domain.opencloud` and `global.domain.collabora` is properly created in the kube-system namespace
+2. Collabora can reach `https://<global.domain.opencloud>/wopi` (with self-signed certificates set `collabora.ssl.verification: false`)
+3. The Gateway routes both domains
 4. The ReferenceGrant is properly configured to allow the Gateway to access the TLS certificates
 
 You can check the status of the certificates:

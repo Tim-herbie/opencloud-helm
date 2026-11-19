@@ -42,9 +42,6 @@ spec:
   interval: 15m
   url: https://wiremind.github.io/wiremind-helm-charts
 ---
-# Archive policy: ClamAV signature files that flag restricted file types inside archives.
-# They are mounted into /data (the chart's DatabaseDirectory) with subPath, so the pods
-# must be restarted after the rules change: kubectl -n clamav rollout restart statefulset clamav
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -72,12 +69,12 @@ metadata:
   namespace: clamav
 spec:
   interval: 15m
-  timeout: 5m
+  timeout: 10m
   serviceAccountName: flux
   chart:
     spec:
       chart: clamav
-      version: "3.7.1"
+      version: "3.7.3"
       sourceRef:
         kind: HelmRepository
         name: wiremind
@@ -91,7 +88,7 @@ spec:
     remediation:
       retries: 3
   test:
-    enable: true
+    enable: false
   driftDetection:
     mode: enabled
     ignore:
@@ -99,16 +96,49 @@ spec:
         target:
           kind: Deployment
   values:
-    replicaCount: 2
+    kind: Deployment
+    replicaCount: 3
+
+    hpa:
+      enabled: false
+
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: clamav
+                  app.kubernetes.io/instance: clamav
+
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: clamav
+            app.kubernetes.io/instance: clamav
+
     resources:
       limits:
-        cpu: "6"
-        memory: 8Gi
+        memory: 12Gi
       requests:
-        cpu: "1"
-        memory: 2Gi
+        cpu: "2"
+        memory: 5Gi
 
     clamdConfigDict:
+      TemporaryDirectory: /tmp
+      MaxThreads: "32"
+      MaxQueue: "256"
+      MaxConnectionQueueLength: "512"
+      StreamMaxLength: "150M"
+      ReadTimeout: "300"
+      IdleTimeout: "30"
+      ConcurrentDatabaseReload: "yes"
+      CacheSize: "262144"
       DetectPUA: "yes"
       AlertEncrypted: "yes"
       AlertEncryptedArchive: "yes"
@@ -123,6 +153,11 @@ spec:
       - name: archive-policy
         configMap:
           name: clamav-archive-policy
+      - name: clamav-tmp
+        emptyDir:
+          medium: Memory
+          sizeLimit: 6Gi
+
     extraVolumeMounts:
       - name: archive-policy
         mountPath: /data/policy.cdb
@@ -132,3 +167,5 @@ spec:
         mountPath: /data/policy.ldb
         subPath: policy.ldb
         readOnly: true
+      - name: clamav-tmp
+        mountPath: /tmp

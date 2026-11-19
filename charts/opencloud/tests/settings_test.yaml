@@ -1,0 +1,101 @@
+suite: Optional OpenCloud settings
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: should leave the public writeable share password at the OpenCloud default
+    template: opencloud/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          any: true
+          content:
+            name: OC_SHARING_PUBLIC_WRITEABLE_SHARE_MUST_HAVE_PASSWORD
+
+  - it: should require a password for writeable public shares when enabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        sharingPublicWriteableShareMustHavePassword: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_SHARING_PUBLIC_WRITEABLE_SHARE_MUST_HAVE_PASSWORD
+            value: "true"
+
+  - it: should set the default project space quota once for graph and frontend
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        spacesDefaultQuota: "10000000000"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_SPACES_DEFAULT_QUOTA
+            value: "10000000000"
+
+  - it: should render integer sizes without exponent notation
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        spacesDefaultQuota: 10000000000
+        archiverMaxSize: 10000000000
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_SPACES_DEFAULT_QUOTA
+            value: "10000000000"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FRONTEND_ARCHIVER_MAX_SIZE
+            value: "10000000000"
+
+  - it: should set the default language and archiver size when configured
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        defaultLanguage: de
+        archiverMaxSize: "10000000000"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_DEFAULT_LANGUAGE
+            value: de
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: FRONTEND_ARCHIVER_MAX_SIZE
+            value: "10000000000"
+
+  - it: should set the largest thumbnail input size when configured
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        thumbnails:
+          maxInputImageFileSize: 20MB
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_THUMBNAILS_MAX_INPUT_IMAGE_FILE_SIZE
+            value: 20MB
+
+  - it: should keep the thumbnail defaults when nothing is configured
+    template: opencloud/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_THUMBNAILS_MAX_INPUT_IMAGE_FILE_SIZE
+            value: 20MB
