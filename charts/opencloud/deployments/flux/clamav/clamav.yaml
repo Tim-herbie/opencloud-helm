@@ -99,7 +99,18 @@ spec:
         target:
           kind: Deployment
   values:
+    # Pin the replica count instead of letting the chart's HPA own it
+    # (the HPA template omits `replicas` and needs metrics-server to scale).
+    # One pod is not enough: clamd only listens after loading its signature
+    # database, so a single restart leaves OpenCloud uploads stuck in the
+    # virusscan postprocessing step (WebDAV returns 425 Too Early).
     replicaCount: 2
+    hpa:
+      enabled: false
+    # Keep one scanner available during node drains and voluntary disruptions.
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
     resources:
       limits:
         cpu: "6"
