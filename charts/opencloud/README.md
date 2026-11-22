@@ -587,6 +587,8 @@ opencloud:
 | `webExtensions.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `webExtensions.extensions.drawio.enabled` | Enable Draw.io extension | `true` |
 | `webExtensions.extensions.drawio.tag` | Draw.io image tag | `draw-io-2.1.0` |
+| `webExtensions.extensions.excalidraw.enabled` | Enable Excalidraw extension | `false` |
+| `webExtensions.extensions.excalidraw.tag` | Excalidraw image tag | `excalidraw-1.2.0` |
 | `webExtensions.extensions.externalsites.enabled` | Enable External Sites extension | `true` |
 | `webExtensions.extensions.externalsites.tag` | External Sites image tag | `external-sites-2.1.0` |
 | `webExtensions.extensions.importer.enabled` | Enable Importer extension | `true` |

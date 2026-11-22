@@ -107,6 +107,14 @@ spec:
             - name: extensions
               mountPath: /extensions
         {{- end }}
+        {{- if .Values.webExtensions.extensions.excalidraw.enabled }}
+        - name: init-excalidraw
+          image: {{ include "opencloud.image" (dict "imageValues" (merge (dict "tag" .Values.webExtensions.extensions.excalidraw.tag) .Values.webExtensions.image) "global" .Values.global) | quote }}
+          command: ['sh', '-c', 'mkdir -p /extensions/excalidraw && cp -R /usr/share/nginx/html/apps/excalidraw/ /extensions/']
+          volumeMounts:
+            - name: extensions
+              mountPath: /extensions
+        {{- end }}
         {{- if .Values.webExtensions.extensions.externalsites.enabled }}
         - name: init-externalsites
           image: {{ include "opencloud.image" (dict "imageValues" (merge (dict "tag" .Values.webExtensions.extensions.externalsites.tag) .Values.webExtensions.image) "global" .Values.global) | quote }}
