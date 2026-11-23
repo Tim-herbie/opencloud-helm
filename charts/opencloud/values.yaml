@@ -195,6 +195,10 @@ webExtensions:
     drawio:
       enabled: true
       tag: draw-io-2.2.0
+    # Excalidraw extension
+    excalidraw:
+      enabled: false
+      tag: excalidraw-1.2.0
     # External Sites extension
     externalsites:
       enabled: true
