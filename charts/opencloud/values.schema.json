@@ -602,6 +602,21 @@
                 "type": "integer",
                 "minimum": 0
               }
+            },
+            "proxyRoleMapping": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "role_name": {
+                    "type": "string"
+                  },
+                  "claim_value": {
+                    "type": "string"
+                  }
+                },
+                "required": ["role_name", "claim_value"]
+              }
             }
           }
         },

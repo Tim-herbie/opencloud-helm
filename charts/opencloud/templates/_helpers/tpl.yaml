@@ -354,5 +354,12 @@ Render the proxy configuration and overlay separately configured role quotas.
 {{- with .Values.opencloud.config.proxyRoleQuotas }}
   {{- $_ := set $proxy "role_quotas" . -}}
 {{- end }}
+{{- with .Values.opencloud.config.proxyRoleMapping }}
+  {{- $roleAssignment := default (dict) (get $proxy "role_assignment") -}}
+  {{- $mapper := default (dict) (get $roleAssignment "oidc_role_mapper") -}}
+  {{- $_ := set $mapper "role_mapping" . -}}
+  {{- $_ := set $roleAssignment "oidc_role_mapper" $mapper -}}
+  {{- $_ := set $proxy "role_assignment" $roleAssignment -}}
+{{- end }}
 {{- toYaml $proxy -}}
 {{- end -}}

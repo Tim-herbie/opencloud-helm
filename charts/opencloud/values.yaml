@@ -600,23 +600,22 @@ opencloud:
     # CSP configuration
     csp: {}
     # Proxy configuration. A non-empty value replaces the built-in proxy YAML.
-    # Example custom proxy configuration:
-    # proxy: |-
-    #   role_assignment:
-    #     driver: oidc
-    #     oidc_role_mapper:
-    #       role_claim: groups
-    #       role_mapping:
-    #         - role_name: admin
-    #           claim_value: "authentik Admins"
-    #         - role_name: spaceadmin
-    #           claim_value: "opencloud-spaces"
-    #         - role_name: user
-    #           claim_value: "opencloud"
     proxy: {}
     # Role quotas are merged into proxy.yaml without replacing built-in policies.
     # Values are bytes and keys are OpenCloud role UUIDs.
     proxyRoleQuotas: {}
+    # OIDC role mapping merged into role_assignment.oidc_role_mapper.role_mapping
+    # in proxy.yaml without replacing the built-in proxy policies.
+    # The claim is configured with opencloud.proxyRoleAssignmentOidcClaim.
+    # Example:
+    #   proxyRoleMapping:
+    #     - role_name: admin
+    #       claim_value: "authentik Admins"
+    #     - role_name: spaceadmin
+    #       claim_value: "opencloud-spaces"
+    #     - role_name: user
+    #       claim_value: "opencloud"
+    proxyRoleMapping: []
     # Banned password list configuration
     # Format: Multi-line string (not YAML array)
     # Use the |- syntax to preserve line breaks
