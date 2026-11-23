@@ -23,7 +23,7 @@ data:
 
   # Proxy configuration
   proxy.yaml: |-
-{{- if and (empty .Values.opencloud.config.proxy) (empty .Values.opencloud.config.proxyRoleQuotas) -}}
+{{- if and (empty .Values.opencloud.config.proxy) (empty .Values.opencloud.config.proxyRoleQuotas) (empty .Values.opencloud.config.proxyRoleMapping) -}}
 {{ tpl (.Files.Get "files/opencloud/proxy.yaml.gotmpl") . | nindent 4 }}
 {{- else -}}
 {{ include "opencloud.proxy.config" . | nindent 4 }}

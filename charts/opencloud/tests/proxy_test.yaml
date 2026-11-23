@@ -27,3 +27,32 @@ tests:
       - matchRegex:
           path: data["proxy.yaml"]
           pattern: "2aadd357-682c-406b-8874-293091995fdd: 53687091200"
+
+  - it: merges oidc role mapping without removing built-in proxy policies
+    template: opencloud/configmap.yaml
+    set:
+      opencloud:
+        config:
+          proxyRoleMapping:
+            - role_name: admin
+              claim_value: authentik Admins
+            - role_name: user
+              claim_value: opencloud
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "additional_policies:"
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "role_assignment:"
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "oidc_role_mapper:"
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "role_name: admin"
+      - matchRegex:
+          path: data["proxy.yaml"]
+          pattern: "claim_value: opencloud"
