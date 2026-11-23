@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 <!-- release-bot:start -->
 
+## [3.2.4] - 2026-11-23
+
+### Breaking Changes
+- None
+
+### Features
+- None
+
+### Fixes
+- [#205](https://github.com/Tim-herbie/opencloud-helm/pull/205) fix(clamav): pin two replicas and keep one scanner available
+
+### Chore / Docs / CI / Other
+- [#208](https://github.com/Tim-herbie/opencloud-helm/pull/208) Add Excalidraw extension
+
+
 ## [3.2.3] - 2026-11-18
 
 ### Breaking Changes

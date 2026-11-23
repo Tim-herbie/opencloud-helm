@@ -1,14 +1,15 @@
-## Release 3.2.3
+## Release 3.2.4
 
-Base: changes since 3.2.2.
+Base: changes since 3.2.3.
 
 OpenCloud version from values.yaml: 9.2.0
 
 ### Pull Requests
-- [#202](https://github.com/Tim-herbie/opencloud-helm/pull/202) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v9.2.0
+- [#205](https://github.com/Tim-herbie/opencloud-helm/pull/205) fix(clamav): pin two replicas and keep one scanner available
+- [#208](https://github.com/Tim-herbie/opencloud-helm/pull/208) Add Excalidraw extension
 
 ### Changelog
-## [3.2.3] - 2026-11-18
+## [3.2.4] - 2026-11-23
 
 ### Breaking Changes
 - None
@@ -17,7 +18,7 @@ OpenCloud version from values.yaml: 9.2.0
 - None
 
 ### Fixes
-- None
+- [#205](https://github.com/Tim-herbie/opencloud-helm/pull/205) fix(clamav): pin two replicas and keep one scanner available
 
 ### Chore / Docs / CI / Other
-- [#202](https://github.com/Tim-herbie/opencloud-helm/pull/202) chore(deps): update docker.io/opencloudeu/opencloud-rolling docker tag to v9.2.0
+- [#208](https://github.com/Tim-herbie/opencloud-helm/pull/208) Add Excalidraw extension
