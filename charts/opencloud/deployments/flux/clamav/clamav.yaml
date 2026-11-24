@@ -99,8 +99,14 @@ spec:
     kind: Deployment
     replicaCount: 3
 
+    # The chart's HPA template omits `replicas` and needs metrics-server to scale.
     hpa:
       enabled: false
+
+    # Keep one scanner available during node drains and voluntary disruptions.
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
 
     affinity:
       podAntiAffinity:

@@ -10,6 +10,11 @@ echo "Initializing Draw.io extension..."
 cp -R /extensions/draw-io/ /var/lib/opencloud/web/assets/apps/
 {{- end }}
 
+{{- if .Values.webExtensions.extensions.excalidraw.enabled }}
+echo "Initializing Excalidraw extension..."
+cp -R /extensions/excalidraw/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
 {{- if .Values.webExtensions.extensions.externalsites.enabled }}
 echo "Initializing External Sites extension..."
 cp -R /extensions/external-sites/ /var/lib/opencloud/web/assets/apps/
