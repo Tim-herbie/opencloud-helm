@@ -318,6 +318,7 @@ This will prepend `my-registry.com/` to all image references in the chart. For e
 | `opencloud.guestLinks.enabled` | Enable guest access by email (see [Guest Links](#guest-links)). Requires `opencloud.smtp.enabled` | `false` |
 | `opencloud.thumbnails.maxInputImageFileSize` | Largest source image that gets a preview, e.g. `50MB`. Empty = OpenCloud default | `""` |
 | `opencloud.thumbnails.additionalSourceTypes` | Extra MIME types previews are requested for | `[]` |
+| `opencloud.antivirus.workers` | Number of concurrent antivirus scan workers (`ANTIVIRUS_WORKERS`) | `10` |
 | `opencloud.antivirus.maxScanSize` | Largest file that is scanned, e.g. `100MB`. Keep at or below clamd's `StreamMaxLength`. Empty = OpenCloud default | `""` |
 | `opencloud.antivirus.maxScanSizeMode` | Handling of files above `maxScanSize`: `partial` or `skip`. Empty = OpenCloud default | `""` |
 | `opencloud.searchExtractorType` | Search extractor type | `tika` |

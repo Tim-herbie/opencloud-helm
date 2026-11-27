@@ -214,6 +214,10 @@
                 "delete"
               ]
             },
+            "workers": {
+              "type": "integer",
+              "minimum": 1
+            },
             "scannerType": {
               "type": "string",
               "enum": [

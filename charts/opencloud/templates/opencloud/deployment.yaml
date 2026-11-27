@@ -497,6 +497,8 @@ spec:
               value: "true"
             - name: ANTIVIRUS_INFECTED_FILE_HANDLING
               value: {{ .Values.opencloud.antivirus.infectedFileHandling | quote }}
+            - name: ANTIVIRUS_WORKERS
+              value: {{ .Values.opencloud.antivirus.workers | quote }}
             {{- with .Values.opencloud.antivirus.maxScanSize }}
             - name: ANTIVIRUS_MAX_SCAN_SIZE
               value: {{ . | quote }}

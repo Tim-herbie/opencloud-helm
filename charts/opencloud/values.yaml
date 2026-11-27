@@ -836,6 +836,10 @@ opencloud:
     enabled: false
     # What to do with infected files: "abort" (default), "continue", or "delete"
     infectedFileHandling: "abort"
+    # Number of concurrent scan workers (ANTIVIRUS_WORKERS).
+    # Higher values increase throughput but also memory usage, especially on the
+    # scanner side (ClamAV/ICAP). Keep this aligned with the scanner capacity.
+    workers: 10
     # Scanner type: "clamav" (default) or "icap"
     scannerType: "clamav"
     # ClamAV socket endpoint (when scannerType is "clamav")

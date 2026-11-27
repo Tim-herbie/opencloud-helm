@@ -272,6 +272,7 @@ spec:
       antivirus:
         enabled: true
         infectedFileHandling: abort
+        workers: 10
         scannerType: clamav
         clamavSocket: tcp://clamav.clamav.svc.cluster.local:3310
         # Must stay at or below clamd's StreamMaxLength (150M in clamav/clamav.yaml).

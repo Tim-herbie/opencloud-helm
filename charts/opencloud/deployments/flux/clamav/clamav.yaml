@@ -153,7 +153,7 @@ spec:
       MaxRecursion: "10"
       MaxFiles: "15000"
       MaxScanSize: "150M"
-      MaxFileSize: "30M"
+      MaxFileSize: "150M"
 
     extraVolumes:
       - name: archive-policy
