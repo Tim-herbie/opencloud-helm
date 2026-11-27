@@ -1,0 +1,125 @@
+suite: imagor thumbnail generator
+templates:
+  - _helpers/tpl.yaml
+  - imagor/deployment.yaml
+  - imagor/service.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: should not render imagor by default
+    template: imagor/deployment.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render an internal imagor deployment when enabled
+    template: imagor/deployment.yaml
+    set:
+      imagor:
+        enabled: true
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/shumc/imagor:1.10.4"
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 65534
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /healthcheck
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UPLOAD_LOADER_MAX_ALLOWED_SIZE
+            value: "50000000"
+
+  - it: should expose imagor as a ClusterIP service on port 8000
+    template: imagor/service.yaml
+    set:
+      imagor:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 8000
+
+  - it: should point OpenCloud at imagor and add the imagor source types
+    template: opencloud/deployment.yaml
+    set:
+      imagor:
+        enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEBDAV_THUMBNAILS_GENERATOR_URL
+            value: "http://RELEASE-NAME-opencloud-imagor:8000"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_THUMBNAILS_ADDITIONAL_SOURCE_TYPES
+            value: "image/heic,image/heif,image/avif,image/heic-sequence,image/heif-sequence"
+
+  - it: should append user source types after the imagor types without duplicates
+    template: opencloud/deployment.yaml
+    set:
+      imagor:
+        enabled: true
+      opencloud:
+        thumbnails:
+          additionalSourceTypes:
+            - image/x-icon
+            - image/heic
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_THUMBNAILS_ADDITIONAL_SOURCE_TYPES
+            value: "image/heic,image/heif,image/avif,image/heic-sequence,image/heif-sequence,image/x-icon"
+
+  - it: should only announce the user source types when imagor is disabled
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        thumbnails:
+          additionalSourceTypes:
+            - image/x-icon
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_THUMBNAILS_ADDITIONAL_SOURCE_TYPES
+            value: "image/x-icon"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEBDAV_THUMBNAILS_GENERATOR_URL
+            value: "http://RELEASE-NAME-opencloud-imagor:8000"
+
+  - it: should wait for imagor before OpenCloud starts
+    template: opencloud/deployment.yaml
+    set:
+      tika:
+        enabled: false
+      imagor:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-imagor
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "http://RELEASE-NAME-opencloud-imagor:8000/healthcheck"

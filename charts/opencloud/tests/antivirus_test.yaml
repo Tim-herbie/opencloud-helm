@@ -175,3 +175,20 @@ tests:
           path: spec.template.spec.containers[0].env
           content:
             name: ANTIVIRUS_ICAP_SERVICE
+
+  - it: should set the antivirus worker count
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        antivirus:
+          enabled: true
+          scannerType: clamav
+          clamavSocket: "tcp://clamav.clamav.svc.cluster.local:3310"
+          infectedFileHandling: abort
+          workers: 20
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ANTIVIRUS_WORKERS
+            value: "20"

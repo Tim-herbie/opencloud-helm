@@ -160,6 +160,7 @@ tests:
               --o:net.lok_allow.host[14]=cloud.opencloud.test \
               --o:home_mode.enable=false \
               --o:security.capabilities=false \
+              --o:mount_jail_tree=false \
               --o:child_root_path=/tmp/coolwsd-child-roots \
               --o:cache_files.path=/tmp/coolwsd-cache \
               --o:logging.disable_server_audit=true
@@ -189,6 +190,7 @@ tests:
               --o:net.lok_allow.host[14]=cloud.opencloud.test \
               --o:home_mode.enable=false \
               --o:security.capabilities=false \
+              --o:mount_jail_tree=false \
               --o:child_root_path=/tmp/coolwsd-child-roots \
               --o:cache_files.path=/tmp/coolwsd-cache \
               --o:logging.disable_server_audit=true
@@ -229,10 +231,10 @@ tests:
           path: spec.template.spec.containers[0].readinessProbe
       - equal:
           path: spec.template.spec.containers[0].livenessProbe.httpGet.path
-          value: /hosting/discovery
+          value: /
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.path
-          value: /hosting/discovery
+          value: /
     set:
       collabora:
         enabled: true

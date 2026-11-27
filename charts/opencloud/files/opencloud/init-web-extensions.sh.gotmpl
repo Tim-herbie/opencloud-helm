@@ -65,4 +65,19 @@ echo "Initializing Pastebin extension..."
 cp -R /extensions/pastebin/ /var/lib/opencloud/web/assets/apps/
 {{- end }}
 
+{{- if (.Values.webExtensions.extensions.excalidraw | default dict).enabled }}
+echo "Initializing Excalidraw extension..."
+cp -R /extensions/excalidraw/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
+{{- if (.Values.webExtensions.extensions.apollon | default dict).enabled }}
+echo "Initializing Apollon extension..."
+cp -R /extensions/apollon/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
+{{- if (.Values.webExtensions.extensions.bpmn | default dict).enabled }}
+echo "Initializing BPMN extension..."
+cp -R /extensions/bpmn/ /var/lib/opencloud/web/assets/apps/
+{{- end }}
+
 echo "Web extensions initialization completed."

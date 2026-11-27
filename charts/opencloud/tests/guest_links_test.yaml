@@ -1,0 +1,79 @@
+suite: Guest links (auth-guest)
+templates:
+  - _helpers/tpl.yaml
+  - opencloud/deployment.yaml
+  - opencloud/config-json-configmap.yaml
+  - opencloud/configmap.yaml
+  - opencloud/policies-configmap.yaml
+  - opencloud/theme-branding-configmap.yaml
+  - opencloud/web-extensions-init.yaml
+
+tests:
+  - it: should not set OC_ENABLE_GUEST_LINKS by default (OpenCloud default is off)
+    template: opencloud/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          any: true
+          content:
+            name: OC_ENABLE_GUEST_LINKS
+
+  - it: should not duplicate OC_ENABLE_GUEST_LINKS that a user sets via opencloud.env
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        env:
+          - name: OC_ENABLE_GUEST_LINKS
+            value: "true"
+    asserts:
+      # the chart renders nothing for disabled guest links, so only the user's entry exists
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ENABLE_GUEST_LINKS
+            value: "true"
+          count: 1
+
+  - it: should render when guestLinks, thumbnails and imagor are missing from the values (--reuse-values)
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        guestLinks: null
+        thumbnails: null
+      imagor: null
+    asserts:
+      - isKind:
+          of: Deployment
+
+  - it: should enable guest links and start notifications when SMTP is configured
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        guestLinks:
+          enabled: true
+        smtp:
+          enabled: true
+          host: smtp.example.com
+          port: "587"
+          sender: "OpenCloud <noreply@example.com>"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ENABLE_GUEST_LINKS
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OC_ADD_RUN_SERVICES
+            value: "collaboration,notifications"
+
+  - it: should fail when guest links are enabled without SMTP
+    template: opencloud/deployment.yaml
+    set:
+      opencloud:
+        guestLinks:
+          enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: 'opencloud\.guestLinks\.enabled requires opencloud\.smtp\.enabled'
