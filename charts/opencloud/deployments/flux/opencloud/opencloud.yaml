@@ -275,8 +275,6 @@ spec:
         workers: 10
         scannerType: clamav
         clamavSocket: tcp://clamav.clamav.svc.cluster.local:3310
-        # Must stay at or below clamd's StreamMaxLength (150M in clamav/clamav.yaml).
-        # OpenCloud's default is 100MB, so the raised clamd limit only takes effect with this.
         maxScanSize: "150MB"
         maxScanSizeMode: partial
       smtp:
